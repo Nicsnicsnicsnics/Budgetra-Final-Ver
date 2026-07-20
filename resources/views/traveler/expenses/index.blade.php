@@ -21,7 +21,7 @@
 
 @else
 @php
-    $selectedTripId = request('trip_id') ?? ($trips->count() === 1 ? $trips->first()->id : null);
+    $selectedTripId = request('trip_id') ?? $trips->first()?->id;
     $selectedTrip   = $selectedTripId ? $trips->firstWhere('id', $selectedTripId) : null;
 @endphp
 
@@ -31,30 +31,36 @@
     <div style="margin-bottom:20px;">
         <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--primary);text-transform:uppercase;margin-bottom:6px;">Destination</div>
         <div style="display:flex;gap:10px;align-items:center;">
-            <div style="position:relative;flex:1;">
-                <i class="fa-solid fa-location-dot" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#C8874A;font-size:13px;pointer-events:none;z-index:1;"></i>
+            <div style="flex:1;">
                 @if ($trips->count() === 1)
-                {{-- Single trip: read-only --}}
                 @php $t = $trips->first(); @endphp
-                <div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:12px 16px 12px 38px;font-size:14px;font-weight:600;color:var(--dark);">
-                    {{ $t->origin ?? 'Manila' }} to {{ $t->destination }}
+                <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:10px;">
+                    <i class="fa-solid fa-plane" style="color:#C8874A;font-size:13px;flex-shrink:0;"></i>
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $t->origin ?? 'Manila' }} to {{ $t->destination }}</span>
                 </div>
-                <input type="hidden" name="trip_id" value="{{ $t->id }}">
                 @else
-                {{-- Multiple trips: dropdown --}}
-                <form method="GET" action="{{ route('expenses.index') }}" id="trip-filter-form" style="margin:0;">
-                    <select name="trip_id" id="trip-selector"
-                            onchange="document.getElementById('trip-filter-form').submit()"
-                            style="width:100%;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:12px 40px 12px 38px;font-size:14px;font-weight:600;color:var(--dark);appearance:none;cursor:pointer;outline:none;">
-                        <option value="">— Select a trip —</option>
+                <div x-data="{ open: false }" style="position:relative;">
+                    <button @click="open = !open" @click.away="open = false" type="button"
+                            style="width:100%;background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;">
+                        <i class="fa-solid fa-plane" style="color:#C8874A;font-size:13px;flex-shrink:0;"></i>
+                        <span style="flex:1;font-size:14px;font-weight:600;color:var(--dark);">
+                            @php $sel = $trips->firstWhere('id', $selectedTripId); @endphp
+                            {{ ($sel->origin ?? 'Manila') . ' to ' . $sel->destination }}
+                        </span>
+                        <i class="fa-solid fa-chevron-down" style="font-size:11px;color:#9B8EA0;transition:transform .2s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+                    </button>
+                    <div x-show="open" x-transition
+                         style="position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(45,27,20,.12);z-index:50;overflow:hidden;">
                         @foreach($trips as $t)
-                        <option value="{{ $t->id }}" {{ $selectedTripId == $t->id ? 'selected' : '' }}>
-                            {{ $t->origin ?? 'Manila' }} to {{ $t->destination }}
-                        </option>
+                        <a href="{{ route('expenses.index') }}?trip_id={{ $t->id }}"
+                           style="display:flex;align-items:center;gap:10px;padding:12px 16px;text-decoration:none;background:{{ $selectedTripId == $t->id ? '#FDF3EB' : '#fff' }};border-bottom:1px solid #f5f0eb;"
+                           onmouseenter="this.style.background='#f5f0eb'" onmouseleave="this.style.background='{{ $selectedTripId == $t->id ? '#FDF3EB' : '#fff' }}'">
+                            <i class="fa-solid fa-plane" style="color:#C8874A;font-size:12px;flex-shrink:0;"></i>
+                            <span style="font-size:13px;font-weight:{{ $selectedTripId == $t->id ? '700' : '500' }};color:{{ $selectedTripId == $t->id ? '#934b19' : 'var(--dark)' }};">{{ $t->origin ?? 'Manila' }} to {{ $t->destination }}</span>
+                        </a>
                         @endforeach
-                    </select>
-                    <i class="fa-solid fa-chevron-down" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#9B8EA0;font-size:12px;pointer-events:none;"></i>
-                </form>
+                    </div>
+                </div>
                 @endif
             </div>
             {{-- Add Expense button --}}

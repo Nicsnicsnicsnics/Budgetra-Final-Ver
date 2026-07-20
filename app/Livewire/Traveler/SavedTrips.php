@@ -1,7 +1,9 @@
 <?php
 namespace App\Livewire\Traveler;
 
+use App\Models\GroupMember;
 use App\Models\Trip;
+use App\Models\User;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -9,9 +11,17 @@ use Livewire\Component;
 #[Layout('layouts.app', ['active' => 'saved-trips'])]
 class SavedTrips extends Component
 {
-    public ?int $detailTripId  = null;
-    public ?int $deleteTripId  = null;
+    public ?int $detailTripId   = null;
+    public ?int $deleteTripId   = null;
     public string $deleteTripName = '';
+    public ?int $editNameTripId  = null;
+    public string $editNameValue = '';
+    public string $editType      = 'Solo';
+    public string $editStatus    = 'upcoming';
+    public string $memberEmail   = '';
+    public string $memberError   = '';
+    public array  $pendingMembers = [];  // [['id'=>..,'name'=>..,'email'=>..]]
+    public array  $savedMembers   = [];  // already saved for this trip
 
     public function showDetail(int $id): void
     {
@@ -30,6 +40,103 @@ class SavedTrips extends Component
         $dest   = $trip->destination ?? 'destination';
         $this->deleteTripId   = $id;
         $this->deleteTripName = $origin . ' to ' . $dest;
+    }
+
+    public function openEditName(int $id): void
+    {
+        $trip = $this->trips->firstWhere('id', $id);
+        if (!$trip) return;
+        $this->editNameTripId = $id;
+        $this->editNameValue = $trip->destination ?? '';
+        $this->editType      = ucfirst(strtolower($trip->travel_type ?? 'Solo'));
+        $today = \Carbon\Carbon::today();
+        $computed = $trip->start_date->gt($today) ? 'upcoming' : ($trip->end_date->lt($today) ? 'past' : 'active');
+        $this->editStatus     = $trip->getRawOriginal('status') ?? $computed;
+        $this->memberEmail    = '';
+        $this->memberError    = '';
+        $this->pendingMembers = [];
+        $this->savedMembers   = GroupMember::where('trip_id', $id)
+            ->with('user')
+            ->get()
+            ->map(fn($m) => ['id' => $m->user_id, 'name' => $m->user->full_name, 'email' => $m->user->email])
+            ->toArray();
+    }
+
+    public function lookupMember(): void
+    {
+        $this->memberError = '';
+        $email = trim($this->memberEmail);
+        if ($email === '') return;
+
+        $user = User::where('email', $email)->first();
+        if (!$user) {
+            $this->memberError = 'No registered user found with that email.';
+            return;
+        }
+        if ($user->id === auth()->id()) {
+            $this->memberError = 'You are already the trip owner.';
+            return;
+        }
+        $alreadyInSaved   = collect($this->savedMembers)->pluck('id')->contains($user->id);
+        $alreadyInPending = collect($this->pendingMembers)->pluck('id')->contains($user->id);
+        if ($alreadyInSaved || $alreadyInPending) {
+            $this->memberError = 'This user is already added.';
+            return;
+        }
+        $this->pendingMembers[] = ['id' => $user->id, 'name' => $user->full_name, 'email' => $user->email];
+        $this->memberEmail = '';
+    }
+
+    public function removePendingMember(int $index): void
+    {
+        array_splice($this->pendingMembers, $index, 1);
+    }
+
+    public function removeSavedMember(int $userId): void
+    {
+        if (!$this->editNameTripId) return;
+        GroupMember::where('trip_id', $this->editNameTripId)->where('user_id', $userId)->delete();
+        $this->savedMembers = array_values(array_filter($this->savedMembers, fn($m) => $m['id'] !== $userId));
+    }
+
+    public function saveEditName(): void
+    {
+        if (!$this->editNameTripId || trim($this->editNameValue) === '') return;
+        $trip = Trip::find($this->editNameTripId);
+        if ($trip && $trip->user_id === auth()->id()) {
+            $trip->update([
+                'destination' => trim($this->editNameValue),
+                'travel_type' => $this->editType,
+                'status'      => $this->editStatus,
+            ]);
+            $trip->savingsGoals()->update(['goal_name' => trim($this->editNameValue)]);
+
+            if ($this->editType === 'Group') {
+                foreach ($this->pendingMembers as $m) {
+                    GroupMember::firstOrCreate(['trip_id' => $trip->id, 'user_id' => $m['id']]);
+                }
+            }
+        }
+        $this->editNameTripId  = null;
+        $this->editNameValue   = '';
+        $this->editType        = 'Solo';
+        $this->editStatus      = 'upcoming';
+        $this->memberEmail     = '';
+        $this->memberError     = '';
+        $this->pendingMembers  = [];
+        $this->savedMembers    = [];
+    }
+
+    public function cancelEditName(): void
+    {
+        $this->editNameTripId  = null;
+        $this->editNameValue   = '';
+        $this->editType        = 'Solo';
+        $this->editStatus      = 'upcoming';
+        $this->memberEmail     = '';
+        $this->memberError     = '';
+        $this->pendingMembers  = [];
+        $this->savedMembers    = [];
     }
 
     public function cancelDelete(): void
@@ -62,8 +169,9 @@ class SavedTrips extends Component
                 $days  = max(1, (int) $trip->start_date->diffInDays($trip->end_date));
                 $trip->setAttribute('days', $days);
                 $trip->setAttribute('status',
-                    $trip->start_date->gt($today) ? 'upcoming' :
-                    ($trip->end_date->lt($today)  ? 'past'     : 'active'));
+                    $trip->status ??
+                    ($trip->start_date->gt($today) ? 'upcoming' :
+                    ($trip->end_date->lt($today)   ? 'past'     : 'active')));
                 return $trip;
             });
     }

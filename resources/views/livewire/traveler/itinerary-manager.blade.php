@@ -25,28 +25,41 @@
 
     {{-- Destination dropdown --}}
     <div style="margin-bottom:20px;">
-        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--primary);text-transform:uppercase;margin-bottom:6px;">Destination</div>
-        <div style="position:relative;">
-            <i class="fa-solid fa-location-dot" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#C8874A;font-size:13px;pointer-events:none;z-index:1;"></i>
-            @if ($this->trips->count() === 1)
-            {{-- Single trip: show as read-only display --}}
-            @php $onlyTrip = $this->trips->first(); @endphp
-            <div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:12px 40px 12px 38px;font-size:14px;font-weight:600;color:var(--dark);">
-                {{ $onlyTrip->origin ?? 'Manila' }} to {{ $onlyTrip->destination }}
-            </div>
-            @else
-            {{-- Multiple trips: dropdown --}}
-            <select wire:model.live="selectedTripId"
-                    style="width:100%;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:12px 40px 12px 38px;font-size:14px;font-weight:600;color:var(--dark);appearance:none;cursor:pointer;outline:none;">
-                @foreach($this->trips as $t)
-                <option value="{{ $t->id }}" {{ $selectedTripId == $t->id ? 'selected' : '' }}>
-                    {{ $t->origin ?? 'Manila' }} to {{ $t->destination }}
-                </option>
-                @endforeach
-            </select>
-            <i class="fa-solid fa-chevron-down" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#9B8EA0;font-size:12px;pointer-events:none;"></i>
-            @endif
+        @if ($this->trips->count() === 1)
+        @php $onlyTrip = $this->trips->first(); @endphp
+        <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:10px;">
+            <i class="fa-solid fa-plane" style="color:#C8874A;font-size:13px;flex-shrink:0;"></i>
+            <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $onlyTrip->origin ?? 'Manila' }} to {{ $onlyTrip->destination }}</span>
         </div>
+        @else
+        <div x-data="{ open: false }" style="position:relative;">
+            {{-- Trigger --}}
+            <button @click="open = !open" @click.away="open = false" type="button"
+                    style="width:100%;background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;">
+                <i class="fa-solid fa-plane" style="color:#C8874A;font-size:13px;flex-shrink:0;"></i>
+                <span style="flex:1;font-size:14px;font-weight:600;color:var(--dark);">
+                    @foreach($this->trips as $t)
+                        @if($selectedTripId == $t->id){{ $t->origin ?? 'Manila' }} to {{ $t->destination }}@endif
+                    @endforeach
+                </span>
+                <i class="fa-solid fa-chevron-down" style="font-size:11px;color:#9B8EA0;transition:transform .2s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+            </button>
+            {{-- Options --}}
+            <div x-show="open" x-transition
+                 style="position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(45,27,20,.12);z-index:50;overflow:hidden;">
+                @foreach($this->trips as $t)
+                <button type="button"
+                        wire:click="$set('selectedTripId', {{ $t->id }})"
+                        @click="open = false"
+                        style="width:100%;background:{{ $selectedTripId == $t->id ? '#FDF3EB' : '#fff' }};border:none;padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;border-bottom:1px solid #f5f0eb;"
+                        onmouseenter="this.style.background='#f5f0eb'" onmouseleave="this.style.background='{{ $selectedTripId == $t->id ? '#FDF3EB' : '#fff' }}'">
+                    <i class="fa-solid fa-plane" style="color:#C8874A;font-size:12px;flex-shrink:0;"></i>
+                    <span style="font-size:13px;font-weight:{{ $selectedTripId == $t->id ? '700' : '500' }};color:{{ $selectedTripId == $t->id ? '#934b19' : 'var(--dark)' }};">{{ $t->origin ?? 'Manila' }} to {{ $t->destination }}</span>
+                </button>
+                @endforeach
+            </div>
+        </div>
+        @endif
     </div>
 
     @if ($selectedTripId && $this->selectedTrip)

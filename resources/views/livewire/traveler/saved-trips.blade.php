@@ -25,8 +25,8 @@
             $displayCost = $trip->total_cost ?? $trip->budget_limit ?? 0;
             $cover    = $trip->cover_image;
             $statusColor = match($trip->status) {
-                'active'   => '#2E7D32',
-                'upcoming' => '#934B19',
+                'active'   => '#22C55E',
+                'upcoming' => '#3B82F6',
                 default    => '#6B7280',
             };
         @endphp
@@ -39,11 +39,35 @@
                      onerror="this.style.display='none'">
                 @endif
                 <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.15),rgba(0,0,0,0.55));"></div>
-                <span style="position:absolute;top:12px;left:12px;background:rgba(255,255,255,0.22);color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;backdrop-filter:blur(4px);">{{ $tType }}</span>
-                <span style="position:absolute;top:12px;right:12px;background:{{ $statusColor }};color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;">{{ $trip->status }}</span>
+                {{-- Stacked badges top-left --}}
+                <div style="position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:5px;">
+                    @php $typeColor = $tType === 'GROUP' ? '#A855F7' : '#14B8A6'; @endphp
+                    <span style="background:{{ $typeColor }};color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;display:inline-block;text-align:center;">{{ $tType }}</span>
+                    <span style="background:{{ $statusColor }};color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;display:inline-block;">{{ $trip->status }}</span>
+                </div>
+                {{-- Kebab menu top-right --}}
+                <div x-data="{ open: false }" style="position:absolute;top:10px;right:10px;">
+                    <button @click.stop="open = !open" @click.away="open = false"
+                            style="width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,0.35);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;backdrop-filter:blur(4px);">
+                        <i class="fa-solid fa-ellipsis-vertical" style="font-size:13px;"></i>
+                    </button>
+                    <div x-show="open" x-transition
+                         style="position:absolute;top:36px;right:0;background:#fff;border:1px solid #e8ddd4;border-radius:10px;box-shadow:0 8px 24px rgba(45,27,20,.15);min-width:160px;z-index:100;overflow:hidden;">
+                        <button wire:click="openEditName({{ $trip->id }})" @click="open=false"
+                                style="width:100%;background:none;border:none;padding:11px 16px;font-size:13px;font-weight:500;color:#1c1c19;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;border-bottom:1px solid #f5f0eb;font-family:'Hanken Grotesk',sans-serif;"
+                                onmouseenter="this.style.background='#f5f0eb'" onmouseleave="this.style.background='none'">
+                            <i class="fa-regular fa-pen-to-square" style="font-size:12px;color:#817470;"></i> Edit Trip
+                        </button>
+                        <button wire:click="confirmDelete({{ $trip->id }})" @click="open=false"
+                                style="width:100%;background:none;border:none;padding:11px 16px;font-size:13px;font-weight:500;color:#ba1a1a;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;font-family:'Hanken Grotesk',sans-serif;"
+                                onmouseenter="this.style.background='#fff5f5'" onmouseleave="this.style.background='none'">
+                            <i class="fa-regular fa-trash-can" style="font-size:12px;"></i> Delete Trip
+                        </button>
+                    </div>
+                </div>
                 <div style="position:absolute;bottom:10px;left:14px;right:14px;">
                     <div style="font-size:16px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:6px;">
-                        {{ $tType === 'SOLO' ? 'Solo Getaway to ' : '' }}{{ $dest }}
+                        {{ $trip->destination }}
                     </div>
                     <div style="display:flex;flex-direction:column;gap:4px;">
                         @if($fromCode)
@@ -68,12 +92,8 @@
 
                 <div style="display:flex;gap:8px;">
                     <button wire:click="showDetail({{ $trip->id }})"
-                            style="flex:1.2;background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
+                            style="flex:1;background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
                         View Details
-                    </button>
-                    <button wire:click="confirmDelete({{ $trip->id }})"
-                            style="flex:1;background:transparent;color:#934B19;border:1.5px solid #934B19;border-radius:10px;padding:10px 6px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;">
-                        <i class="fa-regular fa-trash-can" style="font-size:10px;"></i>Delete Trip
                     </button>
                     <a href="{{ route('expenses.index') }}?trip_id={{ $trip->id }}"
                        style="flex:1;background:transparent;color:#934B19;border:1.5px solid #934B19;border-radius:10px;padding:10px 6px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;">
@@ -122,8 +142,7 @@
                 </div>
                 <div>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                        <span style="font-size:15px;font-weight:700;color:#1A0A00;">{{ $dtType }} Getaway to {{ $dtDest }}</span>
-                        <span style="background:#FFF3E0;color:#C8874A;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;">{{ $dtType }}</span>
+                        <span style="font-size:15px;font-weight:700;color:#1A0A00;">{{ $dtDest }}</span>
                     </div>
                 </div>
             </div>
@@ -200,6 +219,124 @@
                     <span wire:loading wire:target="deleteTrip"><i class="fa-solid fa-spinner fa-spin"></i></span>
                 </button>
             </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Edit Trip Modal --}}
+    @if ($editNameTripId)
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div x-data="{ type: '{{ $editType }}' }" style="background:#fff;border-radius:20px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.2);padding:24px;max-height:90vh;overflow-y:auto;">
+
+            {{-- Header --}}
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa-regular fa-pen-to-square" style="color:#934B19;font-size:14px;"></i>
+                </div>
+                <span style="font-size:16px;font-weight:700;color:#1c1c19;">Edit Trip</span>
+            </div>
+
+            {{-- Trip Name --}}
+            <div style="margin-bottom:14px;">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#817470;margin-bottom:6px;">Trip Name</div>
+                <input wire:model="editNameValue" type="text" placeholder="e.g. Solo Getaway to Siargao"
+                       style="width:100%;border:1.5px solid #d3c3be;border-radius:10px;padding:11px 14px;font-size:14px;font-family:'Hanken Grotesk',sans-serif;color:#1c1c19;outline:none;box-sizing:border-box;"
+                       onfocus="this.style.borderColor='#934b19'" onblur="this.style.borderColor='#d3c3be'">
+            </div>
+
+            {{-- Travel Type --}}
+            <div style="margin-bottom:14px;">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#817470;margin-bottom:6px;">Type</div>
+                <div style="display:flex;gap:6px;">
+                    @foreach(['Solo','Group'] as $typeOpt)
+                    <button type="button"
+                            @click="type = '{{ $typeOpt }}'" wire:click="$set('editType', '{{ $typeOpt }}')"
+                            :style="type === '{{ $typeOpt }}'
+                                ? 'flex:1;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Hanken Grotesk,sans-serif;border:1.5px solid #934b19;background:#FDF3EB;color:#934b19;'
+                                : 'flex:1;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Hanken Grotesk,sans-serif;border:1.5px solid #e8ddd4;background:#fff;color:#817470;'">
+                        {{ $typeOpt }}
+                    </button>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Group members (only when Group type) --}}
+            <div x-show="type === 'Group'" x-transition style="margin-bottom:14px;">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#817470;margin-bottom:8px;">Group Members</div>
+
+                {{-- Already-saved members --}}
+                @foreach($savedMembers as $sm)
+                <div style="display:flex;align-items:center;gap:10px;background:#F5F5F5;border-radius:10px;padding:8px 12px;margin-bottom:6px;">
+                    <div style="width:28px;height:28px;border-radius:50%;background:#d3c3be;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#fff;">{{ strtoupper(substr($sm['name'],0,1)) }}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;font-weight:600;color:#1c1c19;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $sm['name'] }}</div>
+                        <div style="font-size:11px;color:#9B8EA0;">{{ $sm['email'] }}</div>
+                    </div>
+                    <button wire:click="removeSavedMember({{ $sm['id'] }})" type="button"
+                            style="flex-shrink:0;width:26px;height:26px;border:none;background:#FEE2E2;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#DC2626;">
+                        <i class="fa-solid fa-xmark" style="font-size:11px;"></i>
+                    </button>
+                </div>
+                @endforeach
+
+                {{-- Pending (newly added) members --}}
+                @foreach($pendingMembers as $pi => $pm)
+                <div style="display:flex;align-items:center;gap:10px;background:#FDF3EB;border-radius:10px;padding:8px 12px;margin-bottom:6px;border:1px solid #e8ddd4;">
+                    <div style="width:28px;height:28px;border-radius:50%;background:#934b19;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#fff;">{{ strtoupper(substr($pm['name'],0,1)) }}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;font-weight:600;color:#1c1c19;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $pm['name'] }}</div>
+                        <div style="font-size:11px;color:#9B8EA0;">{{ $pm['email'] }}</div>
+                    </div>
+                    <button wire:click="removePendingMember({{ $pi }})" type="button"
+                            style="flex-shrink:0;width:26px;height:26px;border:none;background:#FEE2E2;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#DC2626;">
+                        <i class="fa-solid fa-xmark" style="font-size:11px;"></i>
+                    </button>
+                </div>
+                @endforeach
+
+                {{-- Email lookup input --}}
+                <div style="display:flex;gap:6px;margin-top:4px;">
+                    <input wire:model="memberEmail" type="email" placeholder="Enter member's email address"
+                           wire:keydown.enter.prevent="lookupMember"
+                           style="flex:1;border:1.5px solid {{ $memberError ? '#DC2626' : '#d3c3be' }};border-radius:10px;padding:9px 12px;font-size:13px;font-family:'Hanken Grotesk',sans-serif;color:#1c1c19;outline:none;box-sizing:border-box;"
+                           onfocus="this.style.borderColor='#934b19'" onblur="this.style.borderColor='{{ $memberError ? '#DC2626' : '#d3c3be' }}'">
+                    <button wire:click="lookupMember" type="button"
+                            style="flex-shrink:0;background:#934b19;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'Hanken Grotesk',sans-serif;">
+                        <i class="fa-solid fa-plus" style="font-size:10px;"></i> Add
+                    </button>
+                </div>
+                @if($memberError)
+                <div style="margin-top:5px;font-size:12px;color:#DC2626;">{{ $memberError }}</div>
+                @endif
+                <div style="margin-top:5px;font-size:11px;color:#9B8EA0;">Only registered users can be added as members.</div>
+            </div>
+
+            {{-- Status --}}
+            <div style="margin-bottom:22px;">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#817470;margin-bottom:6px;">Status</div>
+                <div style="display:flex;gap:6px;">
+                    @foreach(['upcoming'=>'Upcoming','active'=>'Ongoing'] as $statusVal => $statusLabel)
+                    <button type="button" wire:click="$set('editStatus', '{{ $statusVal }}')"
+                            style="flex:1;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;border:1.5px solid {{ $editStatus === $statusVal ? '#934b19' : '#e8ddd4' }};background:{{ $editStatus === $statusVal ? '#FDF3EB' : '#fff' }};color:{{ $editStatus === $statusVal ? '#934b19' : '#817470' }};">
+                        {{ $statusLabel }}
+                    </button>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Actions --}}
+            <div style="display:flex;gap:10px;">
+                <button wire:click="cancelEditName"
+                        style="flex:1;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:10px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;">
+                    Cancel
+                </button>
+                <button wire:click="saveEditName"
+                        style="flex:1;background:#934B19;color:#fff;border:none;border-radius:10px;padding:11px 0;font-size:13px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;"
+                        onmouseenter="this.style.background='#783603'" onmouseleave="this.style.background='#934B19'">
+                    Save
+                </button>
+            </div>
+
         </div>
     </div>
     @endif

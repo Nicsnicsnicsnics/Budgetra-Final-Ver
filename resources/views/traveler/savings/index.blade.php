@@ -2,11 +2,6 @@
 @section('title', 'Savings Goals')
 @section('content')
 
-<div class="mb-24">
-    @if ($goals->isNotEmpty())
-    <div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--primary);text-transform:uppercase;margin-bottom:4px;">SAVINGS GOAL</div>
-    @endif
-</div>
 
 @if (session('success'))
 <div class="alert alert-success mb-16">{{ session('success') }}</div>
@@ -24,7 +19,7 @@
     </a>
 </div>
 @else
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;align-items:stretch;">
+<div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;align-items:stretch;">
     @foreach ($goals as $goal)
     @livewire('traveler.savings-goal-manager', ['goal' => $goal], key($goal->id))
     @endforeach
