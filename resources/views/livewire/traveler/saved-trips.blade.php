@@ -1,6 +1,6 @@
-<div>
+<div style="display:flex;flex-direction:column;flex:1;">
 
-    @if ($this->trips->isEmpty())
+    @if ($trips->isEmpty())
     <div class="empty-state-center" style="min-height:80vh;">
         <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
             <i class="fa-solid fa-suitcase-rolling" style="font-size:28px;color:#fff;"></i>
@@ -13,9 +13,9 @@
     </div>
     @else
     <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">
-        @foreach ($this->trips as $trip)
+        @foreach ($trips as $trip)
         @php
-            $dest     = $trip->destination ?? 'Unknown';
+            $dest     = $trip->trip_name ?? $trip->destination ?? 'Unknown';
             $fromCode = $trip->origin_code ?? 'MNL';
             $toCode   = $trip->destination_code ?? '';
             $tType    = strtoupper($trip->travel_type ?? 'SOLO');
@@ -30,7 +30,7 @@
                 default    => '#6B7280',
             };
         @endphp
-        <div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;width:360px;flex-shrink:0;">
+        <div wire:key="trip-{{ $trip->id }}" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;width:360px;flex-shrink:0;">
             {{-- Cover image --}}
             <div style="position:relative;height:160px;background:linear-gradient(135deg,#934B19,#C8874A);overflow:hidden;">
                 @if($cover)
@@ -43,7 +43,8 @@
                 <div style="position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:5px;">
                     @php $typeColor = $tType === 'GROUP' ? '#A855F7' : '#14B8A6'; @endphp
                     <span style="background:{{ $typeColor }};color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;display:inline-block;text-align:center;">{{ $tType }}</span>
-                    <span style="background:{{ $statusColor }};color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;display:inline-block;">{{ $trip->status }}</span>
+                    @php $statusLabel = match($trip->status) { 'active' => 'Ongoing', 'upcoming' => 'Upcoming', default => ucfirst($trip->status) }; @endphp
+                    <span style="background:{{ $statusColor }};color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;display:inline-block;">{{ $statusLabel }}</span>
                 </div>
                 {{-- Kebab menu top-right --}}
                 <div x-data="{ open: false }" style="position:absolute;top:10px;right:10px;">
@@ -67,7 +68,7 @@
                 </div>
                 <div style="position:absolute;bottom:10px;left:14px;right:14px;">
                     <div style="font-size:16px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:6px;">
-                        {{ $trip->destination }}
+                        {{ $dest }}
                     </div>
                     <div style="display:flex;flex-direction:column;gap:4px;">
                         @if($fromCode)
@@ -92,8 +93,8 @@
 
                 <div style="display:flex;gap:8px;">
                     <button wire:click="showDetail({{ $trip->id }})"
-                            style="flex:1;background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
-                        View Details
+                            style="flex:1;background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;">
+                        <i class="fa-regular fa-eye" style="font-size:12px;"></i> View Details
                     </button>
                     <a href="{{ route('expenses.index') }}?trip_id={{ $trip->id }}"
                        style="flex:1;background:transparent;color:#934B19;border:1.5px solid #934B19;border-radius:10px;padding:10px 6px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;">
@@ -107,11 +108,11 @@
     @endif
 
     {{-- Trip Summary Modal --}}
-    @if ($this->detailTrip)
+    @if ($detailTrip)
     @php
-        $dt      = $this->detailTrip;
+        $dt      = $detailTrip;
         $dtDays  = $dt->days;
-        $dtDest  = $dt->destination;
+        $dtDest  = $dt->trip_name ?? $dt->destination;
         $dtType  = ucfirst(strtolower($dt->travel_type ?? 'Solo'));
         $dtFrom  = $dt->start_date->format('M j');
         $dtTo    = $dt->end_date->format('M j, Y');

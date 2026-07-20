@@ -3,9 +3,11 @@
     @php
         $trip       = $goal->trip;
         $cover      = $trip?->cover_image;
-        $dest       = $goal->goal_name;
+        $dest       = $trip?->trip_name ?? $trip?->destination ?? $goal->goal_name;
         $tType      = strtoupper($trip?->travel_type ?? 'SOLO');
-        $typeColor  = $tType === 'GROUP' ? '#A855F7' : '#14B8A6';
+        $typeColor    = $tType === 'GROUP' ? '#A855F7' : '#14B8A6';
+        $tripStatus   = $trip?->status ?? ($trip?->start_date?->gt(\Carbon\Carbon::today()) ? 'upcoming' : ($trip?->end_date?->lt(\Carbon\Carbon::today()) ? 'past' : 'active'));
+        $statusColor  = match($tripStatus) { 'active' => '#22C55E', 'upcoming' => '#3B82F6', default => '#6B7280' };
         $fromCode   = $trip?->origin_code ?? 'MNL';
         $toCode     = $trip?->destination_code ?? '';
         $dateFrom   = $trip?->start_date?->format('M j');
@@ -22,8 +24,12 @@
         @endif
         <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.1),rgba(0,0,0,0.55));"></div>
 
-        {{-- Type pill --}}
-        <span style="position:absolute;top:12px;left:12px;background:{{ $typeColor }};color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.5px;">{{ $tType }}</span>
+        {{-- Stacked badges top-left --}}
+        <div style="position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:5px;">
+            <span style="background:{{ $typeColor }};color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.5px;display:inline-block;text-align:center;">{{ $tType }}</span>
+            @php $statusLabel = match($tripStatus) { 'active' => 'Ongoing', 'upcoming' => 'Upcoming', default => ucfirst($tripStatus) }; @endphp
+            <span style="background:{{ $statusColor }};color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;display:inline-block;">{{ $statusLabel }}</span>
+        </div>
 
         {{-- Trip info overlay --}}
         <div style="position:absolute;bottom:12px;left:14px;right:14px;">

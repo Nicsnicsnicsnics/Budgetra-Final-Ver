@@ -17,13 +17,19 @@ class ProfileController extends Controller
         $user = auth()->user();
 
         $validated = $request->validate([
-            'full_name'       => 'required|string|max:255',
-            'phone'           => 'nullable|string|max:20',
-            'country'         => 'nullable|string|max:100',
-            'currency_code'   => 'nullable|string|max:10',
-            'currency_symbol' => 'nullable|string|max:10',
-            'profile_photo'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'first_name'     => 'required|string|max:100',
+            'middle_name'    => 'nullable|string|max:100',
+            'last_name'      => 'required|string|max:100',
+            'contact_number' => 'nullable|string|max:30',
+            'profile_photo'  => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
+
+        // build full_name from parts
+        $validated['full_name'] = trim(
+            $validated['first_name'] . ' ' .
+            ($validated['middle_name'] ? $validated['middle_name'] . ' ' : '') .
+            $validated['last_name']
+        );
 
         if ($request->hasFile('profile_photo')) {
             if ($user->profile_photo) {

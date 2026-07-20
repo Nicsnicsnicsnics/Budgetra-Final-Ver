@@ -23,6 +23,19 @@
 @php
     $selectedTripId = request('trip_id') ?? $trips->first()?->id;
     $selectedTrip   = $selectedTripId ? $trips->firstWhere('id', $selectedTripId) : null;
+    $iataToCity = [
+        'MNL'=>'Manila','CEB'=>'Cebu','IAO'=>'Siargao','PPS'=>'Puerto Princesa',
+        'DVO'=>'Davao','ILO'=>'Iloilo','BCD'=>'Bacolod','TAG'=>'Tagbilaran',
+        'GES'=>'General Santos','CBO'=>'Cotabato','ZAM'=>'Zamboanga',
+        'KLO'=>'Kalibo','MPH'=>'Malay','RXS'=>'Roxas','TAC'=>'Tacloban',
+        'SIN'=>'Singapore','KUL'=>'Kuala Lumpur','BKK'=>'Bangkok','HKG'=>'Hong Kong',
+        'NRT'=>'Tokyo','ICN'=>'Seoul','HND'=>'Tokyo','KIX'=>'Osaka',
+        'SYD'=>'Sydney','MEL'=>'Melbourne','LAX'=>'Los Angeles','JFK'=>'New York',
+        'DXB'=>'Dubai','CDG'=>'Paris','LHR'=>'London','FCO'=>'Rome',
+        'BCN'=>'Barcelona','AMS'=>'Amsterdam','HAN'=>'Hanoi','SGN'=>'Ho Chi Minh',
+        'DPS'=>'Bali','CGK'=>'Jakarta','MLE'=>'Maldives',
+    ];
+    $tripLabel = fn($t) => ($t->origin ?? 'Manila') . ' to ' . ($iataToCity[$t->destination_code ?? ''] ?? $t->destination);
 @endphp
 
 <div style="max-width:720px;margin:0 auto;width:100%;">
@@ -36,7 +49,7 @@
                 @php $t = $trips->first(); @endphp
                 <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:10px;">
                     <i class="fa-solid fa-plane" style="color:#C8874A;font-size:13px;flex-shrink:0;"></i>
-                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $t->origin ?? 'Manila' }} to {{ $t->destination }}</span>
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $tripLabel($t) }}</span>
                 </div>
                 @else
                 <div x-data="{ open: false }" style="position:relative;">
@@ -45,7 +58,7 @@
                         <i class="fa-solid fa-plane" style="color:#C8874A;font-size:13px;flex-shrink:0;"></i>
                         <span style="flex:1;font-size:14px;font-weight:600;color:var(--dark);">
                             @php $sel = $trips->firstWhere('id', $selectedTripId); @endphp
-                            {{ ($sel->origin ?? 'Manila') . ' to ' . $sel->destination }}
+                            {{ $tripLabel($sel) }}
                         </span>
                         <i class="fa-solid fa-chevron-down" style="font-size:11px;color:#9B8EA0;transition:transform .2s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
                     </button>
@@ -56,7 +69,7 @@
                            style="display:flex;align-items:center;gap:10px;padding:12px 16px;text-decoration:none;background:{{ $selectedTripId == $t->id ? '#FDF3EB' : '#fff' }};border-bottom:1px solid #f5f0eb;"
                            onmouseenter="this.style.background='#f5f0eb'" onmouseleave="this.style.background='{{ $selectedTripId == $t->id ? '#FDF3EB' : '#fff' }}'">
                             <i class="fa-solid fa-plane" style="color:#C8874A;font-size:12px;flex-shrink:0;"></i>
-                            <span style="font-size:13px;font-weight:{{ $selectedTripId == $t->id ? '700' : '500' }};color:{{ $selectedTripId == $t->id ? '#934b19' : 'var(--dark)' }};">{{ $t->origin ?? 'Manila' }} to {{ $t->destination }}</span>
+                            <span style="font-size:13px;font-weight:{{ $selectedTripId == $t->id ? '700' : '500' }};color:{{ $selectedTripId == $t->id ? '#934b19' : 'var(--dark)' }};">{{ $tripLabel($t) }}</span>
                         </a>
                         @endforeach
                     </div>

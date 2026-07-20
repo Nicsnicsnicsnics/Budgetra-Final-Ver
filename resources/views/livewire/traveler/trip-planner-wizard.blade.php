@@ -1123,19 +1123,21 @@ window.sortVenues = function(dir) {
             </div>
 
             {{-- TRAVEL DATES --}}
-            <div style="flex:1;min-width:0;padding:16px 20px;">
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Travel Dates</div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
-                    @php $accSd = $mcHotelStep && $mcStartDate ? $mcStartDate : $startDate; $accEd = $mcHotelStep && $mcEndDate ? $mcEndDate : $endDate; @endphp
-                    <span style="font-size:14px;font-weight:600;color:var(--dark);">
-                        @if($accSd && $accEd)
-                            {{ \Carbon\Carbon::parse($accSd)->format('M j, Y') }} – {{ \Carbon\Carbon::parse($accEd)->format('M j, Y') }}
-                        @elseif($accSd)
-                            {{ \Carbon\Carbon::parse($accSd)->format('M j, Y') }}
-                        @else Select dates
-                        @endif
-                    </span>
+            @php $accSd = $mcHotelStep && $mcStartDate ? $mcStartDate : $startDate; $accEd = $mcHotelStep && $mcEndDate ? $mcEndDate : $endDate; @endphp
+            <div style="flex:1;min-width:0;padding:16px 20px;display:flex;gap:16px;">
+                <div style="flex:1;">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                        <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accSd ? \Carbon\Carbon::parse($accSd)->format('M j, Y') : '—' }}</span>
+                    </div>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                        <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accEd ? \Carbon\Carbon::parse($accEd)->format('M j, Y') : '—' }}</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1342,22 +1344,21 @@ window.sortVenues = function(dir) {
                 </div>
             </div>
             {{-- Travel dates --}}
-            <div style="flex:1;min-width:0;padding:16px 20px;">
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Travel Dates</div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-solid fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                    @php
-                        $venueSd = $mcVenueStep && $mcStartDate ? $mcStartDate : $startDate;
-                        $venueEd = $mcVenueStep && $mcEndDate   ? $mcEndDate   : $endDate;
-                    @endphp
-                    <span style="font-size:13px;font-weight:600;color:var(--dark);">
-                        @if($venueSd && $venueEd)
-                            {{ \Carbon\Carbon::parse($venueSd)->format('M j, Y') }} – {{ \Carbon\Carbon::parse($venueEd)->format('M j, Y') }}
-                        @elseif($venueSd)
-                            {{ \Carbon\Carbon::parse($venueSd)->format('M j, Y') }}
-                        @else Select dates
-                        @endif
-                    </span>
+            @php $venueSd = $mcVenueStep && $mcStartDate ? $mcStartDate : $startDate; $venueEd = $mcVenueStep && $mcEndDate ? $mcEndDate : $endDate; @endphp
+            <div style="flex:1;min-width:0;padding:16px 20px;display:flex;gap:16px;">
+                <div style="flex:1;">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                        <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueSd ? \Carbon\Carbon::parse($venueSd)->format('M j, Y') : '—' }}</span>
+                    </div>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                        <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueEd ? \Carbon\Carbon::parse($venueEd)->format('M j, Y') : '—' }}</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1577,18 +1578,20 @@ window.sortVenues = function(dir) {
                     </select>
                 </div>
             </div>
-            <div style="flex:1;min-width:0;padding:16px 20px;">
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Travel Dates</div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-solid fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                    <span style="font-size:13px;font-weight:600;color:var(--dark);">
-                        @if($startDate && $endDate)
-                            {{ \Carbon\Carbon::parse($startDate)->format('M j, Y') }} – {{ \Carbon\Carbon::parse($endDate)->format('M j, Y') }}
-                        @elseif($startDate)
-                            {{ \Carbon\Carbon::parse($startDate)->format('M j, Y') }}
-                        @else Select dates
-                        @endif
-                    </span>
+            <div style="flex:1;min-width:0;padding:16px 20px;display:flex;gap:16px;">
+                <div style="flex:1;">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                        <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $startDate ? \Carbon\Carbon::parse($startDate)->format('M j, Y') : '—' }}</span>
+                    </div>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                        <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $endDate ? \Carbon\Carbon::parse($endDate)->format('M j, Y') : '—' }}</span>
+                    </div>
                 </div>
             </div>
         </div>

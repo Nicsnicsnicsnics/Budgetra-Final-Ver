@@ -24,7 +24,7 @@
 <div class="card">
     <div class="card-body">
         @if ($user->profile_photo)
-            <div style="margin-bottom:1rem;">
+            <div style="margin-bottom:1.5rem;">
                 <img src="{{ Storage::url($user->profile_photo) }}"
                      width="80" height="80"
                      style="border-radius:50%;object-fit:cover;"
@@ -37,39 +37,35 @@
             @method('PUT')
 
             <div class="form-group">
-                <label for="full_name">Full Name <span style="color:red">*</span></label>
-                <input type="text" id="full_name" name="full_name"
-                       class="form-control @error('full_name') is-invalid @enderror"
-                       value="{{ old('full_name', $user->full_name) }}" required>
-                @error('full_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                <label for="first_name">First Name <span style="color:red">*</span></label>
+                <input type="text" id="first_name" name="first_name"
+                       class="form-control @error('first_name') is-invalid @enderror"
+                       value="{{ old('first_name', $user->first_name) }}" required>
+                @error('first_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
             <div class="form-group">
-                <label for="phone">Phone</label>
-                <input type="text" id="phone" name="phone"
-                       class="form-control"
-                       value="{{ old('phone', $user->phone) }}">
+                <label for="middle_name">Middle Name</label>
+                <input type="text" id="middle_name" name="middle_name"
+                       class="form-control @error('middle_name') is-invalid @enderror"
+                       value="{{ old('middle_name', $user->middle_name) }}">
+                @error('middle_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
             <div class="form-group">
-                <label for="country">Country</label>
-                <input type="text" id="country" name="country"
-                       class="form-control"
-                       value="{{ old('country', $user->country) }}">
+                <label for="last_name">Last Name <span style="color:red">*</span></label>
+                <input type="text" id="last_name" name="last_name"
+                       class="form-control @error('last_name') is-invalid @enderror"
+                       value="{{ old('last_name', $user->last_name) }}" required>
+                @error('last_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
             <div class="form-group">
-                <label for="currency_code">Currency Code</label>
-                <input type="text" id="currency_code" name="currency_code"
-                       class="form-control" maxlength="10"
-                       value="{{ old('currency_code', $user->currency_code) }}">
-            </div>
-
-            <div class="form-group">
-                <label for="currency_symbol">Currency Symbol</label>
-                <input type="text" id="currency_symbol" name="currency_symbol"
-                       class="form-control" maxlength="10"
-                       value="{{ old('currency_symbol', $user->currency_symbol) }}">
+                <label for="contact_number">Contact Number</label>
+                <input type="text" id="contact_number" name="contact_number"
+                       class="form-control @error('contact_number') is-invalid @enderror"
+                       value="{{ old('contact_number', $user->contact_number) }}">
+                @error('contact_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
             <div class="form-group">

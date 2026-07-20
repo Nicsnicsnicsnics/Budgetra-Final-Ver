@@ -1,4 +1,4 @@
-<div>
+<div style="display:flex;flex-direction:column;flex:1;">
     @if ($this->trips->isEmpty() && !$search)
     {{-- Pure empty state — no header, no stats --}}
     <div class="empty-state-center" style="min-height:80vh;">

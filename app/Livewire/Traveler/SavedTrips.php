@@ -35,19 +35,17 @@ class SavedTrips extends Component
 
     public function confirmDelete(int $id): void
     {
-        $trip = $this->trips->firstWhere('id', $id);
-        $origin = $trip->origin ?? 'Manila';
-        $dest   = $trip->destination ?? 'destination';
+        $trip = Trip::find($id);
         $this->deleteTripId   = $id;
-        $this->deleteTripName = $origin . ' to ' . $dest;
+        $this->deleteTripName = $trip->trip_name ?? $trip->destination ?? 'this trip';
     }
 
     public function openEditName(int $id): void
     {
-        $trip = $this->trips->firstWhere('id', $id);
+        $trip = Trip::find($id);
         if (!$trip) return;
         $this->editNameTripId = $id;
-        $this->editNameValue = $trip->destination ?? '';
+        $this->editNameValue = $trip->trip_name ?? $trip->destination ?? '';
         $this->editType      = ucfirst(strtolower($trip->travel_type ?? 'Solo'));
         $today = \Carbon\Carbon::today();
         $computed = $trip->start_date->gt($today) ? 'upcoming' : ($trip->end_date->lt($today) ? 'past' : 'active');
@@ -105,11 +103,12 @@ class SavedTrips extends Component
         $trip = Trip::find($this->editNameTripId);
         if ($trip && $trip->user_id === auth()->id()) {
             $trip->update([
-                'destination' => trim($this->editNameValue),
+                'trip_name'   => trim($this->editNameValue),
                 'travel_type' => $this->editType,
                 'status'      => $this->editStatus,
             ]);
-            $trip->savingsGoals()->update(['goal_name' => trim($this->editNameValue)]);
+            $newName = trim($this->editNameValue) ?: $trip->destination;
+            $trip->savingsGoals()->update(['goal_name' => $newName]);
 
             if ($this->editType === 'Group') {
                 foreach ($this->pendingMembers as $m) {
@@ -159,9 +158,9 @@ class SavedTrips extends Component
         $this->deleteTripName = '';
     }
 
-    public function getTripsProperty()
+    private function fetchTrips()
     {
-        return auth()->user()->trips()
+        return Trip::where('user_id', auth()->id())
             ->latest('created_at')
             ->get()
             ->map(function (Trip $trip) {
@@ -176,15 +175,12 @@ class SavedTrips extends Component
             });
     }
 
-    public function getDetailTripProperty(): ?Trip
-    {
-        if (!$this->detailTripId) return null;
-        $trip = $this->trips->firstWhere('id', $this->detailTripId);
-        return $trip ?: null;
-    }
-
     public function render()
     {
-        return view('livewire.traveler.saved-trips');
+        $trips = $this->fetchTrips();
+        $detailTrip = $this->detailTripId
+            ? $trips->firstWhere('id', $this->detailTripId)
+            : null;
+        return view('livewire.traveler.saved-trips', compact('trips', 'detailTrip'));
     }
 }

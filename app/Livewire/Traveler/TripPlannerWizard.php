@@ -1113,24 +1113,31 @@ class TripPlannerWizard extends Component
             $this->mcHotelStep    = true;
             $this->mcHotelResults = [];
             $this->mcHotelLoading = true;
-            $checkIn  = $this->mcStartDate ?: $this->startDate ?: date('Y-m-d', strtotime('+7 days'));
-            $checkOut = $this->mcEndDate   ?: $this->endDate   ?: date('Y-m-d', strtotime($checkIn . ' +5 days'));
-            $nights   = max(1, \Carbon\Carbon::parse($checkIn)->diffInDays(\Carbon\Carbon::parse($checkOut)));
-            $serp = new SerpApiService();
-            try {
-                $this->mcHotelResults = $serp->searchHotelsRaw($this->mcTo, $checkIn, $checkOut, $nights, $this->hotelType) ?? [];
-            } catch (\Throwable $e) {
-                $this->mcHotelResults = [];
-            }
-            if (empty($this->mcHotelResults)) {
-                $this->mcHotelResults = $this->fallbackHotels($this->mcTo, $nights, $this->hotelType);
-            }
-            $this->mcHotelLoading = false;
+            $this->dispatch('searchMcHotels');
             return;
         }
 
         $this->step = 4;
         $this->searchVenues();
+    }
+
+    #[\Livewire\Attributes\On('searchMcHotels')]
+    public function searchMcHotels(): void
+    {
+        set_time_limit(120);
+        $checkIn  = $this->mcStartDate ?: $this->startDate ?: date('Y-m-d', strtotime('+7 days'));
+        $checkOut = $this->mcEndDate   ?: $this->endDate   ?: date('Y-m-d', strtotime($checkIn . ' +5 days'));
+        $nights   = max(1, \Carbon\Carbon::parse($checkIn)->diffInDays(\Carbon\Carbon::parse($checkOut)));
+        $serp = new SerpApiService();
+        try {
+            $this->mcHotelResults = $serp->searchHotelsRaw($this->mcTo, $checkIn, $checkOut, $nights, $this->hotelType) ?? [];
+        } catch (\Throwable $e) {
+            $this->mcHotelResults = [];
+        }
+        if (empty($this->mcHotelResults)) {
+            $this->mcHotelResults = $this->fallbackHotels($this->mcTo, $nights, $this->hotelType);
+        }
+        $this->mcHotelLoading = false;
     }
 
     public function selectMcAccommodation(int $index): void
@@ -1145,12 +1152,14 @@ class TripPlannerWizard extends Component
     public function searchVenues(): void
     {
         set_time_limit(60);
-        $this->venueLoading    = true;
-        $this->venueResults    = [];
-        $this->mcVenueStep     = false;
-        $this->mcVenueResults  = [];
-        $this->selectedVenue   = null;
-        $this->selectedMcVenue = null;
+        $this->venueLoading        = true;
+        $this->venueResults        = [];
+        $this->mcVenueStep         = false;
+        $this->mcVenueResults      = [];
+        $this->selectedVenue       = null;
+        $this->selectedMcVenue     = null;
+        $this->mcAttractionStep    = false;
+        $this->mcAttractionResults = [];
         $dest = $this->manualTo ?: $this->mcTo ?: '';
         if (!$dest) { $this->venueLoading = false; return; }
         $serp = new SerpApiService();
@@ -1179,22 +1188,7 @@ class TripPlannerWizard extends Component
                 $this->mcVenueStep    = true;
                 $this->mcVenueResults = [];
                 $this->mcVenueLoading = true;
-                $serp = new SerpApiService();
-                try {
-                    $this->mcVenueResults = $serp->searchRestaurantsRaw($this->mcTo, $this->venueCategory) ?? [];
-                    if (empty($this->mcVenueResults)) {
-                        $serper = new SerperService();
-                        $this->mcVenueResults = $serper->searchRestaurants($this->mcTo, $this->venueCategory) ?? [];
-                    }
-                } catch (\Throwable) {
-                    try {
-                        $serper = new SerperService();
-                        $this->mcVenueResults = $serper->searchRestaurants($this->mcTo, $this->venueCategory) ?? [];
-                    } catch (\Throwable) {
-                        $this->mcVenueResults = [];
-                    }
-                }
-                $this->mcVenueLoading = false;
+                $this->dispatch('searchMcVenues');
             } else {
                 $this->step = 5;
                 $this->searchAttractionsList();
@@ -1206,11 +1200,37 @@ class TripPlannerWizard extends Component
         }
     }
 
+    #[On('searchMcVenues')]
+    public function searchMcVenues(): void
+    {
+        set_time_limit(120);
+        $serp = new SerpApiService();
+        try {
+            $this->mcVenueResults = $serp->searchRestaurantsRaw($this->mcTo, $this->venueCategory) ?? [];
+            if (empty($this->mcVenueResults)) {
+                $serper = new SerperService();
+                $this->mcVenueResults = $serper->searchRestaurants($this->mcTo, $this->venueCategory) ?? [];
+            }
+        } catch (\Throwable) {
+            try {
+                $serper = new SerperService();
+                $this->mcVenueResults = $serper->searchRestaurants($this->mcTo, $this->venueCategory) ?? [];
+            } catch (\Throwable) {
+                $this->mcVenueResults = [];
+            }
+        }
+        $this->mcVenueLoading = false;
+    }
+
     // ── Step 5: attractions ────────────────────────────────
     public function searchAttractionsList(): void
     {
         set_time_limit(60);
         $serp = new SerpApiService();
+
+        if ($this->flightTripType !== 'multi_city' || !$this->mcTo) {
+            $this->mcAttractionStep = false;
+        }
 
         if ($this->mcAttractionStep) {
             $this->mcAttractionLoading = true;
@@ -1256,13 +1276,7 @@ class TripPlannerWizard extends Component
                 $this->mcAttractionStep    = true;
                 $this->mcAttractionResults = [];
                 $this->mcAttractionLoading = true;
-                $serp = new \App\Services\SerpApiService();
-                try {
-                    $this->mcAttractionResults = $serp->searchAttractionsRaw($this->mcTo, $this->attractionType) ?? [];
-                } catch (\Throwable) {
-                    $this->mcAttractionResults = [];
-                }
-                $this->mcAttractionLoading = false;
+                $this->dispatch('searchMcAttractions');
             } else {
                 $this->step = 6;
             }
@@ -1270,6 +1284,19 @@ class TripPlannerWizard extends Component
             $this->selectedMcAttraction = $this->mcAttractionResults[$index] ?? null;
             $this->step = 6;
         }
+    }
+
+    #[On('searchMcAttractions')]
+    public function searchMcAttractions(): void
+    {
+        set_time_limit(120);
+        $serp = new SerpApiService();
+        try {
+            $this->mcAttractionResults = $serp->searchAttractionsRaw($this->mcTo, $this->attractionType) ?? [];
+        } catch (\Throwable) {
+            $this->mcAttractionResults = [];
+        }
+        $this->mcAttractionLoading = false;
     }
 
 
@@ -1285,9 +1312,25 @@ class TripPlannerWizard extends Component
             $this->mcTo         = '';
             $this->mcStartDate  = '';
             $this->mcEndDate    = '';
+            // flights
             $this->mcFlightResults  = [];
             $this->mcFlightStep     = false;
             $this->selectedMcFlight = null;
+            // accommodation
+            $this->mcHotelStep      = false;
+            $this->mcHotelResults   = [];
+            $this->mcHotelLoading   = false;
+            $this->selectedMcHotel  = null;
+            // food & dining
+            $this->mcVenueStep      = false;
+            $this->mcVenueResults   = [];
+            $this->mcVenueLoading   = false;
+            $this->selectedMcVenue  = null;
+            // attractions
+            $this->mcAttractionStep    = false;
+            $this->mcAttractionResults = [];
+            $this->mcAttractionLoading = false;
+            $this->selectedMcAttraction = null;
         }
     }
 
