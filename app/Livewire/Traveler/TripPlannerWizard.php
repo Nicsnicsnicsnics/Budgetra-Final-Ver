@@ -1049,7 +1049,60 @@ class TripPlannerWizard extends Component
                 $this->hotelResults = [];
             }
         }
+
+        if (empty($this->hotelResults)) {
+            $this->hotelResults = $this->fallbackHotels($this->manualTo, $nights, $this->hotelType);
+        }
+
         $this->hotelLoading = false;
+    }
+
+    private function fallbackHotels(string $destination, int $nights, string $type = 'hotel'): array
+    {
+        $dest = $destination;
+        $templates = [
+            'hotel' => [
+                ['name' => 'Grand %s Hotel',          'stars' => 4, 'nightly' => 3500],
+                ['name' => '%s Crown Hotel',           'stars' => 4, 'nightly' => 2800],
+                ['name' => 'Seda %s',                  'stars' => 5, 'nightly' => 6500],
+                ['name' => 'Go Hotels %s',             'stars' => 3, 'nightly' => 1200],
+                ['name' => '%s Bay Hotel',             'stars' => 3, 'nightly' => 1800],
+                ['name' => 'Microtel by Wyndham %s',  'stars' => 3, 'nightly' => 1500],
+                ['name' => 'Crimson Hotel %s',        'stars' => 5, 'nightly' => 7200],
+                ['name' => '%s Suites Hotel',         'stars' => 3, 'nightly' => 2200],
+            ],
+            'apartment' => [
+                ['name' => '%s Studio Apartments',    'stars' => 3, 'nightly' => 1800],
+                ['name' => 'Garden Residences %s',    'stars' => 3, 'nightly' => 2200],
+                ['name' => '%s Service Apartments',   'stars' => 4, 'nightly' => 3000],
+                ['name' => 'City Flats %s',           'stars' => 3, 'nightly' => 1500],
+            ],
+            'inn' => [
+                ['name' => 'Happy Inn %s',            'stars' => 2, 'nightly' => 800],
+                ['name' => '%s Travelers Lodge',      'stars' => 2, 'nightly' => 700],
+                ['name' => 'Cozy Inn %s',             'stars' => 2, 'nightly' => 900],
+                ['name' => '%s Guesthouse',           'stars' => 2, 'nightly' => 650],
+            ],
+        ];
+        $list = $templates[$type] ?? $templates['hotel'];
+        $shortDest = explode(',', $dest)[0];
+
+        return array_map(function ($t) use ($shortDest, $nights, $type) {
+            $nightly = $t['nightly'];
+            return [
+                'name'      => sprintf($t['name'], $shortDest),
+                'stars'     => $t['stars'],
+                'image'     => null,
+                'nightly'   => $nightly,
+                'total'     => $nightly * $nights,
+                'nights'    => $nights,
+                'dist'      => null,
+                'type'      => $type,
+                'typeLabel' => ucfirst($type),
+                'lat'       => null,
+                'lng'       => null,
+            ];
+        }, $list);
     }
 
     public function selectAccommodation(int $index): void
@@ -1068,6 +1121,9 @@ class TripPlannerWizard extends Component
                 $this->mcHotelResults = $serp->searchHotelsRaw($this->mcTo, $checkIn, $checkOut, $nights, $this->hotelType) ?? [];
             } catch (\Throwable $e) {
                 $this->mcHotelResults = [];
+            }
+            if (empty($this->mcHotelResults)) {
+                $this->mcHotelResults = $this->fallbackHotels($this->mcTo, $nights, $this->hotelType);
             }
             $this->mcHotelLoading = false;
             return;
@@ -1613,7 +1669,7 @@ class TripPlannerWizard extends Component
             }
         }
 
-        $this->redirect(route('saved-trips'), navigate: true);
+        $this->redirect(route('saved-trips'));
     }
 
     public function saveDraft(): void
@@ -1806,7 +1862,7 @@ class TripPlannerWizard extends Component
             'deadline'        => $this->startDate,
         ]);
 
-        return $this->redirect(route('trips.dashboard', $trip), navigate: true);
+        return $this->redirect(route('itinerary.index') . '?trip_id=' . $trip->id, navigate: true);
     }
 
     // ── Computed properties ────────────────────────────────

@@ -1,14 +1,14 @@
 /* ============================================================
    Budgetra Design System
-   Primary: #8B3A10 | Secondary: #F5C518 | Tertiary: #1565C0
+   Primary: #934B19 | Secondary: #F5C518 | Tertiary: #1565C0
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --primary: #8B3A10;
-  --primary-dark: #6F2E0C;
-  --primary-hover: #7A3209;
+  --primary: #934B19;
+  --primary-dark: #7A3C12;
+  --primary-hover: #7A3C12;
   --primary-light: #FDF0E8;
   --primary-muted: #F5E8DF;
   --orange: #E07B2A;
@@ -45,7 +45,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.6;
@@ -652,10 +652,10 @@ body.dashboard-body {
 
 /* Sidebar toggle button */
 .sidebar-toggle-btn {
-  display: flex; align-items: center; justify-content: flex-end;
+  display: flex; align-items: center; justify-content: center;
   width: 100%; background: none; border: none;
   color: rgba(255,255,255,0.45); font-size: 14px;
-  padding: 0 18px 10px; cursor: pointer; transition: color 0.2s;
+  padding: 0 0 10px; cursor: pointer; transition: color 0.2s;
 }
 .sidebar-toggle-btn:hover { color: #fff; }
 
@@ -691,7 +691,7 @@ body.dashboard-body {
   margin: 16px 8px 0; padding: 10px 0;
   justify-content: center; border-radius: 8px;
 }
-.sidebar-bottom-links { margin-top: auto; }
+.sidebar-bottom-links { margin-top: 0; }
 .sidebar-collapsed .sidebar-bottom-links .sidebar-link {
   justify-content: center; padding: 11px 0;
 }
@@ -1283,7 +1283,7 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 
 /* Total card */
 .estimator-total-card {
-  background: linear-gradient(135deg, #5C2709 0%, #3A1504 100%);
+  background: linear-gradient(135deg, #7A3C12 0%, #3A1504 100%);
   border-radius: var(--radius-lg); padding: 24px 28px;
   display: flex; justify-content: space-between; align-items: center;
   gap: 20px; flex-wrap: wrap;
@@ -1430,7 +1430,7 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 .gp-finish-wrap { text-align: center; margin-bottom: 40px; }
 .gp-finish-btn {
   display: inline-flex; align-items: center; gap: 10px;
-  background: linear-gradient(135deg, #8B3A10, #5C2709);
+  background: linear-gradient(135deg, #934B19, #7A3C12);
   color: #fff; font-size: 16px; font-weight: 700;
   padding: 16px 48px; border-radius: 99px;
   text-decoration: none; transition: opacity .2s, transform .15s;
@@ -1515,7 +1515,7 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
   transform: translateY(-6px);
   box-shadow: 0 20px 56px rgba(0,0,0,0.18);
 }
-.trip-type-card--local  { background: linear-gradient(140deg, #8B3A10 0%, #5C2709 100%); }
+.trip-type-card--local  { background: linear-gradient(140deg, #934B19 0%, #7A3C12 100%); }
 .trip-type-card--intl   { background: linear-gradient(140deg, #1565C0 0%, #0D3B8C 100%); }
 
 /* Decorative circles inside cards */

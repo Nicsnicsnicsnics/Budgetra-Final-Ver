@@ -34,6 +34,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/saved-trips',             \App\Livewire\Traveler\SavedTrips::class)->name('saved-trips');
     Route::get('/trips',                  \App\Livewire\Traveler\TripPlannerWizard::class)->name('trips.index');
+    Route::get('/multi-trips',            \App\Livewire\Traveler\MultiTripHub::class)->name('multi-trips.index');
     Route::get('/trips/plan',             \App\Livewire\Traveler\TripPlannerWizard::class)->name('trips.plan');
     Route::get('/trips/type',             [Traveler\TripController::class, 'type'])->name('trips.type');
     Route::get('/trips/create',           [Traveler\TripController::class, 'create'])->name('trips.create');
@@ -61,6 +62,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/compare',                   [Traveler\ComparisonController::class, 'index'])->name('compare.index');
 
     Route::get('/itinerary',             [Traveler\ItineraryController::class, 'index'])->name('itinerary.index');
+    Route::get('/moments',               [Traveler\ItineraryController::class, 'moments'])->name('moments.index');
     Route::post('/itinerary',            [Traveler\ItineraryController::class, 'store'])->name('itinerary.store');
     Route::delete('/itinerary/{item}',   [Traveler\ItineraryController::class, 'destroy'])->name('itinerary.destroy');
 

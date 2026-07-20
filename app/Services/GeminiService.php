@@ -189,7 +189,7 @@ Return this exact JSON structure:
           "time": "09:00 AM",
           "title": "Activity name",
           "description": "Short description",
-          "type": "food|attraction|transport|leisure",
+          "type": "food|restaurant|attraction|leisure|activity|transport|shopping|nature|beach|culture|adventure|nightlife|spa",
           "cost": 0
         }
       ]

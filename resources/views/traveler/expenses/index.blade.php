@@ -8,14 +8,14 @@
 
 @if ($trips->isEmpty())
 {{-- No trips empty state --}}
-<div class="empty-state-center">
-    <div style="width:72px;height:72px;border-radius:20px;background:#F5EDE7;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-        <i class="fa-solid fa-receipt" style="font-size:32px;color:var(--primary);"></i>
+<div class="empty-state-center" style="min-height:80vh;">
+    <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+        <i class="fa-solid fa-receipt" style="font-size:28px;color:#fff;"></i>
     </div>
-    <h2 style="font-weight:700;margin-bottom:8px;">No expenses yet</h2>
-    <p class="text-muted" style="max-width:320px;margin-bottom:24px;">Plan your trip first before logging your expenses.</p>
-    <a href="{{ route('trips.plan') }}" class="btn btn-primary btn-lg">
-        <i class="fa-solid fa-paper-plane"></i> Plan a Trip
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">No expenses yet</h2>
+    <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Plan a trip first before logging your expenses.</p>
+    <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+        <i class="fa-solid fa-plane"></i> Plan Your First Trip
     </a>
 </div>
 
@@ -59,7 +59,7 @@
             </div>
             {{-- Add Expense button --}}
             <a href="{{ route('expenses.create') }}{{ $selectedTripId ? '?trip_id='.$selectedTripId : '' }}"
-               style="flex-shrink:0;display:inline-flex;align-items:center;gap:7px;background:#7B3F00;color:#fff;border:none;border-radius:10px;padding:12px 18px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;">
+               style="flex-shrink:0;display:inline-flex;align-items:center;gap:7px;background:#934B19;color:#fff;border:none;border-radius:10px;padding:12px 18px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;">
                 <i class="fa-solid fa-circle-plus" style="font-size:14px;"></i> Add Expense
             </a>
         </div>
@@ -97,7 +97,7 @@
             <tr style="border-bottom:1px solid #FAF5F0;">
                 <td style="padding:13px 16px;font-size:13px;color:#6B5E5B;">{{ $expense->expense_date->format('M j, Y') }}</td>
                 <td style="padding:13px 16px;">
-                    <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#F5EDE7;color:#7B3F00;">{{ $expense->category }}</span>
+                    <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#F5EDE7;color:#934B19;">{{ $expense->category }}</span>
                 </td>
                 <td style="padding:13px 16px;font-size:13px;color:#1A0A00;">{{ $expense->description ?? '—' }}</td>
                 <td style="padding:13px 16px;font-size:14px;font-weight:700;color:#C8874A;text-align:right;">₱{{ number_format($expense->amount, 0) }}</td>

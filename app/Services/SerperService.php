@@ -216,7 +216,7 @@ class SerperService
 
     public function searchAttractions(string $destination): ?array
     {
-        $data = $this->request("tourist attractions things to do in {$destination}", $destination);
+        $data = $this->request("tourist attractions things to do within 15km of {$destination}", $destination);
         if (!$data) return null;
 
         $places = $data['places'] ?? [];

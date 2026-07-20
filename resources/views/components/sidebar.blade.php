@@ -4,21 +4,32 @@
     $unread = $user ? $user->notifications()->where('is_read', false)->count() : 0;
 
     $links = [
-        ['href' => url('/dashboard'),  'icon' => 'fa-solid fa-house',            'label' => 'Dashboard',    'key' => 'dashboard'],
-        ['href' => url('/trips'),      'icon' => 'fa-solid fa-map-location-dot', 'label' => 'Planner',      'key' => 'trips'],
-        ['href' => route('saved-trips'), 'icon' => 'fa-solid fa-suitcase-rolling', 'label' => 'Saved Trips',  'key' => 'saved-trips'],
-        ['href' => url('/savings'),    'icon' => 'fa-solid fa-piggy-bank',       'label' => 'Saving Goals', 'key' => 'savings'],
-        ['href' => url('/itinerary'),  'icon' => 'fa-regular fa-calendar-days',  'label' => 'Itinerary',    'key' => 'itinerary'],
-        ['href' => url('/expenses'),   'icon' => 'fa-solid fa-receipt',          'label' => 'Expenses',     'key' => 'expenses'],
-        ['href' => url('/alerts'),     'icon' => 'fa-regular fa-bell',           'label' => 'Notifications','key' => 'alerts', 'badge' => $unread],
-        ['href' => url('/trips'),      'icon' => 'fa-solid fa-layer-group',      'label' => 'Multi Trips',  'key' => 'multi-trips'],
-        ['href' => url('/itinerary'),  'icon' => 'fa-regular fa-images',         'label' => 'Moments',      'key' => 'moments'],
+        ['href' => url('/dashboard'),  'icon' => 'fa-solid fa-house',            'label' => 'Dashboard',    'key' => 'dashboard',   'segment' => 'dashboard'],
+        ['href' => url('/trips'),      'icon' => 'fa-solid fa-map-location-dot', 'label' => 'Planner',      'key' => 'trips',       'segment' => 'trips'],
+        ['href' => route('saved-trips'), 'icon' => 'fa-solid fa-suitcase-rolling', 'label' => 'Saved Trips', 'key' => 'saved-trips', 'segment' => 'saved-trips'],
+        ['href' => url('/savings'),    'icon' => 'fa-solid fa-piggy-bank',       'label' => 'Saving Goals', 'key' => 'savings',     'segment' => 'savings'],
+        ['href' => url('/itinerary'),  'icon' => 'fa-regular fa-calendar-days',  'label' => 'Itinerary',    'key' => 'itinerary',   'segment' => 'itinerary'],
+        ['href' => url('/expenses'),   'icon' => 'fa-solid fa-receipt',          'label' => 'Expenses',     'key' => 'expenses',    'segment' => 'expenses'],
+        ['href' => url('/alerts'),     'icon' => 'fa-regular fa-bell',           'label' => 'Notifications','key' => 'alerts',      'segment' => 'alerts', 'badge' => $unread],
+        ['href' => route('multi-trips.index'), 'icon' => 'fa-solid fa-layer-group', 'label' => 'Multi Trips', 'key' => 'multi-trips', 'segment' => 'multi-trips'],
+        ['href' => route('moments.index'), 'icon' => 'fa-regular fa-images',    'label' => 'Moments',      'key' => 'moments',     'segment' => 'moments'],
     ];
 
     $bottomLinks = [
-        ['href' => auth()->user()?->userProfile ? url('/profile') : url('/profile/setup'), 'icon' => 'fa-regular fa-user-circle', 'label' => 'Profile', 'key' => 'profile'],
-        ['href' => url('/dashboard'),'icon' => 'fa-solid fa-gear',          'label' => 'Settings', 'key' => 'settings'],
+        ['href' => auth()->user()?->userProfile ? url('/profile') : url('/profile/setup'), 'icon' => 'fa-regular fa-user-circle', 'label' => 'Profile', 'key' => 'profile', 'segment' => 'profile'],
+        ['href' => url('/dashboard'),'icon' => 'fa-solid fa-gear', 'label' => 'Settings', 'key' => 'settings', 'segment' => 'settings'],
     ];
+
+    // Auto-detect active from URL if not explicitly passed
+    $currentPath = request()->path();
+    if (!$active) {
+        foreach (array_merge($links, $bottomLinks) as $link) {
+            if ($currentPath === $link['segment'] || str_starts_with($currentPath, $link['segment'] . '/')) {
+                $active = $link['key'];
+                break;
+            }
+        }
+    }
 @endphp
 
 <aside class="sidebar" id="appSidebar">
@@ -45,19 +56,11 @@
             @endif
         </a>
         @endforeach
-    </nav>
 
-    {{-- Logout button --}}
-    <form method="POST" action="{{ route('logout') }}" style="padding:0 12px;margin:8px 0;">
-        @csrf
-        <button type="submit" class="sidebar-new-trip-btn" title="Logout">
-            <i class="fa-solid fa-right-from-bracket"></i>
-            <span class="sidebar-link-label" style="margin-left:8px;">Logout</span>
-        </button>
-    </form>
+        {{-- Divider --}}
+        <div style="height:1px;background:rgba(255,255,255,.08);margin:6px 12px;"></div>
 
-    {{-- Bottom links: Profile, Settings --}}
-    <div class="sidebar-bottom-links">
+        {{-- Profile & Settings --}}
         @foreach ($bottomLinks as $link)
         <a href="{{ $link['href'] }}"
            class="sidebar-link {{ $active === $link['key'] ? 'active' : '' }}"
@@ -66,7 +69,16 @@
             <span class="sidebar-link-label">{{ $link['label'] }}</span>
         </a>
         @endforeach
-    </div>
+
+        {{-- Logout --}}
+        <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+            @csrf
+            <button type="submit" class="sidebar-link" style="width:100%;background:none;border:none;cursor:pointer;text-align:left;" title="Logout">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span class="sidebar-link-label">Logout</span>
+            </button>
+        </form>
+    </nav>
 
 </aside>
 

@@ -13,14 +13,21 @@ class ItineraryManager extends Component
     public ?string $selectedDate      = null;
     public bool    $showGenerateModal = false;
     public bool    $showDayModal      = false;
+    public string  $tab               = 'itinerary';
 
     public function mount(): void
     {
         $trips = $this->getTripsProperty();
-        if ($trips->count() === 1) {
+        if ($trips->isEmpty()) return;
+
+        $queryTripId = request()->query('trip_id');
+        if ($queryTripId && $trips->contains('id', (int) $queryTripId)) {
+            $this->selectedTripId = (int) $queryTripId;
+        } else {
             $this->selectedTripId = $trips->first()->id;
         }
     }
+
 
     public function updatedSelectedTripId(): void
     {

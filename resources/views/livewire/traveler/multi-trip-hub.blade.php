@@ -1,4 +1,18 @@
 <div>
+    @if ($this->trips->isEmpty() && !$search)
+    {{-- Pure empty state — no header, no stats --}}
+    <div class="empty-state-center" style="min-height:80vh;">
+        <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+            <i class="fa-solid fa-layer-group" style="font-size:28px;color:#fff;"></i>
+        </div>
+        <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">No trips planned yet</h2>
+        <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Plan a trip first to view active and past trips, and compare trips.</p>
+        <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+            <i class="fa-solid fa-plane"></i> Plan Your First Trip
+        </a>
+    </div>
+    @else
+
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;" class="mb-24">
         <div>
@@ -121,25 +135,16 @@
     @endforeach
     @endif
 
-    {{-- Empty state --}}
+    {{-- Search empty --}}
     @if ($search && $this->trips->isEmpty())
     <div style="text-align:center;padding:40px 24px;">
         <div style="font-size:40px;margin-bottom:12px;">🔍</div>
         <h3 style="font-weight:700;margin-bottom:8px;">No trips match "{{ $search }}"</h3>
         <p class="text-muted" style="margin-bottom:20px;">Try a different search term.</p>
     </div>
-    @elseif ($this->trips->isEmpty())
-    <div class="empty-state-center">
-        <div style="width:72px;height:72px;border-radius:20px;background:#F5EDE7;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-            <i class="fa-solid fa-layer-group" style="font-size:32px;color:var(--primary);"></i>
-        </div>
-        <h2 style="font-weight:700;margin-bottom:8px;">No trips yet</h2>
-        <p class="text-muted" style="max-width:320px;margin-bottom:24px;">Start planning your first adventure and track every expense.</p>
-        <a href="{{ route('trips.plan') }}" class="btn btn-primary btn-lg">
-            <i class="fa-solid fa-paper-plane"></i> Plan Your First Trip
-        </a>
-    </div>
     @endif
+
+    @endif {{-- end @else (has trips) --}}
 
     {{-- Comparison Modal --}}
     @if ($showComparison && count($this->compareTrips) === 2)

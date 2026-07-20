@@ -1,14 +1,14 @@
 <div>
 
     @if ($this->trips->isEmpty())
-    <div class="empty-state-center">
-        <div style="width:72px;height:72px;border-radius:20px;background:#F5EDE7;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-            <i class="fa-solid fa-suitcase-rolling" style="font-size:32px;color:var(--primary);"></i>
+    <div class="empty-state-center" style="min-height:80vh;">
+        <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+            <i class="fa-solid fa-suitcase-rolling" style="font-size:28px;color:#fff;"></i>
         </div>
-        <h2 style="font-weight:700;font-size:20px;margin-bottom:8px;color:#1A0A00;">No saved trips yet</h2>
-        <p style="color:#9B8EA0;margin-bottom:24px;font-size:14px;max-width:300px;">Start planning your first adventure!</p>
-        <a href="{{ route('trips.plan') }}" class="btn btn-primary btn-lg">
-            <i class="fa-solid fa-paper-plane"></i> Plan Your First Trip
+        <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">No saved trips yet</h2>
+        <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Plan a trip first to see your saved and draft trips.</p>
+        <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+            <i class="fa-solid fa-plane"></i> Plan Your First Trip
         </a>
     </div>
     @else
@@ -26,13 +26,13 @@
             $cover    = $trip->cover_image;
             $statusColor = match($trip->status) {
                 'active'   => '#2E7D32',
-                'upcoming' => '#7B3F00',
+                'upcoming' => '#934B19',
                 default    => '#6B7280',
             };
         @endphp
         <div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;width:360px;flex-shrink:0;">
             {{-- Cover image --}}
-            <div style="position:relative;height:160px;background:linear-gradient(135deg,#7B3F00,#C8874A);overflow:hidden;">
+            <div style="position:relative;height:160px;background:linear-gradient(135deg,#934B19,#C8874A);overflow:hidden;">
                 @if($cover)
                 <img src="{{ $cover }}" alt="{{ $dest }}"
                      style="width:100%;height:100%;object-fit:cover;display:block;"
@@ -68,15 +68,15 @@
 
                 <div style="display:flex;gap:8px;">
                     <button wire:click="showDetail({{ $trip->id }})"
-                            style="flex:1.2;background:#7B3F00;color:#fff;border:none;border-radius:10px;padding:10px 8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
+                            style="flex:1.2;background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
                         View Details
                     </button>
                     <button wire:click="confirmDelete({{ $trip->id }})"
-                            style="flex:1;background:transparent;color:#7B3F00;border:1.5px solid #7B3F00;border-radius:10px;padding:10px 6px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;">
+                            style="flex:1;background:transparent;color:#934B19;border:1.5px solid #934B19;border-radius:10px;padding:10px 6px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;">
                         <i class="fa-regular fa-trash-can" style="font-size:10px;"></i>Delete Trip
                     </button>
                     <a href="{{ route('expenses.index') }}?trip_id={{ $trip->id }}"
-                       style="flex:1;background:transparent;color:#7B3F00;border:1.5px solid #7B3F00;border-radius:10px;padding:10px 6px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;">
+                       style="flex:1;background:transparent;color:#934B19;border:1.5px solid #934B19;border-radius:10px;padding:10px 6px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;">
                         <i class="fa-solid fa-receipt" style="font-size:10px;"></i>Add Expense
                     </a>
                 </div>
@@ -166,7 +166,7 @@
                     <div style="font-size:26px;font-weight:800;color:#C8874A;">PHP {{ number_format($dtTotal, 0) }}</div>
                 </div>
                 <button wire:click="closeDetail"
-                        style="background:#7B3F00;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">
+                        style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">
                     Close
                 </button>
             </div>

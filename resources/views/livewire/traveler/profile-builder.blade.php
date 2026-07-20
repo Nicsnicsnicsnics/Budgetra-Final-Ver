@@ -7,13 +7,13 @@
 .pb-sub{font-size:13px;color:#9B8E85;line-height:1.6;margin:0 0 28px;}
 .pb-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#9B8E85;margin-bottom:10px;}
 .pb-input-wrap{display:flex;align-items:center;gap:10px;border:1.5px solid #E8E0D8;border-radius:10px;padding:13px 16px;background:#FAFAF9;}
-.pb-input-wrap:focus-within{border-color:#7B3F00;}
+.pb-input-wrap:focus-within{border-color:#934B19;}
 .pb-input{border:none;background:transparent;font-size:14px;font-weight:500;color:#1A1A1A;outline:none;width:100%;}
 .pb-input::placeholder{color:#C4B8AF;font-weight:400;}
 .pb-suggest{font-size:12px;color:#9B8E85;margin-top:8px;}
-.pb-suggest span{cursor:pointer;color:#7B3F00;font-weight:600;text-decoration:underline;margin-left:4px;}
+.pb-suggest span{cursor:pointer;color:#934B19;font-weight:600;text-decoration:underline;margin-left:4px;}
 .pb-btn{display:inline-flex;align-items:center;gap:8px;padding:13px 28px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;}
-.pb-btn-primary{background:#3B1A08;color:#fff;}
+.pb-btn-primary{background:#934B19;color:#fff;}
 .pb-btn-primary:hover{background:#2D1206;}
 .pb-btn-ghost{background:#fff;border:1.5px solid #E8E0D8;color:#1A1A1A;}
 .pb-btn-ghost:hover{background:#F5F0EB;}
@@ -21,18 +21,18 @@
 
 /* Interest grid */
 .int-card{border:1.5px solid #E8E0D8;border-radius:14px;padding:18px 12px;text-align:center;cursor:pointer;transition:all .15s;background:#fff;}
-.int-card:hover{border-color:#7B3F00;background:#FDF8F4;}
-.int-card.active{border-color:#7B3F00;background:#FDF8F4;box-shadow:0 0 0 2px #7B3F0033;}
+.int-card:hover{border-color:#934B19;background:#FDF8F4;}
+.int-card.active{border-color:#934B19;background:#FDF8F4;box-shadow:0 0 0 2px #934B1933;}
 .int-icon{width:44px;height:44px;border-radius:12px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
-.int-card.active .int-icon{background:#7B3F0015;}
+.int-card.active .int-icon{background:#934B1915;}
 .int-label{font-size:12px;font-weight:600;color:#1A1A1A;}
 .sub-chip{display:inline-flex;align-items:center;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid #E8E0D8;background:#fff;cursor:pointer;transition:all .15s;}
-.sub-chip:hover{border-color:#7B3F00;}
-.sub-chip.active{background:#7B3F00;color:#fff;border-color:#7B3F00;}
+.sub-chip:hover{border-color:#934B19;}
+.sub-chip.active{background:#934B19;color:#fff;border-color:#934B19;}
 
 /* Review */
 .rv-card{border:1.5px solid #E8E0D8;border-radius:14px;padding:18px 20px;margin-bottom:14px;background:#fff;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
-.rv-edit{font-size:12px;font-weight:700;color:#7B3F00;cursor:pointer;white-space:nowrap;flex-shrink:0;text-decoration:none;}
+.rv-edit{font-size:12px;font-weight:700;color:#934B19;cursor:pointer;white-space:nowrap;flex-shrink:0;text-decoration:none;}
 .rv-edit:hover{text-decoration:underline;}
 </style>
 
@@ -40,7 +40,7 @@
 @if($step === 1)
 <div class="pb-card" wire:key="step-1">
     <div class="pb-icon-wrap">
-        <i class="fa-solid fa-location-dot" style="font-size:24px;color:#7B3F00;"></i>
+        <i class="fa-solid fa-location-dot" style="font-size:24px;color:#934B19;"></i>
     </div>
     <h1 class="pb-title">Where does your journey begin?</h1>
     <p class="pb-sub">We'll use your home location to calculate estimated travel costs, flight durations, and currency defaults for your adventures.</p>
@@ -63,7 +63,7 @@
 @elseif($step === 2)
 <div class="pb-card" wire:key="step-2">
     <div class="pb-icon-wrap">
-        <i class="fa-solid fa-wallet" style="font-size:22px;color:#7B3F00;"></i>
+        <i class="fa-solid fa-wallet" style="font-size:22px;color:#934B19;"></i>
     </div>
     <h1 class="pb-title">What is your preferred budget range?</h1>
     <p class="pb-sub">Select the budget level that best fits your travel style for personalized cost estimates.</p>
@@ -100,7 +100,7 @@
         <div class="int-card {{ in_array($name, $selectedInterests) ? 'active' : '' }}"
              wire:click="toggleInterest('{{ $name }}')">
             <div class="int-icon">
-                <i class="fa-solid {{ $icons[$name] ?? 'fa-star' }}" style="font-size:18px;color:#7B3F00;"></i>
+                <i class="fa-solid {{ $icons[$name] ?? 'fa-star' }}" style="font-size:18px;color:#934B19;"></i>
             </div>
             <div class="int-label">{{ $name }}</div>
         </div>
@@ -140,7 +140,7 @@
     <div class="rv-card">
         <div style="display:flex;align-items:flex-start;gap:14px;flex:1;min-width:0;">
             <div style="width:36px;height:36px;border-radius:10px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fa-solid fa-location-dot" style="color:#7B3F00;font-size:14px;"></i>
+                <i class="fa-solid fa-location-dot" style="color:#934B19;font-size:14px;"></i>
             </div>
             <div>
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#9B8E85;margin-bottom:4px;">Starting Point</div>
@@ -155,7 +155,7 @@
     <div class="rv-card">
         <div style="display:flex;align-items:flex-start;gap:14px;flex:1;min-width:0;">
             <div style="width:36px;height:36px;border-radius:10px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fa-solid fa-wallet" style="color:#7B3F00;font-size:14px;"></i>
+                <i class="fa-solid fa-wallet" style="color:#934B19;font-size:14px;"></i>
             </div>
             <div>
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#9B8E85;margin-bottom:4px;">Budget Preference</div>
@@ -177,7 +177,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:14px;">
                 <div style="width:36px;height:36px;border-radius:10px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fa-solid fa-heart" style="color:#7B3F00;font-size:14px;"></i>
+                    <i class="fa-solid fa-heart" style="color:#934B19;font-size:14px;"></i>
                 </div>
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#9B8E85;">Travel Interests</div>
             </div>
@@ -185,7 +185,7 @@
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
             @forelse(array_merge($selectedInterests, $selectedSubInterests) as $tag)
-            <span style="background:#F5F0EB;color:#7B3F00;font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;">{{ $tag }}</span>
+            <span style="background:#F5F0EB;color:#934B19;font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;">{{ $tag }}</span>
             @empty
             <span style="font-size:13px;color:#9B8E85;">No interests selected.</span>
             @endforelse
@@ -193,7 +193,7 @@
     </div>
 
     <p style="font-size:13px;color:#9B8E85;text-align:center;margin:16px 0 0;">
-        <i class="fa-solid fa-shield-halved" style="margin-right:6px;color:#7B3F00;"></i>
+        <i class="fa-solid fa-shield-halved" style="margin-right:6px;color:#934B19;"></i>
         Everything looks good! Once confirmed, we'll generate your first budget draft based on these choices.
     </p>
 </div>

@@ -19,6 +19,17 @@ class ItineraryController extends Controller
         return view('traveler.itinerary.index', compact('trips'));
     }
 
+    public function moments()
+    {
+        $trips = auth()->user()
+            ->trips()
+            ->with(['itinerary' => fn($q) => $q->orderBy('start_datetime')])
+            ->latest()
+            ->get();
+
+        return view('traveler.itinerary.index', ['trips' => $trips, 'tab' => 'moments', 'active' => 'moments']);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

@@ -89,6 +89,7 @@ class MultiTripHub extends Component
 
     public function render()
     {
-        return view('livewire.traveler.multi-trip-hub');
+        return view('livewire.traveler.multi-trip-hub')
+            ->layout('layouts.app', ['title' => 'Multi-Trip Hub', 'active' => 'multi-trips']);
     }
 }

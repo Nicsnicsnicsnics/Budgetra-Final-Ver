@@ -14,25 +14,25 @@
 
 {{-- No trips at all --}}
 @if ($trips->isEmpty())
-<div class="empty-state-center">
-    <div style="width:72px;height:72px;border-radius:20px;background:#F5EDE7;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-        <i class="fa-solid fa-bell" style="font-size:32px;color:var(--primary);"></i>
+<div class="empty-state-center" style="min-height:80vh;">
+    <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+        <i class="fa-solid fa-bell" style="font-size:28px;color:#fff;"></i>
     </div>
-    <h2 style="font-weight:700;margin-bottom:8px;">No trips yet</h2>
-    <p class="text-muted" style="max-width:320px;margin-bottom:24px;">Plan a trip first to start receiving budget alerts and notifications.</p>
-    <a href="{{ route('trips.plan') }}" class="btn btn-primary btn-lg">
-        <i class="fa-solid fa-paper-plane"></i> Plan a Trip
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">No trips yet</h2>
+    <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Plan a trip first to start receiving budget alerts and notifications.</p>
+    <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+        <i class="fa-solid fa-plane"></i> Plan Your First Trip
     </a>
 </div>
 
 @elseif (!$hasAny)
 {{-- Has trips but no notifications --}}
-<div class="empty-state-center">
-    <div style="width:72px;height:72px;border-radius:20px;background:#F5EDE7;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-        <i class="fa-solid fa-bell" style="font-size:32px;color:var(--primary);"></i>
+<div class="empty-state-center" style="min-height:80vh;">
+    <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+        <i class="fa-solid fa-bell" style="font-size:28px;color:#fff;"></i>
     </div>
-    <h2 style="font-weight:700;margin-bottom:8px;">All caught up!</h2>
-    <p class="text-muted" style="max-width:320px;">
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">All caught up!</h2>
+    <p style="color:#9B8EA0;font-size:14px;max-width:320px;line-height:1.6;">
         @if ($activeTrip)
             No notifications for <strong>{{ $activeTrip->destination }}</strong> yet.
         @else
