@@ -29,4 +29,5 @@ class Trip extends Model
     public function itinerary()   { return $this->hasMany(Itinerary::class); }
     public function savingsGoals(){ return $this->hasMany(SavingsGoal::class); }
     public function groupMembers(){ return $this->hasMany(GroupMember::class); }
+    public function moments()     { return $this->hasMany(Moment::class); }
 }

@@ -3,17 +3,98 @@ namespace App\Livewire\Traveler;
 
 use App\Models\Attraction;
 use App\Models\Itinerary;
+use App\Models\Moment;
+use App\Models\MomentPhoto;
 use App\Models\Trip;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class ItineraryManager extends Component
 {
+    use WithFileUploads;
+
     public ?int    $selectedTripId    = null;
     public ?string $selectedDate      = null;
     public bool    $showGenerateModal = false;
     public bool    $showDayModal      = false;
     public string  $tab               = 'itinerary';
+
+    // ── Moments: travel pins ────────────────────────────────
+    public bool    $showPinModal      = false;
+    public string  $pinModalMode      = 'add'; // 'add' | 'edit'
+    public ?int    $editingPinId      = null;
+    public ?float  $pinLat            = null;
+    public ?float  $pinLng            = null;
+    public string  $pinPlaceName      = '';
+    public string  $pinDescription    = '';
+    public string  $pinVisitedDate    = '';
+    public array   $pinPhotos         = []; // Livewire temp uploads, newly selected
+    public array   $pinExistingPhotos = []; // [['id'=>.., 'url'=>..], ...] — saved photos (edit mode)
+    public ?int    $pinToDelete       = null;
+
+    // Destination name (lowercased) -> [lat, lng]. Used only for the Moments
+    // map marker; not shared with SerpApiService's own coords table.
+    private const DEST_COORDS = [
+        'manila'          => [14.5995, 120.9842],
+        'cebu'            => [10.3157, 123.8854],
+        'cebu city'       => [10.3157, 123.8854],
+        'davao'           => [7.1907,  125.4553],
+        'davao city'      => [7.1907,  125.4553],
+        'boracay'         => [11.9674, 121.9248],
+        'malay'           => [11.9420, 121.9370],
+        'bohol'           => [9.8500,  124.1435],
+        'palawan'         => [9.8349,  118.7384],
+        'puerto princesa' => [9.7392,  118.7353],
+        'el nido'         => [11.1784, 119.4074],
+        'coron'           => [12.0031, 120.2040],
+        'siargao'         => [9.8490,  126.0458],
+        'bacolod'         => [10.6765, 122.9509],
+        'iloilo'          => [10.7202, 122.5621],
+        'iloilo city'     => [10.7202, 122.5621],
+        'zamboanga'       => [6.9214,  122.0790],
+        'cagayan de oro'  => [8.4542,  124.6319],
+        'general santos'  => [6.1164,  125.1716],
+        'tagaytay'        => [14.1153, 120.9621],
+        'baguio'          => [16.4023, 120.5960],
+        'vigan'           => [17.5747, 120.3869],
+        'batangas'        => [13.7565, 121.0583],
+        'tacloban'        => [11.2543, 124.9900],
+        'dumaguete'       => [9.3076,  123.3080],
+        'surigao'         => [9.7527,  125.4874],
+        'camiguin'        => [9.1737,  124.7197],
+        'siquijor'        => [9.2100,  123.5100],
+        'batanes'         => [20.4487, 121.9700],
+        'sagada'          => [17.0880, 120.9010],
+        'pagudpud'        => [18.5600, 120.7900],
+        'laoag'           => [18.1977, 120.5937],
+        'puerto galera'   => [13.5021, 120.9539],
+        'singapore'       => [1.3521,  103.8198],
+        'bangkok'         => [13.7563, 100.5018],
+        'phuket'          => [7.8804,  98.3923],
+        'bali'            => [-8.3405, 115.0920],
+        'kuala lumpur'    => [3.1390,  101.6869],
+        'hong kong'       => [22.3193, 114.1694],
+        'tokyo'           => [35.6762, 139.6503],
+        'osaka'           => [34.6937, 135.5023],
+        'seoul'           => [37.5665, 126.9780],
+        'taipei'          => [25.0330, 121.5654],
+        'dubai'           => [25.2048, 55.2708],
+        'london'          => [51.5074, -0.1278],
+        'paris'           => [48.8566, 2.3522],
+        'new york'        => [40.7128, -74.0060],
+        'sydney'          => [-33.8688, 151.2093],
+        'rome'            => [41.9028, 12.4964],
+        'barcelona'       => [41.3851, 2.1734],
+        'amsterdam'       => [52.3676, 4.9041],
+        'maldives'        => [3.2028,  73.2207],
+    ];
+
+    // Philippines centroid — fallback for destinations not in the table above.
+    private const DEFAULT_LAT  = 12.8797;
+    private const DEFAULT_LNG  = 121.7740;
+    private const DEFAULT_ZOOM = 6;
 
     public function mount(): void
     {
@@ -238,6 +319,193 @@ class ItineraryManager extends Component
             ->whereDate('start_datetime', $this->selectedDate)
             ->orderBy('start_datetime')
             ->get();
+    }
+
+    public function getMapCenterProperty(): array
+    {
+        $trip = $this->selectedTrip;
+        if (!$trip) {
+            return ['lat' => self::DEFAULT_LAT, 'lng' => self::DEFAULT_LNG, 'zoom' => self::DEFAULT_ZOOM, 'label' => ''];
+        }
+
+        $key   = strtolower(trim($trip->destination));
+        $found = self::DEST_COORDS[$key] ?? null;
+
+        return [
+            'lat'   => $found[0] ?? self::DEFAULT_LAT,
+            'lng'   => $found[1] ?? self::DEFAULT_LNG,
+            'zoom'  => $found ? 12 : self::DEFAULT_ZOOM,
+            'label' => $trip->destination,
+        ];
+    }
+
+    public function getInitialPinsProperty(): array
+    {
+        if (!$this->selectedTripId) return [];
+        return Moment::where('trip_id', $this->selectedTripId)
+            ->orderBy('visited_date')
+            ->get()
+            ->map(fn (Moment $m) => $this->pinToArray($m))
+            ->values()
+            ->toArray();
+    }
+
+    private function pinToArray(Moment $moment): array
+    {
+        return [
+            'id'                => $moment->id,
+            'lat'               => (float) $moment->lat,
+            'lng'               => (float) $moment->lng,
+            'place_name'        => $moment->place_name,
+            'description'       => $moment->description,
+            'visited_date'      => $moment->visited_date->format('M j, Y'),
+            'visited_date_sort' => $moment->visited_date->toDateString(),
+            'photo_urls'        => $moment->photos->map(
+                fn (MomentPhoto $p) => Storage::disk('public')->url($p->photo_path)
+            )->values()->toArray(),
+        ];
+    }
+
+    private function existingPhotosArray(Moment $moment): array
+    {
+        return $moment->photos->map(fn (MomentPhoto $p) => [
+            'id'  => $p->id,
+            'url' => Storage::disk('public')->url($p->photo_path),
+        ])->values()->toArray();
+    }
+
+    // ── Moments: travel pins ────────────────────────────────
+    public function openAddPinModal(float $lat, float $lng): void
+    {
+        if (!$this->selectedTrip) return;
+        $this->pinModalMode      = 'add';
+        $this->editingPinId      = null;
+        $this->pinLat             = $lat;
+        $this->pinLng             = $lng;
+        $this->pinPlaceName      = '';
+        $this->pinDescription    = '';
+        $this->pinVisitedDate    = now()->toDateString();
+        $this->pinPhotos         = [];
+        $this->pinExistingPhotos = [];
+        $this->showPinModal       = true;
+    }
+
+    public function openEditPinModal(int $pinId): void
+    {
+        $trip = $this->selectedTrip;
+        if (!$trip) return;
+        $moment = Moment::with('photos')->where('id', $pinId)->where('trip_id', $trip->id)->first();
+        if (!$moment) return;
+
+        $this->pinModalMode      = 'edit';
+        $this->editingPinId      = $moment->id;
+        $this->pinLat             = (float) $moment->lat;
+        $this->pinLng             = (float) $moment->lng;
+        $this->pinPlaceName      = $moment->place_name;
+        $this->pinDescription    = $moment->description ?? '';
+        $this->pinVisitedDate    = $moment->visited_date->toDateString();
+        $this->pinPhotos         = [];
+        $this->pinExistingPhotos = $this->existingPhotosArray($moment);
+        $this->showPinModal       = true;
+    }
+
+    public function closePinModal(): void
+    {
+        $this->showPinModal = false;
+    }
+
+    public function removeNewPhoto(int $index): void
+    {
+        unset($this->pinPhotos[$index]);
+        $this->pinPhotos = array_values($this->pinPhotos);
+    }
+
+    public function removeExistingPhoto(int $photoId): void
+    {
+        if (!$this->editingPinId) return;
+        $photo = MomentPhoto::where('id', $photoId)->where('moment_id', $this->editingPinId)->first();
+        if (!$photo) return;
+
+        Storage::disk('public')->delete($photo->photo_path);
+        $photo->delete();
+
+        $this->pinExistingPhotos = array_values(array_filter(
+            $this->pinExistingPhotos,
+            fn ($p) => $p['id'] !== $photoId
+        ));
+    }
+
+    public function savePin(): void
+    {
+        $trip = $this->selectedTrip;
+        abort_if(!$trip, 403);
+
+        $validated = $this->validate([
+            'pinPlaceName'   => 'required|string|max:255',
+            'pinDescription' => 'nullable|string|max:2000',
+            'pinVisitedDate' => 'required|date',
+            'pinPhotos'      => 'nullable|array|max:6',
+            'pinPhotos.*'    => 'image|max:5120',
+            'pinLat'         => 'required|numeric',
+            'pinLng'         => 'required|numeric',
+        ]);
+
+        $data = [
+            'trip_id'      => $trip->id,
+            'place_name'   => $validated['pinPlaceName'],
+            'description'  => $validated['pinDescription'] ?: null,
+            'visited_date' => $validated['pinVisitedDate'],
+            'lat'          => $validated['pinLat'],
+            'lng'          => $validated['pinLng'],
+        ];
+
+        if ($this->pinModalMode === 'edit' && $this->editingPinId) {
+            $moment = Moment::where('id', $this->editingPinId)->where('trip_id', $trip->id)->first();
+            abort_if(!$moment, 403);
+            $moment->update($data);
+        } else {
+            $moment = Moment::create($data);
+        }
+
+        foreach ($this->pinPhotos as $upload) {
+            MomentPhoto::create([
+                'moment_id'  => $moment->id,
+                'photo_path' => $upload->store('moment-photos', 'public'),
+            ]);
+        }
+
+        $moment->load('photos');
+        $this->showPinModal = false;
+        $this->dispatch('pin-saved', pin: $this->pinToArray($moment));
+    }
+
+    public function confirmDeletePin(int $pinId): void
+    {
+        $this->pinToDelete   = $pinId;
+        $this->showPinModal  = false;
+    }
+
+    public function cancelDeletePin(): void
+    {
+        $this->pinToDelete = null;
+    }
+
+    public function deletePin(): void
+    {
+        $trip = $this->selectedTrip;
+        if (!$trip || !$this->pinToDelete) return;
+
+        $moment = Moment::with('photos')->where('id', $this->pinToDelete)->where('trip_id', $trip->id)->first();
+        if ($moment) {
+            foreach ($moment->photos as $photo) {
+                Storage::disk('public')->delete($photo->photo_path);
+            }
+            $deletedId = $moment->id;
+            $moment->delete(); // cascade-deletes moment_photos rows via the FK
+            $this->dispatch('pin-deleted', id: $deletedId);
+        }
+
+        $this->pinToDelete = null;
     }
 
     public function render()

@@ -2,6 +2,10 @@
 @section('title', isset($tab) && $tab === 'moments' ? 'Moments' : 'Itinerary')
 
 @push('styles')
+@if(($tab ?? 'itinerary') === 'moments')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+@endif
 <style>
     #itinerary-calendar { font-family: inherit; }
     #itinerary-calendar .fc-toolbar { align-items: center; margin-bottom: 16px !important; }
