@@ -4,14 +4,34 @@
 
 <div style="min-height:100vh;background:#F5F0EB;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;">
 
+<div style="display:flex;align-items:center;width:100%;max-width:560px;margin:0 0 32px;">
+    @for ($i = 1; $i <= 6; $i++)
+        @php $state = $step > $i ? 'done' : ($step === $i ? 'current' : 'upcoming'); @endphp
+        <div style="width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+                    background:{{ $state === 'upcoming' ? '#fff' : '#934B19' }};
+                    color:{{ $state === 'upcoming' ? '#C4B8AF' : '#fff' }};
+                    border:2px solid {{ $state === 'upcoming' ? '#E8E0D8' : '#934B19' }};
+                    transition:all .3s ease;">
+            @if($state === 'done')
+                <i class="fa-solid fa-check" style="font-size:12px;"></i>
+            @else
+                {{ $i }}
+            @endif
+        </div>
+        @if($i < 6)
+        <div style="flex:1;height:3px;background:{{ $step > $i ? '#934B19' : '#E8E0D8' }};transition:background .3s ease;"></div>
+        @endif
+    @endfor
+</div>
+
 <style>
-.pb-icon-wrap{width:56px;height:56px;border-radius:14px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
+.pb-icon-wrap{width:56px;height:56px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
 .pb-title{font-size:22px;font-weight:800;color:#1A1A1A;margin:0 0 8px;}
 .pb-sub{font-size:13px;color:#9B8E85;line-height:1.6;margin:0 0 28px;}
 .pb-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#9B8E85;margin-bottom:10px;}
 .pb-input-wrap{display:flex;align-items:center;gap:10px;border:1.5px solid #E8E0D8;border-radius:10px;padding:13px 16px;background:#FAFAF9;}
 .pb-input-wrap:focus-within{border-color:#934B19;}
-.pb-input{border:none;background:transparent;font-size:14px;font-weight:500;color:#1A1A1A;outline:none;width:100%;}
+.pb-input{border:none;background:transparent;font-size:14px;font-weight:700;color:#1A1A1A;outline:none;width:100%;}
 .pb-input::placeholder{color:#C4B8AF;font-weight:400;}
 .pb-suggest{font-size:12px;color:#9B8E85;margin-top:8px;}
 .pb-suggest span{cursor:pointer;color:#934B19;font-weight:600;text-decoration:underline;margin-left:4px;}
@@ -81,9 +101,20 @@
 <div wire:key="step-1"
      x-data="{
         query: '{{ addslashes($homeCity) }}',
+        code: '{{ addslashes(array_search($homeCity, $localDestinations) ?: '') }}',
         timer: null,
         map: null,
         marker: null,
+        open: false,
+        search: '',
+        selectCity(name, code) {
+            this.query = name;
+            this.code = code;
+            this.open = false;
+            this.search = '';
+            $wire.set('homeCity', name);
+            this.onInput(name);
+        },
         loadLeaflet() {
             if (window.L) return Promise.resolve();
             if (window.__leafletLoading) return window.__leafletLoading;
@@ -128,24 +159,41 @@
 
     <div style="flex:1 1 480px;min-width:340px;">
         <div class="pb-icon-wrap" style="width:68px;height:68px;">
-            <i class="fa-solid fa-location-dot" style="font-size:30px;color:#934B19;"></i>
+            <i class="fa-solid fa-location-dot" style="font-size:30px;color:#fff;"></i>
         </div>
         <h1 class="pb-title" style="font-size:32px;">Where does your journey begin?</h1>
-        <p class="pb-sub" style="font-size:16px;">We'll use your home location to calculate estimated travel costs, flight durations, and currency defaults for your adventures.</p>
+        <p class="pb-sub" style="font-size:16px;">We'll use your location to calculate flight durations, estimated costs, and suggest custom activities for your adventure.</p>
 
         <div class="pb-label" style="font-size:12px;">Home Location / Starting Point</div>
-        <div class="pb-input-wrap" style="padding:18px 20px;">
-            <i class="fa-solid fa-location-dot" style="color:#C4B8AF;font-size:16px;flex-shrink:0;"></i>
-            <input type="text" wire:model="homeCity" class="pb-input" style="font-size:17px;" placeholder="City of Manila"
-                   x-on:input="onInput($event.target.value)">
+        <div style="position:relative;" x-on:click.away="open = false">
+            <div class="pb-input-wrap" style="padding:18px 20px;cursor:pointer;" x-on:click="open = !open">
+                <i class="fa-solid fa-location-dot" style="color:#934B19;font-size:16px;flex-shrink:0;"></i>
+                <span x-text="query ? (code ? query + ' (' + code + ')' : query) : 'Where are you from?'"
+                      :style="query ? 'font-size:16px;font-weight:700;color:#1A1A2E;' : 'font-size:17px;font-weight:400;color:#C4B8AF;'"></span>
+            </div>
+
+            <div x-show="open" x-cloak x-transition
+                 style="position:absolute;top:calc(100% + 8px);left:0;right:0;background:#fff;border:1.5px solid #E8E0D8;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:50;overflow:hidden;">
+                <div style="padding:12px 16px;border-bottom:1.5px solid #F5F0EB;">
+                    <input type="text" x-model="search" placeholder="Search city"
+                           x-on:keydown="if ($event.key.length === 1 && /[0-9]/.test($event.key)) $event.preventDefault();"
+                           x-on:input="if (/[0-9]/.test($event.target.value)) { $event.target.value = $event.target.value.replace(/[0-9]/g, ''); search = $event.target.value; }"
+                           style="width:100%;border:none;outline:none;font-size:14px;font-weight:500;color:#1A1A1A;background:transparent;">
+                </div>
+                <div style="max-height:280px;overflow-y:auto;padding:8px;">
+                    @foreach($localDestinations as $code => $city)
+                    <div x-show="!search || '{{ addslashes($city) }}'.toLowerCase().includes(search.toLowerCase())"
+                         x-on:click="selectCity('{{ addslashes($city) }}', '{{ addslashes($code) }}')"
+                         style="display:flex;align-items:center;gap:12px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;"
+                         onmouseenter="this.style.background='#F5F0EB'" onmouseleave="this.style.background='transparent'">
+                        <span style="display:inline-block;box-sizing:border-box;font-size:11px;font-weight:700;color:#934B19;background:#F5F0EB;border-radius:8px;padding:6px 0;width:44px;flex-shrink:0;text-align:center;">{{ $code }}</span>
+                        <span style="font-size:14px;font-weight:500;color:#1A1A1A;">{{ $city }}</span>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
         </div>
         @error('homeCity') <p style="color:#e74c3c;font-size:12px;margin-top:6px;">{{ $message }}</p> @enderror
-
-        <p class="pb-suggest" style="font-size:14px;">Suggested:
-            @foreach($suggested as $city)
-                <span wire:click="$set('homeCity', '{{ $city }}')" x-on:click="onInput('{{ addslashes($city) }}')">{{ $city }}</span>{{ !$loop->last ? '' : '' }}
-            @endforeach
-        </p>
     </div>
 
     <div style="flex:1 1 480px;min-width:340px;">
@@ -158,15 +206,15 @@
 @elseif($step === 2)
 <div wire:key="step-2" style="width:100%;max-width:720px;padding:0 24px;">
     <div class="pb-icon-wrap" style="width:68px;height:68px;">
-        <i class="fa-solid fa-wallet" style="font-size:30px;color:#934B19;"></i>
+        <i class="fa-solid fa-wallet" style="font-size:30px;color:#fff;"></i>
     </div>
     <h1 class="pb-title" style="font-size:32px;">What is your preferred budget range?</h1>
-    <p class="pb-sub" style="font-size:16px;">Select the budget level that best fits your travel style for personalized cost estimates.</p>
+    <p class="pb-sub" style="font-size:16px;">Enter the budget that best fits your travel style.</p>
 
     <div class="pb-label" style="font-size:12px;">Budget Level</div>
     <div class="pb-input-wrap" style="padding:20px 22px;" x-data="{ display: '{{ $dailyBudgetDisplay }}' }" x-init="$nextTick(() => { $el.querySelector('input').value = display; })">
         <i class="fa-solid fa-wallet" style="color:#C4B8AF;font-size:18px;flex-shrink:0;"></i>
-        <input type="text" class="pb-input" style="font-size:19px;" placeholder="Enter your daily budget (e.g., ₱1,000)"
+        <input type="text" class="pb-input" style="font-size:19px;" placeholder="Please enter your desired budget"
                x-ref="budgetInput"
                :value="display"
                @input="
@@ -261,36 +309,36 @@
         transport: '{{ $preferredTransportation }}',
         stay: '{{ $preferredAccommodation }}'
      }"
-     style="width:100%;max-width:900px;padding:0 24px;">
+     style="width:100%;padding:0 24px;">
     <h1 style="font-size:22px;font-weight:800;color:#1A1A1A;text-align:center;margin:0 0 8px;">How do you like to get around and stay?</h1>
     <p style="font-size:13px;color:#9B8E85;text-align:center;margin:0 0 28px;">Select your preferred transportation and accommodation types.</p>
 
     <div class="pb-label" style="text-align:center;">Preferred Transportation</div>
-    <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:32px;">
+    <div class="int-scroll" style="display:flex;gap:16px;align-items:stretch;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;margin-bottom:24px;">
         @foreach($transportationOptions as $name => $icon)
         <div class="int-card {{ $preferredTransportation === $name ? 'active' : '' }}"
-             style="flex:0 0 140px;"
+             style="flex:0 0 190px;height:170px;"
              x-on:click="transport = (transport === '{{ $name }}' ? '' : '{{ $name }}')"
              wire:click="selectTransportation('{{ $name }}')">
-            <div class="int-icon">
-                <i class="fa-solid {{ $icon }}" style="font-size:18px;color:#934B19;"></i>
+            <div class="int-icon" style="width:56px;height:56px;">
+                <i class="fa-solid {{ $icon }}" style="font-size:24px;color:#934B19;"></i>
             </div>
-            <div class="int-label">{{ $name }}</div>
+            <div class="int-label" style="font-size:15px;">{{ $name }}</div>
         </div>
         @endforeach
     </div>
 
     <div class="pb-label" style="text-align:center;">Preferred Accommodation</div>
-    <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">
+    <div class="int-scroll" style="display:flex;gap:16px;align-items:stretch;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;">
         @foreach($accommodationOptions as $name => $icon)
         <div class="int-card {{ $preferredAccommodation === $name ? 'active' : '' }}"
-             style="flex:0 0 140px;"
+             style="flex:0 0 190px;height:170px;"
              x-on:click="stay = (stay === '{{ $name }}' ? '' : '{{ $name }}')"
              wire:click="selectAccommodation('{{ $name }}')">
-            <div class="int-icon">
-                <i class="fa-solid {{ $icon }}" style="font-size:18px;color:#934B19;"></i>
+            <div class="int-icon" style="width:56px;height:56px;">
+                <i class="fa-solid {{ $icon }}" style="font-size:24px;color:#934B19;"></i>
             </div>
-            <div class="int-label">{{ $name }}</div>
+            <div class="int-label" style="font-size:15px;">{{ $name }}</div>
         </div>
         @endforeach
     </div>
@@ -466,7 +514,7 @@
 </div>
 
 {{-- Navigation --}}
-<div class="pb-nav" style="max-width:{{ $step === 4 ? '100%' : ($step === 3 ? '1100px' : ($step === 1 ? '1280px' : ($step === 2 ? '720px' : ($step === 5 ? '900px' : '480px')))) }};{{ in_array($step, [1, 2, 3, 4, 5]) ? ' padding:0 24px;' : '' }}">
+<div class="pb-nav" style="max-width:{{ in_array($step, [4, 5]) ? '100%' : ($step === 3 ? '1100px' : ($step === 1 ? '1280px' : ($step === 2 ? '720px' : '480px'))) }};{{ in_array($step, [1, 2, 3, 4, 5]) ? ' padding:0 24px;' : '' }}">
     @if($step > 1)
     <button class="pb-btn pb-btn-ghost" wire:click="prevStep">
         <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back

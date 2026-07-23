@@ -59,8 +59,23 @@ class ProfileBuilder extends Component
 
     public const SUGGESTED_CITIES = ['City of Manila', 'Cebu City', 'Davao City'];
 
+    public const LOCAL_DESTINATIONS = [
+        'MNL' => 'Manila',
+        'CEB' => 'Cebu City',
+        'DVO' => 'Davao City',
+        'KLO' => 'Boracay',
+        'PPS' => 'Puerto Princesa',
+        'TAG' => 'Tagbilaran',
+        'ILO' => 'Iloilo City',
+        'BCD' => 'Bacolod City',
+        'GES' => 'General Santos',
+        'ZAM' => 'Zamboanga City',
+        'TAC' => 'Tacloban City',
+        'IAO' => 'Siargao',
+    ];
+
     public const TRAVEL_STYLES = [
-        'Solo'  => ['icon' => 'fa-person-walking', 'desc' => 'Independent exploration at your own pace.', 'image' => 'solo.jpg'],
+        'Solo'  => ['icon' => 'fa-user', 'desc' => 'Independent exploration at your own pace.', 'image' => 'solo.jpg'],
         'Group' => ['icon' => 'fa-user-group',      'desc' => 'Traveling with companions and splitting costs.', 'image' => 'group.jpg'],
     ];
 
@@ -74,12 +89,10 @@ class ProfileBuilder extends Component
     ];
 
     public const ACCOMMODATION_OPTIONS = [
-        'Hotel'      => 'fa-hotel',
-        'Hostel'     => 'fa-bed',
-        'Resort'     => 'fa-umbrella-beach',
-        'Vacation Rental' => 'fa-house',
-        'Homestay'   => 'fa-house-chimney',
-        'Camping'    => 'fa-campground',
+        'Hotel'     => 'fa-hotel',
+        'Apartment' => 'fa-building',
+        'Inn'       => 'fa-house-chimney',
+        'Resort'    => 'fa-umbrella-beach',
     ];
 
     public function mount(): void
@@ -233,6 +246,7 @@ class ProfileBuilder extends Component
             'icons'        => self::ICONS,
             'images'       => self::IMAGES,
             'suggested'    => self::SUGGESTED_CITIES,
+            'localDestinations' => self::LOCAL_DESTINATIONS,
             'travelStyles' => self::TRAVEL_STYLES,
             'transportationOptions' => self::TRANSPORTATION_OPTIONS,
             'accommodationOptions'  => self::ACCOMMODATION_OPTIONS,
