@@ -6,8 +6,7 @@ use App\Models\Itinerary;
 use App\Models\Moment;
 use App\Models\MomentPhoto;
 use App\Models\Trip;
-use Carbon\CarbonPeriod;
-use Illuminate\Support\Facades\Storage;
+use App\Services\MomentService;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -15,11 +14,14 @@ class ItineraryManager extends Component
 {
     use WithFileUploads;
 
+    protected MomentService $momentService;
+
     public ?int    $selectedTripId    = null;
     public ?string $selectedDate      = null;
     public bool    $showGenerateModal = false;
     public bool    $showDayModal      = false;
     public string  $tab               = 'itinerary';
+    public string  $momentsMode       = 'overview'; // 'overview' | 'trip' — only meaningful when $tab === 'moments'
 
     // ── Moments: travel pins ────────────────────────────────
     public bool    $showPinModal      = false;
@@ -44,7 +46,7 @@ class ItineraryManager extends Component
         'davao city'      => [7.1907,  125.4553],
         'boracay'         => [11.9674, 121.9248],
         'malay'           => [11.9420, 121.9370],
-        'bohol'           => [9.8500,  124.1435],
+        'bohol'           => [9.6272,  123.8788], // Tagbilaran City (Bohol's capital) — verified via Nominatim
         'palawan'         => [9.8349,  118.7384],
         'puerto princesa' => [9.7392,  118.7353],
         'el nido'         => [11.1784, 119.4074],
@@ -96,6 +98,14 @@ class ItineraryManager extends Component
     private const DEFAULT_LNG  = 121.7740;
     private const DEFAULT_ZOOM = 6;
 
+    // Livewire calls boot() on every request (initial + subsequent AJAX
+    // calls), unlike mount() which only runs once — this is the correct
+    // place to receive injected services, not the constructor.
+    public function boot(MomentService $momentService): void
+    {
+        $this->momentService = $momentService;
+    }
+
     public function mount(): void
     {
         $trips = $this->getTripsProperty();
@@ -104,8 +114,11 @@ class ItineraryManager extends Component
         $queryTripId = request()->query('trip_id');
         if ($queryTripId && $trips->contains('id', (int) $queryTripId)) {
             $this->selectedTripId = (int) $queryTripId;
+            $this->momentsMode    = 'trip'; // deep link: skip the overview, go straight to the trip
         } else {
             $this->selectedTripId = $trips->first()->id;
+            // momentsMode stays at its default 'overview' — Moments lands on
+            // the all-destinations map first; Itinerary ignores this property.
         }
     }
 
@@ -141,6 +154,18 @@ class ItineraryManager extends Component
             end:    $trip->end_date->clone()->addDay()->toDateString(),
             events: $this->getEventsProperty(),
         );
+    }
+
+    // ── Moments: overview map navigation ────────────────────
+    public function showTripOnMap(int $tripId): void
+    {
+        $this->selectTrip($tripId);
+        $this->momentsMode = 'trip';
+    }
+
+    public function backToOverview(): void
+    {
+        $this->momentsMode = 'overview';
     }
 
     public function goBack(): void
@@ -321,6 +346,18 @@ class ItineraryManager extends Component
             ->get();
     }
 
+    private function resolveDestinationCoords(string $destination): array
+    {
+        $key   = strtolower(trim($destination));
+        $found = self::DEST_COORDS[$key] ?? null;
+
+        return [
+            'lat'  => $found[0] ?? self::DEFAULT_LAT,
+            'lng'  => $found[1] ?? self::DEFAULT_LNG,
+            'zoom' => $found ? 12 : self::DEFAULT_ZOOM,
+        ];
+    }
+
     public function getMapCenterProperty(): array
     {
         $trip = $this->selectedTrip;
@@ -328,15 +365,23 @@ class ItineraryManager extends Component
             return ['lat' => self::DEFAULT_LAT, 'lng' => self::DEFAULT_LNG, 'zoom' => self::DEFAULT_ZOOM, 'label' => ''];
         }
 
-        $key   = strtolower(trim($trip->destination));
-        $found = self::DEST_COORDS[$key] ?? null;
+        return [...$this->resolveDestinationCoords($trip->destination), 'label' => $trip->destination];
+    }
 
-        return [
-            'lat'   => $found[0] ?? self::DEFAULT_LAT,
-            'lng'   => $found[1] ?? self::DEFAULT_LNG,
-            'zoom'  => $found ? 12 : self::DEFAULT_ZOOM,
-            'label' => $trip->destination,
-        ];
+    public function getOverviewPinsProperty(): array
+    {
+        return $this->trips->map(function (Trip $trip) {
+            $coords = $this->resolveDestinationCoords($trip->destination);
+            return [
+                'id'          => $trip->id,
+                'lat'         => $coords['lat'],
+                'lng'         => $coords['lng'],
+                'destination' => $trip->destination,
+                'start_date'  => $trip->start_date->format('M j, Y'),
+                'end_date'    => $trip->end_date->format('M j, Y'),
+                'status'      => $trip->resolved_status,
+            ];
+        })->values()->toArray();
     }
 
     public function getInitialPinsProperty(): array
@@ -345,33 +390,9 @@ class ItineraryManager extends Component
         return Moment::where('trip_id', $this->selectedTripId)
             ->orderBy('visited_date')
             ->get()
-            ->map(fn (Moment $m) => $this->pinToArray($m))
+            ->map(fn (Moment $m) => $this->momentService->pinToArray($m))
             ->values()
             ->toArray();
-    }
-
-    private function pinToArray(Moment $moment): array
-    {
-        return [
-            'id'                => $moment->id,
-            'lat'               => (float) $moment->lat,
-            'lng'               => (float) $moment->lng,
-            'place_name'        => $moment->place_name,
-            'description'       => $moment->description,
-            'visited_date'      => $moment->visited_date->format('M j, Y'),
-            'visited_date_sort' => $moment->visited_date->toDateString(),
-            'photo_urls'        => $moment->photos->map(
-                fn (MomentPhoto $p) => Storage::disk('public')->url($p->photo_path)
-            )->values()->toArray(),
-        ];
-    }
-
-    private function existingPhotosArray(Moment $moment): array
-    {
-        return $moment->photos->map(fn (MomentPhoto $p) => [
-            'id'  => $p->id,
-            'url' => Storage::disk('public')->url($p->photo_path),
-        ])->values()->toArray();
     }
 
     // ── Moments: travel pins ────────────────────────────────
@@ -405,7 +426,7 @@ class ItineraryManager extends Component
         $this->pinDescription    = $moment->description ?? '';
         $this->pinVisitedDate    = $moment->visited_date->toDateString();
         $this->pinPhotos         = [];
-        $this->pinExistingPhotos = $this->existingPhotosArray($moment);
+        $this->pinExistingPhotos = $this->momentService->existingPhotosArray($moment);
         $this->showPinModal       = true;
     }
 
@@ -426,8 +447,7 @@ class ItineraryManager extends Component
         $photo = MomentPhoto::where('id', $photoId)->where('moment_id', $this->editingPinId)->first();
         if (!$photo) return;
 
-        Storage::disk('public')->delete($photo->photo_path);
-        $photo->delete();
+        $this->momentService->deletePhoto($photo);
 
         $this->pinExistingPhotos = array_values(array_filter(
             $this->pinExistingPhotos,
@@ -451,7 +471,6 @@ class ItineraryManager extends Component
         ]);
 
         $data = [
-            'trip_id'      => $trip->id,
             'place_name'   => $validated['pinPlaceName'],
             'description'  => $validated['pinDescription'] ?: null,
             'visited_date' => $validated['pinVisitedDate'],
@@ -462,21 +481,13 @@ class ItineraryManager extends Component
         if ($this->pinModalMode === 'edit' && $this->editingPinId) {
             $moment = Moment::where('id', $this->editingPinId)->where('trip_id', $trip->id)->first();
             abort_if(!$moment, 403);
-            $moment->update($data);
+            $moment = $this->momentService->updatePin($moment, $data, $this->pinPhotos);
         } else {
-            $moment = Moment::create($data);
+            $moment = $this->momentService->createPin($trip, $data, $this->pinPhotos);
         }
 
-        foreach ($this->pinPhotos as $upload) {
-            MomentPhoto::create([
-                'moment_id'  => $moment->id,
-                'photo_path' => $upload->store('moment-photos', 'public'),
-            ]);
-        }
-
-        $moment->load('photos');
         $this->showPinModal = false;
-        $this->dispatch('pin-saved', pin: $this->pinToArray($moment));
+        $this->dispatch('pin-saved', pin: $this->momentService->pinToArray($moment));
     }
 
     public function confirmDeletePin(int $pinId): void
@@ -497,11 +508,8 @@ class ItineraryManager extends Component
 
         $moment = Moment::with('photos')->where('id', $this->pinToDelete)->where('trip_id', $trip->id)->first();
         if ($moment) {
-            foreach ($moment->photos as $photo) {
-                Storage::disk('public')->delete($photo->photo_path);
-            }
             $deletedId = $moment->id;
-            $moment->delete(); // cascade-deletes moment_photos rows via the FK
+            $this->momentService->deleteMoment($moment);
             $this->dispatch('pin-deleted', id: $deletedId);
         }
 

@@ -228,7 +228,7 @@ class ItineraryManagerTest extends TestCase
 
         $html = Livewire::actingAs($user)
             ->test(ItineraryManager::class, ['tab' => 'moments'])
-            ->call('selectTrip', $trip->id)
+            ->call('showTripOnMap', $trip->id) // drill into this trip's Moments map
             ->html();
 
         $firstPos  = strpos($html, 'First');
@@ -255,5 +255,120 @@ class ItineraryManagerTest extends TestCase
             ->call('openEditPinModal', $moment->id)
             ->assertSet('showPinModal', false)
             ->assertSet('pinPlaceName', '');
+    }
+
+    // ── Moments: destination overview map ───────────────────
+
+    public function test_moments_tab_defaults_to_overview_mode(): void
+    {
+        $user = User::factory()->create();
+        $this->makeTrip($user);
+
+        Livewire::actingAs($user)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->assertSet('momentsMode', 'overview');
+    }
+
+    public function test_moments_deep_link_with_trip_id_skips_straight_to_trip_mode(): void
+    {
+        $user = User::factory()->create();
+        $trip = $this->makeTrip($user);
+
+        $response = $this->actingAs($user)->get("/moments?trip_id={$trip->id}");
+
+        // "Ongoing" alone isn't a reliable absence check — it also appears
+        // inside the always-present initOverviewMap JS source. Check the
+        // overview map's own wire:key instead, which only renders in overview mode.
+        $response->assertStatus(200)
+            ->assertSee('All Destinations')                       // trip-mode back button present
+            ->assertDontSee('moments-overview-map', false);        // overview map div absent
+    }
+
+    public function test_show_trip_on_map_selects_trip_and_switches_to_trip_mode(): void
+    {
+        $user  = User::factory()->create();
+        $trip1 = $this->makeTrip($user);
+        $trip2 = $this->makeTrip($user);
+
+        Livewire::actingAs($user)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->assertSet('momentsMode', 'overview')
+            ->call('showTripOnMap', $trip2->id)
+            ->assertSet('momentsMode', 'trip')
+            ->assertSet('selectedTripId', $trip2->id);
+    }
+
+    public function test_back_to_overview_resets_mode(): void
+    {
+        $user = User::factory()->create();
+        $trip = $this->makeTrip($user);
+
+        Livewire::actingAs($user)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->call('showTripOnMap', $trip->id)
+            ->assertSet('momentsMode', 'trip')
+            ->call('backToOverview')
+            ->assertSet('momentsMode', 'overview');
+    }
+
+    public function test_overview_pins_includes_every_trip_with_correct_status(): void
+    {
+        $user = User::factory()->create();
+        $past = Trip::factory()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDays(10)->toDateString(),
+            'end_date'   => now()->subDays(5)->toDateString(),
+            'destination' => 'Cebu City',
+        ]);
+        $ongoing = Trip::factory()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date'   => now()->addDay()->toDateString(),
+            'destination' => 'Bohol',
+        ]);
+        $upcoming = Trip::factory()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->addDays(10)->toDateString(),
+            'end_date'   => now()->addDays(15)->toDateString(),
+            'destination' => 'Boracay',
+        ]);
+
+        $component    = Livewire::actingAs($user)->test(ItineraryManager::class, ['tab' => 'moments']);
+        $overviewPins = collect($component->get('overviewPins'))->keyBy('id');
+
+        $this->assertSame('past', $overviewPins[$past->id]['status']);
+        $this->assertSame('active', $overviewPins[$ongoing->id]['status']);
+        $this->assertSame('upcoming', $overviewPins[$upcoming->id]['status']);
+        $this->assertEqualsWithDelta(10.3157, $overviewPins[$past->id]['lat'], 0.0001); // Cebu City coords
+    }
+
+    public function test_overview_pin_status_honors_manual_override_from_saved_trips_edit(): void
+    {
+        // Dates alone would compute "upcoming", but the traveler manually
+        // set this trip's status to "active" via Saved Trips > Edit Trip.
+        // Moments must reflect that override, not the raw date computation.
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create([
+            'user_id'     => $user->id,
+            'start_date'  => now()->addDays(10)->toDateString(),
+            'end_date'    => now()->addDays(15)->toDateString(),
+            'destination' => 'Boracay',
+            'status'      => 'active',
+        ]);
+
+        $component    = Livewire::actingAs($user)->test(ItineraryManager::class, ['tab' => 'moments']);
+        $overviewPins = collect($component->get('overviewPins'))->keyBy('id');
+
+        $this->assertSame('active', $overviewPins[$trip->id]['status']);
+    }
+
+    public function test_itinerary_tab_still_shows_calendar_unaffected_by_moments_changes(): void
+    {
+        $user = User::factory()->create();
+        $this->makeTrip($user);
+
+        $this->actingAs($user)->get('/itinerary')
+            ->assertStatus(200)
+            ->assertDontSee('All Destinations');
     }
 }

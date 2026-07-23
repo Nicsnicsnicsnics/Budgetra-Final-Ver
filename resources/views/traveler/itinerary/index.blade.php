@@ -3,8 +3,13 @@
 
 @push('styles')
 @if(($tab ?? 'itinerary') === 'moments')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{{-- MapLibre GL JS (vector tiles), not Leaflet + raster tiles: raster map
+     images bake their labels' language into the picture itself, so there's
+     no way to keep a raster basemap and also translate its labels. Vector
+     tiles ship each place's name as data, so the style below is patched
+     (see initMomentsMap's 'load' handler) to prefer the English name. --}}
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 @endif
 <style>
     #itinerary-calendar { font-family: inherit; }

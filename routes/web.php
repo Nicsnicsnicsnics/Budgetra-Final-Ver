@@ -62,7 +62,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/compare',                   [Traveler\ComparisonController::class, 'index'])->name('compare.index');
 
     Route::get('/itinerary',             [Traveler\ItineraryController::class, 'index'])->name('itinerary.index');
-    Route::get('/moments',               [Traveler\ItineraryController::class, 'moments'])->name('moments.index');
+    Route::get('/moments',               [Traveler\MomentController::class, 'index'])->name('moments.index');
     Route::post('/itinerary',            [Traveler\ItineraryController::class, 'store'])->name('itinerary.store');
     Route::delete('/itinerary/{item}',   [Traveler\ItineraryController::class, 'destroy'])->name('itinerary.destroy');
 

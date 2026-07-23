@@ -1,6 +1,7 @@
 <?php
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -21,6 +22,25 @@ class Trip extends Model
             'budget_limit'  => 'decimal:2',
             'summary_data'  => 'array',
         ];
+    }
+
+    // The status to actually show for this trip: the user's manual override
+    // (set via Saved Trips > Edit Trip) if present, otherwise derived from
+    // dates. Mirrors SavedTrips::fetchTrips()'s resolution so every screen
+    // agrees on the same trip's status. Deliberately named differently from
+    // the real "status" column so this accessor never shadows it.
+    protected function resolvedStatus(): Attribute
+    {
+        return Attribute::make(get: function () {
+            if ($stored = $this->getRawOriginal('status')) {
+                return $stored;
+            }
+
+            $today = \Carbon\Carbon::today();
+            if ($this->start_date->gt($today)) return 'upcoming';
+            if ($this->end_date->lt($today))   return 'past';
+            return 'active';
+        });
     }
 
     public function user()        { return $this->belongsTo(User::class); }
