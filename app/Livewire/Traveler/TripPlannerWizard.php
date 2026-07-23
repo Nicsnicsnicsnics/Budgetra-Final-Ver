@@ -1105,6 +1105,15 @@ class TripPlannerWizard extends Component
         }, $list);
     }
 
+    public function skipAccommodation(): void
+    {
+        $this->selectedHotel   = null;
+        $this->selectedMcHotel = null;
+        $this->mcHotelStep     = false;
+        $this->step = 4;
+        $this->searchVenues();
+    }
+
     public function selectAccommodation(int $index): void
     {
         $this->selectedHotel = $this->hotelResults[$index] ?? null;
@@ -1178,6 +1187,15 @@ class TripPlannerWizard extends Component
             }
         }
         $this->venueLoading = false;
+    }
+
+    public function skipVenue(): void
+    {
+        $this->selectedVenue   = null;
+        $this->selectedMcVenue = null;
+        $this->mcVenueStep     = false;
+        $this->step = 5;
+        $this->searchAttractionsList();
     }
 
     public function selectVenue(int $index): void
@@ -1266,6 +1284,14 @@ class TripPlannerWizard extends Component
             }
         }
         $this->attractionLoading = false;
+    }
+
+    public function skipAttraction(): void
+    {
+        $this->selectedAttraction   = null;
+        $this->selectedMcAttraction = null;
+        $this->mcAttractionStep     = false;
+        $this->step = 6;
     }
 
     public function selectAttraction(int $index): void

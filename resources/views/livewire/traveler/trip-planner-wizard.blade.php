@@ -1272,6 +1272,13 @@ window.sortVenues = function(dir) {
     @endif
     @endif
 
+    <div style="display:flex;justify-content:center;margin-top:20px;">
+        <button wire:click="skipAccommodation" wire:loading.attr="disabled" wire:target="skipAccommodation"
+                style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:8px 16px;text-decoration:underline;">
+            Skip this step
+        </button>
+    </div>
+
 </div>
 @endif
 
@@ -1508,6 +1515,13 @@ window.sortVenues = function(dir) {
     @endif
     @endif
 
+    <div style="display:flex;justify-content:center;margin-top:20px;">
+        <button wire:click="skipVenue" wire:loading.attr="disabled" wire:target="skipVenue"
+                style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:8px 16px;text-decoration:underline;">
+            Skip this step
+        </button>
+    </div>
+
 </div>
 
 @endif
@@ -1697,6 +1711,13 @@ window.sortVenues = function(dir) {
         @endforeach
     </div>
     @endif
+
+    <div style="display:flex;justify-content:center;margin-top:20px;">
+        <button wire:click="skipAttraction" wire:loading.attr="disabled" wire:target="skipAttraction"
+                style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:8px 16px;text-decoration:underline;">
+            Skip this step
+        </button>
+    </div>
 
 </div>
 @script
