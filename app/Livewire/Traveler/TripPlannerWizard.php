@@ -958,17 +958,17 @@ class TripPlannerWizard extends Component
             $fromCode  = $this->resolveCode($this->manualTo);
             $toCode    = $this->resolveCode($this->mcTo);
             try {
-                $mcReturn = $this->mcEndDate ?: '';
-                $data = $serp->searchFlightsRaw($fromCode, $toCode, $this->mcStartDate, $mcReturn);
+                // Each multi-city leg is a one-way flight, not a round trip
+                $data = $serp->searchFlightsRaw($fromCode, $toCode, $this->mcStartDate);
                 if (empty($data)) {
                     $serper = new SerperService();
-                    $data = $serper->searchFlights($fromCode, $toCode, $this->mcStartDate, $mcReturn);
+                    $data = $serper->searchFlights($fromCode, $toCode, $this->mcStartDate);
                 }
                 $this->mcFlightResults = $data ?? [];
             } catch (\Throwable $e) {
                 try {
                     $serper = new SerperService();
-                    $this->mcFlightResults = $serper->searchFlights($fromCode, $toCode, $this->mcStartDate, $this->mcEndDate ?: '') ?? [];
+                    $this->mcFlightResults = $serper->searchFlights($fromCode, $toCode, $this->mcStartDate) ?? [];
                 } catch (\Throwable $e2) {
                     $this->mcFlightResults = [];
                 }
@@ -1255,8 +1255,17 @@ class TripPlannerWizard extends Component
             $this->mcAttractionResults = [];
             try {
                 $this->mcAttractionResults = $serp->searchAttractionsRaw($this->mcTo, $this->attractionType) ?? [];
+                if (empty($this->mcAttractionResults)) {
+                    $serper = new SerperService();
+                    $this->mcAttractionResults = $serper->searchAttractions($this->mcTo) ?? [];
+                }
             } catch (\Throwable $e) {
-                $this->mcAttractionResults = [];
+                try {
+                    $serper = new SerperService();
+                    $this->mcAttractionResults = $serper->searchAttractions($this->mcTo) ?? [];
+                } catch (\Throwable $e2) {
+                    $this->mcAttractionResults = [];
+                }
             }
             $this->mcAttractionLoading = false;
             return;

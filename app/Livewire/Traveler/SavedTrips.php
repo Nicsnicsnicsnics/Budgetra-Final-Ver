@@ -25,7 +25,7 @@ class SavedTrips extends Component
 
     public function showDetail(int $id): void
     {
-        $this->detailTripId = $id;
+        $this->detailTripId = $this->detailTripId === $id ? null : $id;
     }
 
     public function closeDetail(): void

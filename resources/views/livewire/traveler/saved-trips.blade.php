@@ -1,5 +1,10 @@
 <div style="display:flex;flex-direction:column;flex:1;">
 
+<style>
+.st-panel-pop{animation:stPanelPop .22s ease;transform-origin:left center;}
+@keyframes stPanelPop{from{opacity:0;transform:scaleX(.9);}to{opacity:1;transform:scaleX(1);}}
+</style>
+
     @if ($trips->isEmpty())
     <div class="empty-state-center" style="min-height:80vh;">
         <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
@@ -20,8 +25,9 @@
         @endif
     </div>
     @else
-    <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">
+    <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;align-items:flex-start;">
         @foreach ($trips as $trip)
+        <div style="display:flex;align-items:stretch;">
         @php
             $dest     = $trip->trip_name ?? $trip->destination ?? 'Unknown';
             $fromCode = $trip->origin_code ?? 'MNL';
@@ -39,9 +45,9 @@
             };
             $spendColor = $trip->spend_pct >= 80 ? '#DC2626' : ($trip->spend_pct >= 50 ? '#D97706' : '#22C55E');
         @endphp
-        <div wire:key="trip-{{ $trip->id }}" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;width:360px;flex-shrink:0;">
+        <div wire:key="trip-{{ $trip->id }}" style="background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;width:420px;flex-shrink:0;">
             {{-- Cover image --}}
-            <div style="position:relative;height:160px;background:linear-gradient(135deg,#934B19,#C8874A);overflow:hidden;">
+            <div style="position:relative;height:200px;background:linear-gradient(135deg,#934B19,#C8874A);overflow:hidden;">
                 @if($cover)
                 <img src="{{ $cover }}" alt="{{ $dest }}"
                      style="width:100%;height:100%;object-fit:cover;display:block;"
@@ -49,20 +55,20 @@
                 @endif
                 <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.15),rgba(0,0,0,0.55));"></div>
                 {{-- Stacked badges top-left --}}
-                <div style="position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:5px;">
+                <div style="position:absolute;top:14px;left:14px;display:flex;flex-direction:column;gap:6px;">
                     @php $typeColor = $tType === 'GROUP' ? '#A855F7' : '#14B8A6'; @endphp
-                    <span style="background:{{ $typeColor }};color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;display:inline-block;text-align:center;">{{ $tType }}</span>
+                    <span style="background:{{ $typeColor }};color:#fff;font-size:11px;font-weight:700;letter-spacing:0.5px;padding:4px 12px;border-radius:20px;display:inline-block;text-align:center;">{{ $tType }}</span>
                     @php $statusLabel = match($trip->status) { 'active' => 'Ongoing', 'upcoming' => 'Upcoming', default => ucfirst($trip->status) }; @endphp
-                    <span style="background:{{ $statusColor }};color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;display:inline-block;">{{ $statusLabel }}</span>
+                    <span style="background:{{ $statusColor }};color:#fff;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;text-transform:uppercase;display:inline-block;">{{ $statusLabel }}</span>
                 </div>
                 {{-- Kebab menu top-right --}}
-                <div x-data="{ open: false }" style="position:absolute;top:10px;right:10px;">
+                <div x-data="{ open: false }" style="position:absolute;top:12px;right:12px;">
                     <button @click.stop="open = !open" @click.away="open = false"
-                            style="width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,0.35);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;backdrop-filter:blur(4px);">
-                        <i class="fa-solid fa-ellipsis-vertical" style="font-size:13px;"></i>
+                            style="width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,0.35);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;backdrop-filter:blur(4px);">
+                        <i class="fa-solid fa-ellipsis-vertical" style="font-size:14px;"></i>
                     </button>
                     <div x-show="open" x-transition
-                         style="position:absolute;top:36px;right:0;background:#fff;border:1px solid #e8ddd4;border-radius:10px;box-shadow:0 8px 24px rgba(45,27,20,.15);min-width:160px;z-index:100;overflow:hidden;">
+                         style="position:absolute;top:40px;right:0;background:#fff;border:1px solid #e8ddd4;border-radius:10px;box-shadow:0 8px 24px rgba(45,27,20,.15);min-width:160px;z-index:100;overflow:hidden;">
                         <button wire:click="openEditName({{ $trip->id }})" @click="open=false"
                                 style="width:100%;background:none;border:none;padding:11px 16px;font-size:13px;font-weight:500;color:#1c1c19;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;border-bottom:1px solid #f5f0eb;font-family:'Hanken Grotesk',sans-serif;"
                                 onmouseenter="this.style.background='#f5f0eb'" onmouseleave="this.style.background='none'">
@@ -75,105 +81,85 @@
                         </button>
                     </div>
                 </div>
-                <div style="position:absolute;bottom:10px;left:14px;right:14px;">
-                    <div style="font-size:16px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:6px;">
+                <div style="position:absolute;bottom:12px;left:16px;right:16px;">
+                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:8px;">
                         {{ $dest }}
                     </div>
-                    <div style="display:flex;flex-direction:column;gap:4px;">
+                    <div style="display:flex;flex-direction:column;gap:5px;">
                         @if($fromCode)
-                        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.9);">
-                            <i class="fa-solid fa-plane" style="font-size:10px;color:#F5C97A;"></i>
+                        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,0.9);">
+                            <i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>
                             <span>{{ $fromCode }} to {{ $toCode }}</span>
                         </div>
                         @endif
-                        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.9);">
-                            <i class="fa-regular fa-calendar-days" style="font-size:10px;color:#F5C97A;"></i>
+                        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,0.9);">
+                            <i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>
                             <span>{{ $dateFrom }} - {{ $dateTo }}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div style="padding:16px;">
-                <div style="margin-bottom:14px;">
-                    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;">
-                        <div style="font-size:10px;font-weight:600;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.5px;">Spent</div>
-                        <div style="font-size:11px;font-weight:700;color:{{ $spendColor }};">{{ $trip->spend_pct }}%</div>
+            <div style="padding:20px;">
+                <div style="margin-bottom:16px;">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px;">
+                        <div style="font-size:11px;font-weight:600;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.5px;">Spent</div>
+                        <div style="font-size:12px;font-weight:700;color:{{ $spendColor }};">{{ $trip->spend_pct }}%</div>
                     </div>
-                    <div style="font-size:20px;font-weight:700;color:#C8874A;">
+                    <div style="font-size:23px;font-weight:700;color:#C8874A;">
                         PHP {{ number_format($trip->actual_spent, 0) }}
-                        <span style="font-size:12px;font-weight:500;color:#9B8EA0;">/ {{ number_format($displayCost, 0) }}</span>
+                        <span style="font-size:13px;font-weight:500;color:#9B8EA0;">/ {{ number_format($displayCost, 0) }}</span>
                     </div>
-                    <div style="height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;margin-top:8px;">
+                    <div style="height:7px;background:#F3F4F6;border-radius:99px;overflow:hidden;margin-top:9px;">
                         <div style="height:100%;border-radius:99px;background:{{ $spendColor }};width:{{ $trip->spend_pct }}%;transition:width .4s ease;"></div>
                     </div>
                 </div>
 
-                <div style="display:flex;gap:8px;">
+                <div style="display:flex;gap:10px;">
                     <button wire:click="showDetail({{ $trip->id }})"
-                            style="flex:1;background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;">
-                        <i class="fa-regular fa-eye" style="font-size:12px;"></i> View Details
+                            style="flex:1;background:{{ $detailTripId === $trip->id ? '#6A3500' : '#934B19' }};color:#fff;border:none;border-radius:10px;padding:12px 8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;">
+                        <i class="fa-regular fa-eye" style="font-size:13px;"></i> {{ $detailTripId === $trip->id ? 'Hide Details' : 'View Details' }}
                     </button>
                     <a href="{{ route('expenses.index') }}?trip_id={{ $trip->id }}"
-                       style="flex:1;background:transparent;color:#934B19;border:1.5px solid #934B19;border-radius:10px;padding:10px 6px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;">
-                        <i class="fa-solid fa-receipt" style="font-size:10px;"></i>Add Expense
+                       style="flex:1;background:transparent;color:#934B19;border:1.5px solid #934B19;border-radius:10px;padding:12px 6px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;">
+                        <i class="fa-solid fa-receipt" style="font-size:11px;"></i>Add Expense
                     </a>
                 </div>
             </div>
         </div>
-        @endforeach
-    </div>
-    @endif
 
-    {{-- Trip Summary Modal --}}
-    @if ($detailTrip)
-    @php
-        $dt      = $detailTrip;
-        $dtDays  = $dt->days;
-        $dtDest  = $dt->trip_name ?? $dt->destination;
-        $dtType  = ucfirst(strtolower($dt->travel_type ?? 'Solo'));
-        $dtFrom  = $dt->start_date->format('M j');
-        $dtTo    = $dt->end_date->format('M j, Y');
-        $dtTotal = $dt->total_cost ?? $dt->budget_limit ?? 0;
-        $sd      = $dt->summary_data ?? [];
-        $dtSpendColor = $dt->spend_pct >= 80 ? '#DC2626' : ($dt->spend_pct >= 50 ? '#D97706' : '#22C55E');
+        @if ($detailTripId === $trip->id)
+        @php
+            $dt      = $trip;
+            $dtDest  = $dt->trip_name ?? $dt->destination;
+            $dtTotal = $dt->total_cost ?? $dt->budget_limit ?? 0;
+            $sd      = $dt->summary_data ?? [];
+            $dtSpendColor = $dt->spend_pct >= 80 ? '#DC2626' : ($dt->spend_pct >= 50 ? '#D97706' : '#22C55E');
+            $rows = [
+                'transportation' => ['label' => 'Transportation',  'icon' => 'fa-solid fa-plane'],
+                'accommodation'  => ['label' => 'Accommodation',   'icon' => 'fa-solid fa-bed'],
+                'food'           => ['label' => 'Food & Dining',   'icon' => 'fa-solid fa-utensils'],
+                'attractions'    => ['label' => 'Attractions',     'icon' => 'fa-solid fa-landmark'],
+                'emergency_fund' => ['label' => 'Emergency Fund',  'icon' => 'fa-solid fa-shield-halved'],
+            ];
+        @endphp
+        <div class="st-panel-pop" wire:key="detail-{{ $trip->id }}"
+             style="width:320px;flex-shrink:0;margin-left:16px;background:#FDFAF7;border-radius:18px;box-shadow:0 2px 12px rgba(0,0,0,0.08);overflow-y:auto;max-height:{{ 200 + 20 + 62 + 44 + 42 }}px;">
 
-        $rows = [
-            'transportation' => ['label' => 'Transportation',  'icon' => 'fa-solid fa-plane'],
-            'accommodation'  => ['label' => 'Accommodation',   'icon' => 'fa-solid fa-bed'],
-            'food'           => ['label' => 'Food & Dining',   'icon' => 'fa-solid fa-utensils'],
-            'attractions'    => ['label' => 'Attractions',     'icon' => 'fa-solid fa-landmark'],
-            'emergency_fund' => ['label' => 'Emergency Fund',  'icon' => 'fa-solid fa-shield-halved'],
-        ];
-    @endphp
-    <div wire:click.self="closeDetail"
-         style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:#FDFAF7;border-radius:20px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
-
-            {{-- Modal header --}}
-            <div style="padding:20px 22px 16px;">
-                <span style="font-size:16px;font-weight:700;color:#1A0A00;">Trip Summary</span>
-            </div>
-
-            {{-- Trip title row --}}
-            <div style="padding:0 22px 18px;display:flex;align-items:center;gap:12px;">
-                <div style="width:42px;height:42px;border-radius:12px;background:#FFF3E0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fa-solid fa-plane-departure" style="color:#C8874A;font-size:18px;"></i>
-                </div>
-                <div>
-                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                        <span style="font-size:15px;font-weight:700;color:#1A0A00;">{{ $dtDest }}</span>
-                    </div>
-                </div>
+            <div style="padding:18px 20px 4px;display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:15px;font-weight:700;color:#1A0A00;">Trip Summary</span>
+                <button wire:click="closeDetail" style="background:none;border:none;cursor:pointer;color:#9B8EA0;font-size:14px;padding:4px;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
 
             {{-- Summary rows --}}
-            <div style="margin:0 16px 16px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #F0E8DF;">
-                <div style="padding:12px 16px 6px;font-size:11px;font-weight:700;color:#9B8EA0;letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid #F5EFE8;">Summary</div>
+            <div style="margin:12px 16px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #F0E8DF;">
+                <div style="padding:10px 14px 6px;font-size:10px;font-weight:700;color:#9B8EA0;letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid #F5EFE8;">Summary</div>
                 @if(empty($sd))
-                <div style="padding:20px 16px;text-align:center;">
-                    <i class="fa-solid fa-circle-info" style="font-size:22px;color:#D4C5B5;margin-bottom:8px;display:block;"></i>
-                    <div style="font-size:13px;color:#9B8EA0;">Detailed breakdown not available for this trip.</div>
+                <div style="padding:20px 14px;text-align:center;">
+                    <i class="fa-solid fa-circle-info" style="font-size:20px;color:#D4C5B5;margin-bottom:8px;display:block;"></i>
+                    <div style="font-size:12px;color:#9B8EA0;">Detailed breakdown not available for this trip.</div>
                 </div>
                 @else
                 @foreach ($rows as $key => $meta)
@@ -183,14 +169,14 @@
                     $rowDetail = $rowData['detail'] ?? null;
                     if (!$rowCost && !$rowDetail) continue;
                 @endphp
-                <div style="padding:14px 16px;border-bottom:1px solid #F5EFE8;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+                <div style="padding:12px 14px;border-bottom:1px solid #F5EFE8;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:13px;font-weight:600;color:#1A0A00;margin-bottom:2px;">{{ $meta['label'] }}</div>
+                        <div style="font-size:12px;font-weight:600;color:#1A0A00;margin-bottom:2px;">{{ $meta['label'] }}</div>
                         @if($rowDetail)
-                        <div style="font-size:11px;color:#9B8EA0;line-height:1.4;">{{ $rowDetail }}</div>
+                        <div style="font-size:10px;color:#9B8EA0;line-height:1.4;">{{ $rowDetail }}</div>
                         @endif
                     </div>
-                    <div style="font-size:13px;font-weight:600;color:#1A0A00;white-space:nowrap;flex-shrink:0;">
+                    <div style="font-size:12px;font-weight:600;color:#1A0A00;white-space:nowrap;flex-shrink:0;">
                         PHP {{ number_format($rowCost, 0) }}
                     </div>
                 </div>
@@ -199,32 +185,29 @@
             </div>
 
             {{-- Actual spent vs. planned total --}}
-            <div style="margin:0 22px 18px;padding:14px 16px;background:#fff;border-radius:14px;border:1px solid #F0E8DF;">
+            <div style="margin:0 16px 12px;padding:12px 14px;background:#fff;border-radius:14px;border:1px solid #F0E8DF;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">
-                    <span style="font-size:11px;font-weight:700;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.6px;">Actually Spent</span>
-                    <span style="font-size:12px;font-weight:700;color:{{ $dtSpendColor }};">{{ $dt->spend_pct }}%</span>
+                    <span style="font-size:10px;font-weight:700;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.6px;">Actually Spent</span>
+                    <span style="font-size:11px;font-weight:700;color:{{ $dtSpendColor }};">{{ $dt->spend_pct }}%</span>
                 </div>
-                <div style="font-size:18px;font-weight:800;color:#1A0A00;margin-bottom:8px;">
+                <div style="font-size:16px;font-weight:800;color:#1A0A00;margin-bottom:8px;">
                     PHP {{ number_format($dt->actual_spent, 0) }}
-                    <span style="font-size:12px;font-weight:500;color:#9B8EA0;"> of PHP {{ number_format($dtTotal, 0) }} budgeted</span>
+                    <span style="font-size:11px;font-weight:500;color:#9B8EA0;"> of PHP {{ number_format($dtTotal, 0) }}</span>
                 </div>
                 <div style="height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
                     <div style="height:100%;border-radius:99px;background:{{ $dtSpendColor }};width:{{ $dt->spend_pct }}%;"></div>
                 </div>
             </div>
 
-            {{-- Total + Close --}}
-            <div style="padding:0 22px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                <div>
-                    <div style="font-size:11px;font-weight:700;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;">Total Cost</div>
-                    <div style="font-size:26px;font-weight:800;color:#C8874A;">PHP {{ number_format($dtTotal, 0) }}</div>
-                </div>
-                <button wire:click="closeDetail"
-                        style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">
-                    Close
-                </button>
+            {{-- Total --}}
+            <div style="padding:0 16px 18px;">
+                <div style="font-size:10px;font-weight:700;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;">Total Cost</div>
+                <div style="font-size:22px;font-weight:800;color:#C8874A;">PHP {{ number_format($dtTotal, 0) }}</div>
             </div>
         </div>
+        @endif
+        </div>
+        @endforeach
     </div>
     @endif
 
