@@ -57,7 +57,7 @@ class ProfileBuilder extends Component
         'Relaxation'      => 'relaxation.jpg',
     ];
 
-    public const SUGGESTED_CITIES = ['City of Manila', 'Cebu City', 'Davao City'];
+    public const SUGGESTED_CITIES = ['Manila', 'Cebu City', 'Davao City'];
 
     public const LOCAL_DESTINATIONS = [
         'MNL' => 'Manila',
@@ -75,17 +75,16 @@ class ProfileBuilder extends Component
     ];
 
     public const TRAVEL_STYLES = [
-        'Solo'  => ['icon' => 'fa-user', 'desc' => 'Independent exploration at your own pace.', 'image' => 'solo.jpg'],
-        'Group' => ['icon' => 'fa-user-group',      'desc' => 'Traveling with companions and splitting costs.', 'image' => 'group.jpg'],
+        'Solo'  => ['icon' => 'fa-user', 'desc' => 'Travel at your own pace with a budget built for one.', 'image' => 'solo.jpg'],
+        'Group' => ['icon' => 'fa-user-group',      'desc' => 'Divide expenses and explore together, no one overpays.', 'image' => 'group.jpg'],
     ];
 
     public const TRANSPORTATION_OPTIONS = [
-        'Flight'       => 'fa-plane',
-        'Car/Road Trip'=> 'fa-car',
-        'Bus'          => 'fa-bus',
-        'Train'        => 'fa-train',
-        'Ferry/Boat'   => 'fa-ship',
-        'Motorcycle'   => 'fa-motorcycle',
+        'Flight' => 'fa-plane',
+    ];
+
+    public const TRANSPORTATION_IMAGES = [
+        'Flight' => 'flights.jpg',
     ];
 
     public const ACCOMMODATION_OPTIONS = [
@@ -93,6 +92,13 @@ class ProfileBuilder extends Component
         'Apartment' => 'fa-building',
         'Inn'       => 'fa-house-chimney',
         'Resort'    => 'fa-umbrella-beach',
+    ];
+
+    public const ACCOMMODATION_IMAGES = [
+        'Hotel'     => 'hotel.jpg',
+        'Apartment' => 'apartment.png',
+        'Inn'       => 'inn.jpg',
+        'Resort'    => 'resort.jpg',
     ];
 
     public function mount(): void
@@ -249,7 +255,9 @@ class ProfileBuilder extends Component
             'localDestinations' => self::LOCAL_DESTINATIONS,
             'travelStyles' => self::TRAVEL_STYLES,
             'transportationOptions' => self::TRANSPORTATION_OPTIONS,
+            'transportationImages'  => self::TRANSPORTATION_IMAGES,
             'accommodationOptions'  => self::ACCOMMODATION_OPTIONS,
+            'accommodationImages'   => self::ACCOMMODATION_IMAGES,
         ])->layout('layouts.app');
     }
 }

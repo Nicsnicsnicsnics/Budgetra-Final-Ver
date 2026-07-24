@@ -2,9 +2,9 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 @endpush
 
-<div style="min-height:100vh;background:#F5F0EB;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;">
+<div style="min-height:100vh;background:#F5F0EB;display:flex;flex-direction:column;align-items:center;padding:24px;">
 
-<div style="display:flex;align-items:center;width:100%;max-width:560px;margin:0 0 32px;">
+<div style="display:flex;align-items:center;width:100%;max-width:560px;margin:8px 0 36px;padding:0 24px;box-sizing:border-box;">
     @for ($i = 1; $i <= 6; $i++)
         @php $state = $step > $i ? 'done' : ($step === $i ? 'current' : 'upcoming'); @endphp
         <div style="width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
@@ -91,10 +91,14 @@
 
 /* Review */
 .rv-card{border:1.5px solid #E8E0D8;border-radius:14px;padding:18px 20px;margin-bottom:14px;background:#fff;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
+.rv-card-sm{border:1.5px solid #E8E0D8;border-radius:14px;padding:14px 16px;background:#fff;}
+.rv-icon-sm{width:26px;height:26px;border-radius:8px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#934B19;font-size:11px;}
 .rv-edit{font-size:12px;font-weight:700;color:#934B19;cursor:pointer;white-space:nowrap;flex-shrink:0;text-decoration:none;}
 .rv-edit:hover{text-decoration:underline;}
 [x-cloak]{display:none!important;}
 </style>
+
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;width:100%;">
 
 {{-- ── STEP 1: Home Location ── --}}
 @if($step === 1)
@@ -194,6 +198,17 @@
             </div>
         </div>
         @error('homeCity') <p style="color:#e74c3c;font-size:12px;margin-top:6px;">{{ $message }}</p> @enderror
+
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px;">
+            <span style="font-size:13px;color:#9B8E85;">Suggested cities:</span>
+            @foreach($suggested as $city)
+            <span x-on:click="selectCity('{{ addslashes($city) }}', '{{ addslashes(array_search($city, $localDestinations) ?: '') }}')"
+                  style="display:inline-flex;align-items:center;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid #E8E0D8;background:#fff;color:#934B19;cursor:pointer;transition:all .15s;"
+                  onmouseenter="this.style.borderColor='#934B19'" onmouseleave="this.style.borderColor='#E8E0D8'">
+                {{ $city }}
+            </span>
+            @endforeach
+        </div>
     </div>
 
     <div style="flex:1 1 480px;min-width:340px;">
@@ -232,18 +247,109 @@
     <p style="font-size:14px;color:#9B8E85;margin-top:10px;">This helps us calculate more accurate estimates for your trips.</p>
 </div>
 
-{{-- ── STEP 3: Travel Style ── --}}
-@elseif($step === 3)
-<div wire:key="step-3" style="width:100%;padding:0 24px;max-width:1100px;">
+{{-- ── STEP 6: Review ── --}}
+@elseif($step === 6)
+<div wire:key="step-6" style="width:100%;max-width:640px;padding:0 24px;">
+    <h1 style="font-size:18px;font-weight:800;color:#1A1A1A;margin:0 0 4px;">Review your profile</h1>
+    <p style="font-size:13px;color:#9B8E85;margin:0 0 20px;">Verify your travel preferences before we finalize your workspace. These settings will help us tailor your budgeting tools.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        {{-- Starting Point --}}
+        <div class="rv-card-sm">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="rv-icon-sm"><i class="fa-solid fa-location-dot"></i></div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9B8E85;">Starting Point</div>
+                </div>
+                <span class="rv-edit" wire:click="$set('step', 1)">Edit</span>
+            </div>
+            <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $homeCity ?: '—' }}</div>
+            <div style="font-size:11px;color:#9B8E85;">Luzon, Philippines</div>
+        </div>
+
+        {{-- Budget --}}
+        <div class="rv-card-sm">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="rv-icon-sm"><i class="fa-solid fa-wallet"></i></div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9B8E85;">Budget Preference</div>
+                </div>
+                <span class="rv-edit" wire:click="$set('step', 2)">Edit</span>
+            </div>
+            <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $dailyBudget ? '₱'.number_format($dailyBudget) : '—' }}</div>
+            <div style="height:4px;border-radius:2px;background:#F5F0EB;margin-top:8px;overflow:hidden;">
+                <div style="height:100%;width:{{ $dailyBudget ? min(100, round($dailyBudget / 3000 * 100)) : 0 }}%;background:#934B19;"></div>
+            </div>
+        </div>
+
+        {{-- Travel Style --}}
+        <div class="rv-card-sm">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="rv-icon-sm"><i class="fa-solid {{ $travelStyles[$travelStyle]['icon'] ?? 'fa-user-group' }}"></i></div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9B8E85;">Travel Style</div>
+                </div>
+                <span class="rv-edit" wire:click="$set('step', 3)">Edit</span>
+            </div>
+            <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $travelStyle ?: '—' }}</div>
+            <div style="font-size:11px;color:#9B8E85;">Cost-splitting & accommodation fit</div>
+        </div>
+
+        {{-- Transportation & Accommodation --}}
+        <div class="rv-card-sm">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="rv-icon-sm"><i class="fa-solid fa-route"></i></div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9B8E85;">Transport & Stay</div>
+                </div>
+                <span class="rv-edit" wire:click="$set('step', 5)">Edit</span>
+            </div>
+            <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $preferredTransportation ?: '—' }} / {{ $preferredAccommodation ?: '—' }}</div>
+            <div style="font-size:11px;color:#9B8E85;">How you'll travel & stay</div>
+        </div>
+    </div>
+
+    {{-- Travel Interests --}}
+    <div class="rv-card-sm" style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rv-icon-sm"><i class="fa-solid fa-heart"></i></div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9B8E85;">Travel Interests</div>
+            </div>
+            <span class="rv-edit" wire:click="$set('step', 4)">Edit</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            @forelse($selectedInterests as $interest)
+            @php
+                $subsForInterest = array_values(array_intersect($interests[$interest] ?? [], $selectedSubInterests));
+                $tagLabel = $interest . ($subsForInterest ? ' • ' . implode(', ', $subsForInterest) : '');
+            @endphp
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#F5F0EB;color:#1A1A1A;font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;">
+                <i class="fa-solid {{ $icons[$interest] ?? 'fa-star' }}" style="color:#934B19;font-size:11px;"></i>
+                {{ $tagLabel }}
+            </span>
+            @empty
+            <span style="font-size:13px;color:#9B8E85;">No interests selected.</span>
+            @endforelse
+        </div>
+    </div>
+
+</div>
+@endif
+
+{{-- ── STEP 3: Travel Style (always rendered, CSS-toggled — required so wire:ignore hydrates correctly on first arrival) ── --}}
+<div wire:key="step-3" style="width:100%;padding:0 24px;max-width:1100px;{{ $step === 3 ? '' : 'display:none;' }}">
     <h1 style="font-size:22px;font-weight:800;color:#1A1A1A;text-align:center;margin:0 0 8px;">Who are you traveling with?</h1>
     <p style="font-size:13px;color:#9B8E85;text-align:center;margin:0 0 28px;">This helps us customize budget suggestions, accommodation types, and cost-splitting calculations for your upcoming journeys.</p>
 
     <div class="int-scroll" x-data="{ style: '{{ $travelStyle }}' }" style="display:flex;gap:20px;justify-content:center;align-items:stretch;overflow-x:auto;padding-bottom:6px;">
         @foreach($travelStyles as $name => $meta)
-        <div class="int-card-img {{ $travelStyle === $name ? 'active' : '' }}"
+        <div class="int-card-img"
+             :class="style === '{{ $name }}' ? 'active' : ''"
              style="flex:0 0 340px;height:420px;"
              x-on:click="style = (style === '{{ $name }}' ? '' : '{{ $name }}')"
-             wire:click="selectTravelStyle('{{ $name }}')">
+             wire:click="selectTravelStyle('{{ $name }}')"
+             wire:ignore>
             <div class="int-card-img-bg" style="background-image:url('{{ asset('stockimages/' . $meta['image']) }}');">
                 <div class="int-icon-img" style="width:72px;height:72px;">
                     <i class="fa-solid {{ $meta['icon'] }}" style="font-size:30px;color:#934B19;"></i>
@@ -302,146 +408,56 @@
     </div>
 </div>
 
-{{-- ── STEP 5: Transportation & Accommodation ── --}}
-@elseif($step === 5)
+{{-- ── STEP 5: Transportation & Accommodation (always rendered, CSS-toggled — required so wire:ignore hydrates correctly on first arrival) ── --}}
 <div wire:key="step-5"
      x-data="{
         transport: '{{ $preferredTransportation }}',
         stay: '{{ $preferredAccommodation }}'
      }"
-     style="width:100%;padding:0 24px;">
+     style="width:100%;padding:0 24px;{{ $step === 5 ? '' : 'display:none;' }}">
     <h1 style="font-size:22px;font-weight:800;color:#1A1A1A;text-align:center;margin:0 0 8px;">How do you like to get around and stay?</h1>
     <p style="font-size:13px;color:#9B8E85;text-align:center;margin:0 0 28px;">Select your preferred transportation and accommodation types.</p>
 
     <div class="pb-label" style="text-align:center;">Preferred Transportation</div>
-    <div class="int-scroll" style="display:flex;gap:16px;align-items:stretch;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;margin-bottom:24px;">
+    <div class="int-scroll" style="display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;margin-bottom:24px;">
         @foreach($transportationOptions as $name => $icon)
-        <div class="int-card {{ $preferredTransportation === $name ? 'active' : '' }}"
-             style="flex:0 0 190px;height:170px;"
+        <div class="int-card-img"
+             :class="transport === '{{ $name }}' ? 'active' : ''"
+             style="flex:0 0 220px;height:220px;"
              x-on:click="transport = (transport === '{{ $name }}' ? '' : '{{ $name }}')"
-             wire:click="selectTransportation('{{ $name }}')">
-            <div class="int-icon" style="width:56px;height:56px;">
-                <i class="fa-solid {{ $icon }}" style="font-size:24px;color:#934B19;"></i>
+             wire:click="selectTransportation('{{ $name }}')"
+             wire:ignore>
+            <div class="int-card-img-bg" style="background-image:url('{{ asset('stockimages/' . ($transportationImages[$name] ?? '')) }}');">
+                <div class="int-icon-img" style="width:56px;height:56px;">
+                    <i class="fa-solid {{ $icon }}" style="font-size:24px;color:#934B19;"></i>
+                </div>
+                <div class="int-label-img" style="font-size:16px;">{{ $name }}</div>
             </div>
-            <div class="int-label" style="font-size:15px;">{{ $name }}</div>
+            <div class="int-check"><i class="fa-solid fa-check"></i></div>
         </div>
         @endforeach
     </div>
 
     <div class="pb-label" style="text-align:center;">Preferred Accommodation</div>
-    <div class="int-scroll" style="display:flex;gap:16px;align-items:stretch;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;">
+    <div class="int-scroll" style="display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;">
         @foreach($accommodationOptions as $name => $icon)
-        <div class="int-card {{ $preferredAccommodation === $name ? 'active' : '' }}"
-             style="flex:0 0 190px;height:170px;"
+        <div class="int-card-img"
+             :class="stay === '{{ $name }}' ? 'active' : ''"
+             style="flex:0 0 220px;height:220px;"
              x-on:click="stay = (stay === '{{ $name }}' ? '' : '{{ $name }}')"
-             wire:click="selectAccommodation('{{ $name }}')">
-            <div class="int-icon" style="width:56px;height:56px;">
-                <i class="fa-solid {{ $icon }}" style="font-size:24px;color:#934B19;"></i>
+             wire:click="selectAccommodation('{{ $name }}')"
+             wire:ignore>
+            <div class="int-card-img-bg" style="background-image:url('{{ asset('stockimages/' . ($accommodationImages[$name] ?? '')) }}');">
+                <div class="int-icon-img" style="width:56px;height:56px;">
+                    <i class="fa-solid {{ $icon }}" style="font-size:24px;color:#934B19;"></i>
+                </div>
+                <div class="int-label-img" style="font-size:16px;">{{ $name }}</div>
             </div>
-            <div class="int-label" style="font-size:15px;">{{ $name }}</div>
+            <div class="int-check"><i class="fa-solid fa-check"></i></div>
         </div>
         @endforeach
     </div>
 </div>
-
-{{-- ── STEP 6: Review ── --}}
-@elseif($step === 6)
-<div wire:key="step-6" style="width:100%;max-width:520px;padding:0 24px;">
-    <h1 class="pb-title" style="margin-bottom:4px;">Review your profile</h1>
-    <p class="pb-sub">Verify your travel preferences before we finalize your workspace. These settings will help us tailor your budgeting tools.</p>
-
-    {{-- Starting Point --}}
-    <div class="rv-card">
-        <div style="display:flex;align-items:flex-start;gap:14px;flex:1;min-width:0;">
-            <div style="width:36px;height:36px;border-radius:10px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fa-solid fa-location-dot" style="color:#934B19;font-size:14px;"></i>
-            </div>
-            <div>
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#9B8E85;margin-bottom:4px;">Starting Point</div>
-                <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $homeCity ?: '—' }}</div>
-                <div style="font-size:12px;color:#9B8E85;">Luzon, Philippines</div>
-            </div>
-        </div>
-        <span class="rv-edit" wire:click="$set('step', 1)">Edit</span>
-    </div>
-
-    {{-- Budget --}}
-    <div class="rv-card">
-        <div style="display:flex;align-items:flex-start;gap:14px;flex:1;min-width:0;">
-            <div style="width:36px;height:36px;border-radius:10px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fa-solid fa-wallet" style="color:#934B19;font-size:14px;"></i>
-            </div>
-            <div>
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#9B8E85;margin-bottom:4px;">Budget Preference</div>
-                <div style="font-size:15px;font-weight:700;color:#1A1A1A;">
-                    @if($dailyBudget)
-                        ₱{{ number_format($dailyBudget) }}
-                    @else
-                        —
-                    @endif
-                </div>
-                <div style="font-size:12px;color:#9B8E85;">Recommended baseline for your next trip</div>
-            </div>
-        </div>
-        <span class="rv-edit" wire:click="$set('step', 2)">Edit</span>
-    </div>
-
-    {{-- Travel Style --}}
-    <div class="rv-card">
-        <div style="display:flex;align-items:flex-start;gap:14px;flex:1;min-width:0;">
-            <div style="width:36px;height:36px;border-radius:10px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fa-solid {{ $travelStyles[$travelStyle]['icon'] ?? 'fa-user-group' }}" style="color:#934B19;font-size:14px;"></i>
-            </div>
-            <div>
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#9B8E85;margin-bottom:4px;">Travel Style</div>
-                <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $travelStyle ?: '—' }}</div>
-                <div style="font-size:12px;color:#9B8E85;">Used for cost-splitting and accommodation suggestions</div>
-            </div>
-        </div>
-        <span class="rv-edit" wire:click="$set('step', 3)">Edit</span>
-    </div>
-
-    {{-- Travel Interests --}}
-    <div class="rv-card" style="flex-direction:column;align-items:flex-start;">
-        <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:12px;">
-            <div style="display:flex;align-items:center;gap:14px;">
-                <div style="width:36px;height:36px;border-radius:10px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fa-solid fa-heart" style="color:#934B19;font-size:14px;"></i>
-                </div>
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#9B8E85;">Travel Interests</div>
-            </div>
-            <span class="rv-edit" wire:click="$set('step', 4)">Edit</span>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-            @forelse(array_merge($selectedInterests, $selectedSubInterests) as $tag)
-            <span style="background:#F5F0EB;color:#934B19;font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;">{{ $tag }}</span>
-            @empty
-            <span style="font-size:13px;color:#9B8E85;">No interests selected.</span>
-            @endforelse
-        </div>
-    </div>
-
-    {{-- Transportation & Accommodation --}}
-    <div class="rv-card">
-        <div style="display:flex;align-items:flex-start;gap:14px;flex:1;min-width:0;">
-            <div style="width:36px;height:36px;border-radius:10px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fa-solid fa-route" style="color:#934B19;font-size:14px;"></i>
-            </div>
-            <div>
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#9B8E85;margin-bottom:4px;">Transportation & Stay</div>
-                <div style="font-size:15px;font-weight:700;color:#1A1A1A;">{{ $preferredTransportation ?: '—' }} / {{ $preferredAccommodation ?: '—' }}</div>
-                <div style="font-size:12px;color:#9B8E85;">How you'll travel and where you'll stay</div>
-            </div>
-        </div>
-        <span class="rv-edit" wire:click="$set('step', 5)">Edit</span>
-    </div>
-
-    <p style="font-size:13px;color:#9B8E85;text-align:center;margin:16px 0 0;">
-        <i class="fa-solid fa-shield-halved" style="margin-right:6px;color:#934B19;"></i>
-        Everything looks good! Once confirmed, we'll generate your first budget draft based on these choices.
-    </p>
-</div>
-@endif
 
 {{-- ── STEP 4: Interests (always rendered, CSS-toggled — required so wire:ignore hydrates correctly on first arrival) ── --}}
 <div wire:key="step-4" style="width:100%;padding:0 24px;{{ $step === 4 ? '' : 'display:none;' }}">
@@ -457,7 +473,13 @@
             toggleInterest(name) {
                 this.expanded = (this.expanded === name ? '' : name);
                 const i = this.selected.indexOf(name);
-                if (i === -1) { this.selected.push(name); } else { this.selected.splice(i, 1); }
+                if (i === -1) {
+                    this.selected.push(name);
+                } else {
+                    this.selected.splice(i, 1);
+                    const subsForName = this.interestSubs[name] || [];
+                    this.subs = this.subs.filter(s => !subsForName.includes(s));
+                }
                 $wire.toggleInterest(name);
             },
             toggleSub(name, sub) {
@@ -469,6 +491,9 @@
                 const isSelected = this.selected.includes(name);
                 if (anySelected && !isSelected) {
                     this.selected.push(name);
+                    $wire.toggleInterest(name);
+                } else if (!anySelected && isSelected) {
+                    this.selected.splice(this.selected.indexOf(name), 1);
                     $wire.toggleInterest(name);
                 }
             }
@@ -514,7 +539,7 @@
 </div>
 
 {{-- Navigation --}}
-<div class="pb-nav" style="max-width:{{ in_array($step, [4, 5]) ? '100%' : ($step === 3 ? '1100px' : ($step === 1 ? '1280px' : ($step === 2 ? '720px' : '480px'))) }};{{ in_array($step, [1, 2, 3, 4, 5]) ? ' padding:0 24px;' : '' }}">
+<div class="pb-nav" style="max-width:{{ in_array($step, [4, 5]) ? '100%' : ($step === 3 ? '1100px' : ($step === 1 ? '1280px' : ($step === 2 ? '720px' : ($step === 6 ? '640px' : '480px')))) }};{{ in_array($step, [1, 2, 3, 4, 5, 6]) ? ' padding:0 24px;' : '' }}">
     @if($step > 1)
     <button class="pb-btn pb-btn-ghost" wire:click="prevStep">
         <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back
@@ -533,6 +558,8 @@
         <span wire:loading wire:target="confirmProfile"><i class="fa-solid fa-spinner fa-spin"></i></span>
     </button>
     @endif
+</div>
+
 </div>
 
 </div>

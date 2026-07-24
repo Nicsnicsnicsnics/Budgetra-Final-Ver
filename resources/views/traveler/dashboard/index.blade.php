@@ -87,6 +87,26 @@
         <div style="font-size:12px;color:#9CA3AF;text-align:center;">Start tracking your next destination today.</div>
     </a>
 </div>
+@elseif ($trips->isEmpty())
+{{-- Empty state for brand-new users with no trips yet --}}
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:50vh;">
+    <div style="width:64px;height:64px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+        <i class="fa-solid fa-plane" style="font-size:28px;color:#fff;"></i>
+    </div>
+    @if (!auth()->user()?->userProfile)
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">Let's get you set up</h2>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile so we can tailor budget suggestions before you plan your first trip.</p>
+    <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+        <i class="fa-solid fa-user"></i> Set Up Your Profile First
+    </a>
+    @else
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">No trips yet</h2>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Your profile is all set! Plan your first trip to start tracking your budget and itinerary.</p>
+    <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+        <i class="fa-solid fa-plane"></i> Plan Your First Trip
+    </a>
+    @endif
+</div>
 @endif
 
 @endsection

@@ -12,11 +12,19 @@
     <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
         <i class="fa-solid fa-piggy-bank" style="font-size:28px;color:#fff;"></i>
     </div>
+    @if (!auth()->user()?->userProfile)
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">Set up your profile first</h2>
+    <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile before planning a trip and setting savings goals.</p>
+    <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+        <i class="fa-solid fa-user"></i> Set Up Your Profile First
+    </a>
+    @else
     <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">No savings goals yet</h2>
     <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Plan a trip first before adding your savings goals for your destinations.</p>
     <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
         <i class="fa-solid fa-plane"></i> Plan Your First Trip
     </a>
+    @endif
 </div>
 @else
 <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;align-items:stretch;">
