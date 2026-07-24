@@ -67,6 +67,7 @@ class MomentService
     {
         return [
             'id'                => $moment->id,
+            'trip_id'           => $moment->trip_id,
             'lat'               => (float) $moment->lat,
             'lng'               => (float) $moment->lng,
             'place_name'        => $moment->place_name,

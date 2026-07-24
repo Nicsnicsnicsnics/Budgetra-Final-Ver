@@ -10,18 +10,25 @@
 --}}
 
 @if ($momentsMode === 'overview')
-{{-- Destination overview map: one pin per trip, color-coded by status --}}
+{{-- Destination overview map: trip-status pins (visual only, not clickable)
+     plus separate, clickable memory markers for every posted Moment. Click
+     anywhere else on the map to post a new Moment there. --}}
 <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);">
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;font-size:11px;color:#817470;">
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#16A34A;display:inline-block;"></span> Ongoing</span>
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#934B19;display:inline-block;"></span> Upcoming</span>
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#9CA3AF;display:inline-block;"></span> Completed</span>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;font-size:11px;color:#817470;flex-wrap:wrap;">
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#22C55E;display:inline-block;"></span> Ongoing</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#3B82F6;display:inline-block;"></span> Upcoming</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#6B7280;display:inline-block;"></span> Completed</span>
+        <span style="display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-camera" style="font-size:9px;color:#934B19;"></i> Memory</span>
     </div>
+    <p style="margin:0 0 12px;font-size:12px;color:#9B8EA0;display:flex;align-items:center;gap:6px;">
+        <i class="fa-solid fa-circle-info" style="color:#C8874A;"></i>
+        Click anywhere on the map to post a Moment — a photo, caption, and date for that spot.
+    </p>
     <div
         wire:key="moments-overview-map"
         wire:ignore
         x-data
-        x-init="initOverviewMap($el, $wire, {{ json_encode($this->overviewPins) }})"
+        x-init="initOverviewMap($el, $wire, {{ json_encode($this->overviewPins) }}, {{ json_encode($this->allMomentPins) }})"
         style="width:100%;height:440px;border-radius:12px;overflow:hidden;"
     ></div>
 </div>
@@ -70,10 +77,19 @@
                 {{ $pinModalMode === 'edit' ? 'Edit Travel Pin' : 'Add Travel Pin' }}
             </span>
         </div>
-        <p style="margin:0 0 18px;font-size:11px;color:#9B8EA0;">
+        <p style="margin:0 0 6px;font-size:11px;color:#9B8EA0;">
             <i class="fa-solid fa-location-dot" style="color:#C8874A;"></i>
             {{ number_format((float) $pinLat, 5) }}, {{ number_format((float) $pinLng, 5) }}
         </p>
+        @if ($momentsMode === 'overview' && $this->selectedTrip)
+        {{-- Posted from the overview map, which spans every trip — make the
+             auto-resolved (nearest-destination) trip assignment explicit. --}}
+        <p style="margin:0 0 12px;font-size:11px;color:#934B19;font-weight:600;">
+            <i class="fa-solid fa-suitcase-rolling"></i> For: {{ $this->selectedTrip->destination }}
+        </p>
+        @else
+        <div style="margin-bottom:18px;"></div>
+        @endif
 
         {{-- Place Name --}}
         <div style="margin-bottom:14px;">
@@ -364,12 +380,18 @@
         });
     };
 
-    // Destination overview map — one pin per trip, color-coded by status.
-    // Separate MapLibre instance from initMomentsMap above (mutually
-    // exclusive: only one of the two map divs exists in the DOM at a time,
-    // switched via wire:key when momentsMode changes).
-    window.initOverviewMap = function (el, wire, pins) {
+    // Destination overview map — trip-status pins (visual only) plus a
+    // separate layer of clickable memory markers, one per posted Moment
+    // across every trip. Separate MapLibre instance from initMomentsMap
+    // above (mutually exclusive: only one of the two map divs exists in the
+    // DOM at a time, switched via wire:key when momentsMode changes).
+    window.initOverviewMap = function (el, wire, pins, allMoments) {
         if (typeof maplibregl === 'undefined' || !el) return;
+
+        if (window.__momentsOverviewMapUnsub) {
+            window.__momentsOverviewMapUnsub.forEach(function (off) { off(); });
+        }
+        window.__momentsOverviewMapUnsub = [];
 
         if (window.__momentsOverviewMapInstance) {
             window.__momentsOverviewMapInstance.remove();
@@ -390,44 +412,109 @@
         map.addControl(new maplibregl.NavigationControl(), 'top-right');
         window.__momentsOverviewMapInstance = map;
 
-        var STATUS_COLORS = { active: '#16A34A', upcoming: '#934B19', past: '#9CA3AF' };
+        var STATUS_COLORS = { active: '#22C55E', upcoming: '#3B82F6', past: '#6B7280' };
         var STATUS_LABELS = { active: 'Ongoing', upcoming: 'Upcoming', past: 'Completed' };
 
-        function buildPopup(pin) {
-            var color = STATUS_COLORS[pin.status] || '#9CA3AF';
+        // Trip pins are pure visual indicators — no click, no cursor change.
+        function buildTripMarkerElement(pin) {
+            var color = STATUS_COLORS[pin.status] || '#6B7280';
+            var statusLabel = STATUS_LABELS[pin.status] || pin.status;
+
+            var el = document.createElement('div');
+            el.style.cssText = 'width:22px;height:22px;border-radius:50% 50% 50% 0;background:' + color + ';transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);';
+            el.title = pin.destination + ' · ' + pin.start_date + ' – ' + pin.end_date + ' · ' + statusLabel;
+
+            return el;
+        }
+
+        // Memory markers: a small round pin showing the first photo (or a
+        // camera icon if none), clickable to view/edit/delete that Moment.
+        function buildMemoryMarkerElement(pin) {
+            var hasPhoto = pin.photo_urls && pin.photo_urls.length > 0;
+            var el = document.createElement('div');
+            el.style.cssText = 'width:30px;height:30px;border-radius:50%;border:3px solid #934B19;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer;background-color:#FDF3EB;background-size:cover;background-position:center;'
+                + (hasPhoto ? "background-image:url('" + pin.photo_urls[0] + "');" : '');
+            if (!hasPhoto) {
+                el.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-camera" style="font-size:12px;color:#934B19;"></i></div>';
+            }
+            return el;
+        }
+
+        function buildMemoryPopup(pin) {
             var wrap = document.createElement('div');
             wrap.style.cssText = 'min-width:180px;font-family:\'Hanken Grotesk\',sans-serif;';
 
+            if (pin.photo_urls && pin.photo_urls.length) {
+                var gallery = document.createElement('div');
+                gallery.style.cssText = 'display:flex;gap:4px;overflow-x:auto;max-width:220px;margin-bottom:8px;';
+                pin.photo_urls.forEach(function (url) {
+                    var img = document.createElement('img');
+                    img.src = url;
+                    img.style.cssText = 'width:70px;height:70px;object-fit:cover;border-radius:6px;flex-shrink:0;cursor:pointer;';
+                    img.title = 'Open full size';
+                    img.addEventListener('click', function () { window.open(url, '_blank'); });
+                    gallery.appendChild(img);
+                });
+                wrap.appendChild(gallery);
+            }
+
             var title = document.createElement('div');
-            title.textContent = pin.destination;
+            title.textContent = pin.place_name;
             title.style.cssText = 'font-size:14px;font-weight:700;color:#1c1c19;margin-bottom:2px;';
             wrap.appendChild(title);
 
-            var dates = document.createElement('div');
-            dates.textContent = pin.start_date + ' – ' + pin.end_date;
-            dates.style.cssText = 'font-size:11px;color:#9B8EA0;margin-bottom:6px;';
-            wrap.appendChild(dates);
+            var date = document.createElement('div');
+            date.textContent = pin.visited_date;
+            date.style.cssText = 'font-size:11px;color:#9B8EA0;margin-bottom:4px;';
+            wrap.appendChild(date);
 
-            var badge = document.createElement('span');
-            badge.textContent = STATUS_LABELS[pin.status] || pin.status;
-            badge.style.cssText = 'display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:' + color + '22;color:' + color + ';margin-bottom:10px;';
-            wrap.appendChild(badge);
+            if (pin.description) {
+                var desc = document.createElement('div');
+                desc.textContent = pin.description;
+                desc.style.cssText = 'font-size:12px;color:#4f4441;margin:4px 0 8px;line-height:1.5;';
+                wrap.appendChild(desc);
+            }
 
-            var viewBtn = document.createElement('button');
-            viewBtn.type = 'button';
-            viewBtn.textContent = 'View Trip';
-            viewBtn.style.cssText = 'display:block;width:100%;background:#934B19;color:#fff;border:none;border-radius:8px;padding:8px 0;font-size:12px;font-weight:700;cursor:pointer;';
-            viewBtn.addEventListener('click', function () { wire.call('showTripOnMap', pin.id); });
-            wrap.appendChild(viewBtn);
+            var actions = document.createElement('div');
+            actions.style.cssText = 'display:flex;gap:6px;margin-top:6px;';
 
+            var editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.textContent = 'Edit';
+            editBtn.style.cssText = 'flex:1;background:#FDF3EB;color:#934B19;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:700;cursor:pointer;';
+            editBtn.addEventListener('click', function () { wire.call('openEditPinModalFromOverview', pin.id); });
+
+            var delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.textContent = 'Delete';
+            delBtn.style.cssText = 'flex:1;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:700;cursor:pointer;';
+            delBtn.addEventListener('click', function () { wire.call('confirmDeletePinFromOverview', pin.id); });
+
+            actions.appendChild(editBtn);
+            actions.appendChild(delBtn);
+            wrap.appendChild(actions);
             return wrap;
         }
 
-        function buildMarkerElement(pin) {
-            var color = STATUS_COLORS[pin.status] || '#9CA3AF';
-            var el = document.createElement('div');
-            el.style.cssText = 'width:22px;height:22px;border-radius:50% 50% 50% 0;background:' + color + ';transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer;';
-            return el;
+        var memoryMarkersById = {};
+
+        function renderMemory(pin) {
+            var popup  = new maplibregl.Popup({ offset: 20 }).setDOMContent(buildMemoryPopup(pin));
+            var marker = memoryMarkersById[pin.id];
+            if (marker) {
+                marker.setLngLat([pin.lng, pin.lat]).setPopup(popup);
+            } else {
+                marker = new maplibregl.Marker({ element: buildMemoryMarkerElement(pin) })
+                    .setLngLat([pin.lng, pin.lat])
+                    .setPopup(popup)
+                    .addTo(map);
+                memoryMarkersById[pin.id] = marker;
+            }
+        }
+
+        function removeMemory(pinId) {
+            var marker = memoryMarkersById[pinId];
+            if (marker) { marker.remove(); delete memoryMarkersById[pinId]; }
         }
 
         map.on('load', function () {
@@ -441,17 +528,30 @@
 
             var bounds = new maplibregl.LngLatBounds();
             (pins || []).forEach(function (pin) {
-                var popup = new maplibregl.Popup({ offset: 20 }).setDOMContent(buildPopup(pin));
-                new maplibregl.Marker({ element: buildMarkerElement(pin) })
+                new maplibregl.Marker({ element: buildTripMarkerElement(pin) })
                     .setLngLat([pin.lng, pin.lat])
-                    .setPopup(popup)
                     .addTo(map);
+                bounds.extend([pin.lng, pin.lat]);
+            });
+            (allMoments || []).forEach(function (pin) {
+                renderMemory(pin);
                 bounds.extend([pin.lng, pin.lat]);
             });
 
             if (pins && pins.length) {
                 map.fitBounds(bounds, { padding: 60, maxZoom: 8 });
             }
+
+            // A marker's own DOM element captures the click, so this only
+            // fires when clicking empty map area — never an existing pin.
+            map.on('click', function (e) {
+                wire.call('openAddPinModalFromOverview', e.lngLat.lat, e.lngLat.lng);
+            });
+
+            window.__momentsOverviewMapUnsub.push(
+                Livewire.on('pin-saved', function (payload) { renderMemory(payload.pin); }),
+                Livewire.on('pin-deleted', function (payload) { removeMemory(payload.id); })
+            );
 
             setTimeout(function () { map.resize(); }, 200);
         });

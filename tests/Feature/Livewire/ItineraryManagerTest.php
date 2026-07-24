@@ -371,4 +371,92 @@ class ItineraryManagerTest extends TestCase
             ->assertStatus(200)
             ->assertDontSee('All Destinations');
     }
+
+    // ── Moments: overview map memory markers ────────────────
+
+    public function test_all_moment_pins_includes_moments_from_every_trip(): void
+    {
+        $user  = User::factory()->create();
+        $trip1 = $this->makeTrip($user);
+        $trip2 = $this->makeTrip($user);
+        $m1 = Moment::create(['trip_id' => $trip1->id, 'place_name' => 'Spot A', 'visited_date' => '2026-08-01', 'lat' => 1, 'lng' => 1]);
+        $m2 = Moment::create(['trip_id' => $trip2->id, 'place_name' => 'Spot B', 'visited_date' => '2026-08-02', 'lat' => 2, 'lng' => 2]);
+
+        $component = Livewire::actingAs($user)->test(ItineraryManager::class, ['tab' => 'moments']);
+        $allMoments = collect($component->get('allMomentPins'))->keyBy('id');
+
+        $this->assertSame($trip1->id, $allMoments[$m1->id]['trip_id']);
+        $this->assertSame($trip2->id, $allMoments[$m2->id]['trip_id']);
+    }
+
+    public function test_open_add_pin_modal_from_overview_resolves_nearest_trip(): void
+    {
+        $user    = User::factory()->create();
+        $boracay = $this->makeTrip($user);
+        $boracay->update(['destination' => 'Boracay']); // [11.9674, 121.9248]
+        $tokyo = $this->makeTrip($user);
+        $tokyo->update(['destination' => 'Tokyo']); // [35.6762, 139.6503]
+
+        Livewire::actingAs($user)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->call('openAddPinModalFromOverview', 11.9, 121.9) // near Boracay, far from Tokyo
+            ->assertSet('selectedTripId', $boracay->id)
+            ->assertSet('showPinModal', true)
+            ->assertSet('pinModalMode', 'add');
+    }
+
+    public function test_edit_pin_from_overview_focuses_the_moments_own_trip(): void
+    {
+        $user  = User::factory()->create();
+        $trip1 = $this->makeTrip($user);
+        $trip2 = $this->makeTrip($user);
+        $moment = Moment::create([
+            'trip_id' => $trip2->id, 'place_name' => 'Old Name',
+            'visited_date' => '2026-08-01', 'lat' => 2, 'lng' => 2,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->call('selectTrip', $trip1->id) // simulate selectedTripId pointing elsewhere
+            ->call('openEditPinModalFromOverview', $moment->id)
+            ->assertSet('selectedTripId', $trip2->id)
+            ->assertSet('pinModalMode', 'edit')
+            ->assertSet('pinPlaceName', 'Old Name');
+    }
+
+    public function test_confirm_delete_pin_from_overview_focuses_the_moments_own_trip(): void
+    {
+        $user  = User::factory()->create();
+        $trip1 = $this->makeTrip($user);
+        $trip2 = $this->makeTrip($user);
+        $moment = Moment::create([
+            'trip_id' => $trip2->id, 'place_name' => 'Spot',
+            'visited_date' => '2026-08-01', 'lat' => 2, 'lng' => 2,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->call('selectTrip', $trip1->id)
+            ->call('confirmDeletePinFromOverview', $moment->id)
+            ->assertSet('selectedTripId', $trip2->id)
+            ->assertSet('pinToDelete', $moment->id);
+    }
+
+    public function test_edit_pin_from_overview_ignores_another_users_moment(): void
+    {
+        $owner  = User::factory()->create();
+        $other  = User::factory()->create();
+        $trip   = $this->makeTrip($owner);
+        $moment = Moment::create([
+            'trip_id' => $trip->id, 'place_name' => 'Secret',
+            'visited_date' => '2026-08-01', 'lat' => 1, 'lng' => 1,
+        ]);
+        $otherTrip = $this->makeTrip($other);
+
+        Livewire::actingAs($other)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->call('openEditPinModalFromOverview', $moment->id)
+            ->assertSet('selectedTripId', $otherTrip->id) // unchanged from mount()
+            ->assertSet('showPinModal', false);
+    }
 }

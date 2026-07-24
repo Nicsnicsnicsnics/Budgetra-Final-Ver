@@ -37,6 +37,7 @@
                 'upcoming' => '#3B82F6',
                 default    => '#6B7280',
             };
+            $spendColor = $trip->spend_pct >= 80 ? '#DC2626' : ($trip->spend_pct >= 50 ? '#D97706' : '#22C55E');
         @endphp
         <div wire:key="trip-{{ $trip->id }}" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;width:360px;flex-shrink:0;">
             {{-- Cover image --}}
@@ -95,8 +96,17 @@
 
             <div style="padding:16px;">
                 <div style="margin-bottom:14px;">
-                    <div style="font-size:10px;font-weight:600;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Total Cost</div>
-                    <div style="font-size:20px;font-weight:700;color:#C8874A;">PHP {{ number_format($displayCost, 0) }}</div>
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;">
+                        <div style="font-size:10px;font-weight:600;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.5px;">Spent</div>
+                        <div style="font-size:11px;font-weight:700;color:{{ $spendColor }};">{{ $trip->spend_pct }}%</div>
+                    </div>
+                    <div style="font-size:20px;font-weight:700;color:#C8874A;">
+                        PHP {{ number_format($trip->actual_spent, 0) }}
+                        <span style="font-size:12px;font-weight:500;color:#9B8EA0;">/ {{ number_format($displayCost, 0) }}</span>
+                    </div>
+                    <div style="height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;margin-top:8px;">
+                        <div style="height:100%;border-radius:99px;background:{{ $spendColor }};width:{{ $trip->spend_pct }}%;transition:width .4s ease;"></div>
+                    </div>
                 </div>
 
                 <div style="display:flex;gap:8px;">
@@ -126,6 +136,7 @@
         $dtTo    = $dt->end_date->format('M j, Y');
         $dtTotal = $dt->total_cost ?? $dt->budget_limit ?? 0;
         $sd      = $dt->summary_data ?? [];
+        $dtSpendColor = $dt->spend_pct >= 80 ? '#DC2626' : ($dt->spend_pct >= 50 ? '#D97706' : '#22C55E');
 
         $rows = [
             'transportation' => ['label' => 'Transportation',  'icon' => 'fa-solid fa-plane'],
@@ -185,6 +196,21 @@
                 </div>
                 @endforeach
                 @endif
+            </div>
+
+            {{-- Actual spent vs. planned total --}}
+            <div style="margin:0 22px 18px;padding:14px 16px;background:#fff;border-radius:14px;border:1px solid #F0E8DF;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-size:11px;font-weight:700;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.6px;">Actually Spent</span>
+                    <span style="font-size:12px;font-weight:700;color:{{ $dtSpendColor }};">{{ $dt->spend_pct }}%</span>
+                </div>
+                <div style="font-size:18px;font-weight:800;color:#1A0A00;margin-bottom:8px;">
+                    PHP {{ number_format($dt->actual_spent, 0) }}
+                    <span style="font-size:12px;font-weight:500;color:#9B8EA0;"> of PHP {{ number_format($dtTotal, 0) }} budgeted</span>
+                </div>
+                <div style="height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
+                    <div style="height:100%;border-radius:99px;background:{{ $dtSpendColor }};width:{{ $dt->spend_pct }}%;"></div>
+                </div>
             </div>
 
             {{-- Total + Close --}}

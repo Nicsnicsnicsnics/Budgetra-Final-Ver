@@ -73,4 +73,50 @@ class ExpenseCrudTest extends TestCase
         $response = $this->actingAs($user)->post('/expenses', []);
         $response->assertSessionHasErrors(['trip_id', 'amount', 'category', 'expense_date']);
     }
+
+    // The new dashboard's Add/Edit modal sends an always-present but empty
+    // _method field in add mode (Alpine binds it to '' rather than omitting
+    // it) — confirm Laravel's method-override falls back to the real POST
+    // instead of erroring on the empty value.
+    public function test_add_via_modal_shaped_payload_with_empty_method_field(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->post('/expenses', [
+            '_method'      => '',
+            'trip_id'      => $trip->id,
+            'amount'       => 777.50,
+            'category'     => 'Food',
+            'description'  => 'Modal add test',
+            'expense_date' => '2026-08-01',
+        ]);
+
+        $response->assertRedirect(route('expenses.index'));
+        $this->assertDatabaseHas('expenses', ['description' => 'Modal add test', 'amount' => 777.50]);
+    }
+
+    public function test_edit_via_modal_shaped_payload_with_method_put(): void
+    {
+        $user    = User::factory()->create();
+        $trip    = Trip::factory()->create(['user_id' => $user->id]);
+        $expense = Expense::create([
+            'trip_id' => $trip->id, 'user_id' => $user->id,
+            'amount' => 100, 'category' => 'Food', 'expense_date' => '2026-08-01',
+        ]);
+
+        $response = $this->actingAs($user)->post("/expenses/{$expense->id}", [
+            '_method'      => 'PUT',
+            'trip_id'      => $trip->id,
+            'amount'       => 888.25,
+            'category'     => 'Transportation',
+            'description'  => 'Modal edit test',
+            'expense_date' => '2026-08-02',
+        ]);
+
+        $response->assertRedirect(route('expenses.index'));
+        $this->assertDatabaseHas('expenses', [
+            'id' => $expense->id, 'amount' => 888.25, 'category' => 'Transportation', 'description' => 'Modal edit test',
+        ]);
+    }
 }

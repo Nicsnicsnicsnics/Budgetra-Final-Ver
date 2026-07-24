@@ -168,6 +168,67 @@ class ItineraryManager extends Component
         $this->momentsMode = 'overview';
     }
 
+    // Clicking empty space on the overview map creates a Moment there. The
+    // map spans every trip's destination at once, so the clicked point is
+    // attributed to whichever trip's destination is geographically nearest
+    // — the Add Pin modal then shows "For: <destination>" so that choice is
+    // never a silent guess. Reuses the existing, unchanged openAddPinModal
+    // (and therefore savePin/validation) once selectedTripId is set.
+    public function openAddPinModalFromOverview(float $lat, float $lng): void
+    {
+        $nearestTripId = $this->resolveNearestTrip($lat, $lng);
+        if (!$nearestTripId) return;
+
+        $this->selectedTripId = $nearestTripId;
+        $this->openAddPinModal($lat, $lng);
+    }
+
+    private function resolveNearestTrip(float $lat, float $lng): ?int
+    {
+        $nearestId   = null;
+        $nearestDist = null;
+
+        foreach ($this->trips as $trip) {
+            $coords = $this->resolveDestinationCoords($trip->destination);
+            $dist   = sqrt(($coords['lat'] - $lat) ** 2 + ($coords['lng'] - $lng) ** 2);
+
+            if ($nearestDist === null || $dist < $nearestDist) {
+                $nearestDist = $dist;
+                $nearestId   = $trip->id;
+            }
+        }
+
+        return $nearestId;
+    }
+
+    // Memory markers on the overview map span every trip, unlike
+    // openEditPinModal/confirmDeletePin below which scope to
+    // $this->selectedTrip. Align that scoping to the specific moment's own
+    // trip first, then delegate to the existing, unchanged methods.
+    private function focusTripForMoment(int $momentId): bool
+    {
+        $moment = Moment::find($momentId);
+        if (!$moment) return false;
+
+        $trip = Trip::where('id', $moment->trip_id)->where('user_id', auth()->id())->first();
+        if (!$trip) return false;
+
+        $this->selectedTripId = $trip->id;
+        return true;
+    }
+
+    public function openEditPinModalFromOverview(int $momentId): void
+    {
+        if (!$this->focusTripForMoment($momentId)) return;
+        $this->openEditPinModal($momentId);
+    }
+
+    public function confirmDeletePinFromOverview(int $momentId): void
+    {
+        if (!$this->focusTripForMoment($momentId)) return;
+        $this->confirmDeletePin($momentId);
+    }
+
     public function goBack(): void
     {
         $this->selectedTripId  = null;
@@ -382,6 +443,18 @@ class ItineraryManager extends Component
                 'status'      => $trip->resolved_status,
             ];
         })->values()->toArray();
+    }
+
+    // Every Moment across every trip, for the overview map's separate
+    // "memory marker" layer — distinct from the trip-status pins above.
+    public function getAllMomentPinsProperty(): array
+    {
+        return Moment::whereIn('trip_id', $this->trips->pluck('id'))
+            ->with('photos')
+            ->get()
+            ->map(fn (Moment $m) => $this->momentService->pinToArray($m))
+            ->values()
+            ->toArray();
     }
 
     public function getInitialPinsProperty(): array

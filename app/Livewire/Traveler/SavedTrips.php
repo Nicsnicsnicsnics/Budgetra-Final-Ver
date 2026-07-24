@@ -171,6 +171,14 @@ class SavedTrips extends Component
                     $trip->status ??
                     ($trip->start_date->gt($today) ? 'upcoming' :
                     ($trip->end_date->lt($today)   ? 'past'     : 'active')));
+
+                // Real spending from logged Expenses, vs. the planned budget —
+                // lets the card show actual money tracking, not just the estimate.
+                $actualSpent = (float) $trip->expenses()->sum('amount');
+                $budget      = (float) ($trip->total_cost ?? $trip->budget_limit ?? 0);
+                $trip->setAttribute('actual_spent', $actualSpent);
+                $trip->setAttribute('spend_pct', $budget > 0 ? min(100, round($actualSpent / $budget * 100)) : 0);
+
                 return $trip;
             });
     }
