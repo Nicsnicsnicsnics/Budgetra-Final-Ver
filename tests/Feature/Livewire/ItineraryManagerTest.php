@@ -459,4 +459,67 @@ class ItineraryManagerTest extends TestCase
             ->assertSet('selectedTripId', $otherTrip->id) // unchanged from mount()
             ->assertSet('showPinModal', false);
     }
+
+    // ── Moments: travel story timeline ──────────────────────
+
+    public function test_timeline_moments_computes_correct_day_numbers(): void
+    {
+        $user = User::factory()->create();
+        $trip = $this->makeTrip($user); // start_date = today, end_date = today+3
+
+        $dayOne   = Moment::create(['trip_id' => $trip->id, 'place_name' => 'Arrival Spot', 'visited_date' => now()->toDateString(), 'lat' => 1, 'lng' => 1]);
+        $dayThree = Moment::create(['trip_id' => $trip->id, 'place_name' => 'Beach', 'visited_date' => now()->addDays(2)->toDateString(), 'lat' => 2, 'lng' => 2]);
+
+        $component = Livewire::actingAs($user)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->call('selectTrip', $trip->id);
+
+        $timeline = collect($component->get('timelineMoments'))->keyBy('id');
+
+        $this->assertSame(1, $timeline[$dayOne->id]['day_number']);
+        $this->assertSame(3, $timeline[$dayThree->id]['day_number']);
+    }
+
+    public function test_timeline_moments_ordered_by_visited_date(): void
+    {
+        $user    = User::factory()->create();
+        $trip    = $this->makeTrip($user);
+        $later   = Moment::create(['trip_id' => $trip->id, 'place_name' => 'Later Spot', 'visited_date' => now()->addDays(2)->toDateString(), 'lat' => 1, 'lng' => 1]);
+        $earlier = Moment::create(['trip_id' => $trip->id, 'place_name' => 'Earlier Spot', 'visited_date' => now()->toDateString(), 'lat' => 2, 'lng' => 2]);
+
+        $component = Livewire::actingAs($user)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->call('selectTrip', $trip->id);
+
+        $timeline = $component->get('timelineMoments');
+
+        $this->assertSame('Earlier Spot', $timeline[0]['place_name']);
+        $this->assertSame('Later Spot', $timeline[1]['place_name']);
+    }
+
+    public function test_timeline_moments_includes_posted_at_and_photo_urls_fields(): void
+    {
+        $user = User::factory()->create();
+        $trip = $this->makeTrip($user);
+        Moment::create(['trip_id' => $trip->id, 'place_name' => 'Spot', 'description' => 'Nice place', 'visited_date' => now()->toDateString(), 'lat' => 1, 'lng' => 1]);
+
+        $component = Livewire::actingAs($user)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->call('selectTrip', $trip->id);
+
+        $timeline = $component->get('timelineMoments');
+
+        $this->assertArrayHasKey('posted_at', $timeline[0]);
+        $this->assertArrayHasKey('photo_urls', $timeline[0]);
+        $this->assertSame('Nice place', $timeline[0]['description']);
+    }
+
+    public function test_timeline_moments_empty_when_user_has_no_trips(): void
+    {
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)->test(ItineraryManager::class, ['tab' => 'moments']);
+
+        $this->assertSame([], $component->get('timelineMoments'));
+    }
 }

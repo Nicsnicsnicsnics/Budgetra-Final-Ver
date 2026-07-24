@@ -67,6 +67,47 @@ class ExpenseCrudTest extends TestCase
         $this->actingAs($user)->delete("/expenses/{$expense->id}")->assertStatus(403);
     }
 
+    public function test_creating_expense_sends_a_notification(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create(['user_id' => $user->id, 'destination' => 'Boracay']);
+
+        $this->actingAs($user)->post('/expenses', [
+            'trip_id'      => $trip->id,
+            'amount'       => 250,
+            'category'     => 'Food',
+            'expense_date' => '2026-08-01',
+        ]);
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $user->id,
+            'trip_id' => $trip->id,
+            'type'    => 'expense_added',
+            'is_read' => false,
+        ]);
+        $notif = \App\Models\Notification::where('type', 'expense_added')->first();
+        $this->assertStringContainsString('250.00', $notif->message);
+        $this->assertStringContainsString('Food', $notif->message);
+        $this->assertStringContainsString('Boracay', $notif->message);
+    }
+
+    public function test_deleting_expense_does_not_create_a_notification(): void
+    {
+        $user    = User::factory()->create();
+        $trip    = Trip::factory()->create(['user_id' => $user->id]);
+        $expense = Expense::create([
+            'trip_id' => $trip->id, 'user_id' => $user->id,
+            'amount' => 100, 'category' => 'Food', 'expense_date' => '2026-08-01',
+        ]);
+        // Creating it above already fired one 'expense_added' notification —
+        // clear it so deletion's behavior can be asserted cleanly.
+        \App\Models\Notification::query()->delete();
+
+        $this->actingAs($user)->delete("/expenses/{$expense->id}");
+
+        $this->assertDatabaseCount('notifications', 0);
+    }
+
     public function test_store_validates_required_fields(): void
     {
         $user = User::factory()->create();

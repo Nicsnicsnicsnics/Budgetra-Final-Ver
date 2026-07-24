@@ -12,25 +12,134 @@
 @if ($momentsMode === 'overview')
 {{-- Destination overview map: trip-status pins (visual only, not clickable)
      plus separate, clickable memory markers for every posted Moment. Click
-     anywhere else on the map to post a new Moment there. --}}
-<div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);">
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;font-size:11px;color:#817470;flex-wrap:wrap;">
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#22C55E;display:inline-block;"></span> Ongoing</span>
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#3B82F6;display:inline-block;"></span> Upcoming</span>
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#6B7280;display:inline-block;"></span> Completed</span>
-        <span style="display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-camera" style="font-size:9px;color:#934B19;"></i> Memory</span>
+     anywhere else on the map to post a new Moment there.
+
+     Legend and hint float directly over the map (glassmorphism chips) rather
+     than stacking above it, so the map itself gets almost the whole card. --}}
+<style>
+    .moments-overview-shell { position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 6px 28px rgba(45,27,20,.10); }
+    .moments-overview-map-el { width: 100%; height: 640px; }
+    @media (max-width: 900px) { .moments-overview-map-el { height: 480px; } }
+    @media (max-width: 560px) { .moments-overview-map-el { height: 400px; } }
+    .moments-float-chip {
+        position: absolute; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.14); max-width: calc(100% - 32px);
+    }
+    .moments-float-legend {
+        top: 16px; left: 16px; background: rgba(255,255,255,.82);
+        padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+    .moments-float-hint {
+        bottom: 16px; left: 16px; background: rgba(28,20,15,.80); color: #fff;
+        padding: 10px 16px; font-size: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .moments-view-toggle-btn { transition: background .15s ease, color .15s ease; }
+</style>
+
+{{-- Map View / Timeline View toggle for the overview page itself — a
+     separate Alpine store from the per-trip toggle below, so the two never
+     interfere with each other. --}}
+<div x-data style="display:flex;gap:8px;margin-bottom:14px;">
+    <button type="button" class="moments-view-toggle-btn" @click="$store.overviewMoments.view = 'map'"
+            :style="$store.overviewMoments.view === 'map'
+                ? 'background:#934B19;color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'
+                : 'background:#fff;color:#817470;border:1.5px solid var(--border);border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'">
+        <i class="fa-solid fa-map-location-dot"></i> Map View
+    </button>
+    <button type="button" class="moments-view-toggle-btn" @click="$store.overviewMoments.view = 'timeline'"
+            :style="$store.overviewMoments.view === 'timeline'
+                ? 'background:#934B19;color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'
+                : 'background:#fff;color:#817470;border:1.5px solid var(--border);border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'">
+        <i class="fa-solid fa-timeline"></i> Timeline View
+    </button>
+</div>
+
+<div x-data>
+    <div x-show="$store.overviewMoments.view === 'map'" x-transition.opacity.duration.200ms>
+        <div class="moments-overview-shell">
+            <div
+                class="moments-overview-map-el"
+                wire:key="moments-overview-map"
+                wire:ignore
+                x-data
+                x-init="initOverviewMap($el, $wire, {{ json_encode($this->overviewPins) }}, {{ json_encode($this->allMomentPins) }})"
+            ></div>
+
+            <div class="moments-float-chip moments-float-legend">
+                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#4f4441;font-weight:600;"><span style="width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block;"></span> Ongoing</span>
+                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#4f4441;font-weight:600;"><span style="width:8px;height:8px;border-radius:50%;background:#3B82F6;display:inline-block;"></span> Upcoming</span>
+                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#4f4441;font-weight:600;"><span style="width:8px;height:8px;border-radius:50%;background:#6B7280;display:inline-block;"></span> Completed</span>
+                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#4f4441;font-weight:600;"><i class="fa-solid fa-camera" style="font-size:9px;color:#934B19;"></i> Memory</span>
+            </div>
+
+            <div class="moments-float-chip moments-float-hint">
+                <i class="fa-solid fa-circle-info" style="color:#F5C97A;"></i>
+                Click anywhere to post a Moment
+            </div>
+        </div>
     </div>
-    <p style="margin:0 0 12px;font-size:12px;color:#9B8EA0;display:flex;align-items:center;gap:6px;">
-        <i class="fa-solid fa-circle-info" style="color:#C8874A;"></i>
-        Click anywhere on the map to post a Moment — a photo, caption, and date for that spot.
-    </p>
-    <div
-        wire:key="moments-overview-map"
-        wire:ignore
-        x-data
-        x-init="initOverviewMap($el, $wire, {{ json_encode($this->overviewPins) }}, {{ json_encode($this->allMomentPins) }})"
-        style="width:100%;height:440px;border-radius:12px;overflow:hidden;"
-    ></div>
+
+    {{-- All-trips Travel Story Timeline --}}
+    <div x-show="$store.overviewMoments.view === 'timeline'" x-transition.opacity.duration.200ms x-cloak>
+        @php $overviewTimelineGrouped = collect($this->allMomentsTimeline)->groupBy('trip_destination'); @endphp
+        <div style="background:#fff;border:1.5px solid var(--border);border-radius:20px;padding:20px 24px;box-shadow:0 6px 28px rgba(45,27,20,.10);max-height:640px;overflow-y:auto;">
+            @if ($overviewTimelineGrouped->isEmpty())
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 24px;text-align:center;">
+                <div style="width:64px;height:64px;border-radius:16px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+                    <i class="fa-solid fa-book-open-reader" style="font-size:26px;color:#934B19;"></i>
+                </div>
+                <div style="font-size:16px;font-weight:700;color:#1c1c19;margin-bottom:8px;">Your travel diary starts here</div>
+                <div style="font-size:13px;color:#9B8EA0;max-width:320px;line-height:1.6;margin-bottom:18px;">
+                    Switch to Map View and click anywhere to post your first Moment — it'll show up here as a timeline entry.
+                </div>
+                <button type="button" @click="$store.overviewMoments.view = 'map'"
+                        style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;">
+                    <i class="fa-solid fa-map-location-dot"></i> Go to Map View
+                </button>
+            </div>
+            @else
+            @foreach ($overviewTimelineGrouped as $destination => $destMoments)
+            <div style="margin-bottom:28px;">
+                <div style="font-size:14px;font-weight:800;color:#934B19;text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid #F0E8DF;">
+                    <i class="fa-solid fa-plane"></i> {{ $destination }}
+                </div>
+                <div style="position:relative;padding-left:28px;">
+                    <div style="position:absolute;left:9px;top:6px;bottom:6px;width:2px;background:#EDE0D6;"></div>
+                    @foreach ($destMoments as $moment)
+                    <div class="timeline-entry" style="position:relative;margin-bottom:14px;">
+                        <div style="position:absolute;left:-24px;top:18px;width:10px;height:10px;border-radius:50%;background:#C8874A;"></div>
+                        <div class="timeline-card" style="background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:14px;padding:14px;">
+                            <div class="timeline-card-inner" style="display:flex;gap:12px;">
+                                @if (count($moment['photo_urls']))
+                                <img src="{{ $moment['photo_urls'][0] }}" alt="{{ $moment['place_name'] }}"
+                                     style="width:76px;height:76px;border-radius:10px;object-fit:cover;flex-shrink:0;">
+                                @else
+                                <div style="width:76px;height:76px;border-radius:10px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa-solid fa-camera" style="color:#934B19;font-size:20px;"></i>
+                                </div>
+                                @endif
+                                <div style="flex:1;min-width:0;">
+                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+                                        <span style="font-size:14px;font-weight:700;color:#1c1c19;">{{ $moment['place_name'] }}</span>
+                                        <span style="font-size:10px;font-weight:700;color:#934B19;background:#FDF3EB;padding:2px 8px;border-radius:20px;">Day {{ $moment['day_number'] }}</span>
+                                    </div>
+                                    @if ($moment['description'])
+                                    <div style="font-size:12.5px;color:#4f4441;line-height:1.5;margin-bottom:6px;">{{ $moment['description'] }}</div>
+                                    @endif
+                                    <div style="font-size:11px;color:#9B8EA0;">
+                                        <i class="fa-regular fa-clock" style="font-size:10px;"></i> Posted {{ $moment['posted_at'] }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endforeach
+            @endif
+        </div>
+    </div>
 </div>
 
 @else
@@ -45,20 +154,134 @@
     $tripStart = $trip->start_date->copy()->startOfDay();
     $tripEnd   = $trip->end_date->copy()->startOfDay();
     $mc        = $this->mapCenter;
+    $timelineGrouped = collect($this->timelineMoments)->groupBy('day_number');
 @endphp
-{{-- Single trip's personal travel-pin map --}}
-<div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);">
-    <p style="margin:0 0 12px;font-size:12px;color:#9B8EA0;display:flex;align-items:center;gap:6px;">
-        <i class="fa-solid fa-circle-info" style="color:#C8874A;"></i>
-        Click anywhere on the map to drop a pin for a place you visited.
-    </p>
-    <div
-        wire:key="moments-map-{{ $selectedTripId }}"
-        wire:ignore
-        x-data
-        x-init="initMomentsMap($el, $wire, {{ $mc['lat'] }}, {{ $mc['lng'] }}, {{ $mc['zoom'] }}, {{ json_encode($tripLabel($trip) . ' · ' . $tripStart->format('M j') . '–' . $tripEnd->format('M j, Y')) }}, {{ json_encode($this->initialPins) }})"
-        style="width:100%;height:440px;border-radius:12px;overflow:hidden;"
-    ></div>
+
+<style>
+    .timeline-entry .timeline-card { transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+    .timeline-entry:hover .timeline-card { transform: translateX(2px); box-shadow: 0 4px 14px rgba(0,0,0,.08); border-color: #934B19; }
+    .timeline-entry.is-highlighted .timeline-card { animation: timelinePulse 1.4s ease; border-color: #934B19; }
+    @keyframes timelinePulse {
+        0%   { box-shadow: 0 0 0 0 rgba(147,75,25,.45); }
+        70%  { box-shadow: 0 0 0 12px rgba(147,75,25,0); }
+        100% { box-shadow: 0 0 0 0 rgba(147,75,25,0); }
+    }
+    .marker-pulse { animation: markerPulse 1.4s ease; }
+    @keyframes markerPulse {
+        0%   { filter: drop-shadow(0 0 2px rgba(147,75,25,.7)); transform: scale(1); }
+        50%  { transform: scale(1.3); }
+        100% { filter: drop-shadow(0 0 0 rgba(147,75,25,0)); transform: scale(1); }
+    }
+    .moments-view-toggle-btn { transition: background .15s ease, color .15s ease; }
+    @media (max-width: 640px) {
+        .timeline-card-inner { flex-direction: column; }
+    }
+</style>
+
+{{-- Map / Timeline toggle — client-side only (a global Alpine store), so
+     switching views never round-trips through Livewire and the map (which
+     is wire:ignore'd) is never torn down or reinitialized. --}}
+<div x-data style="display:flex;gap:8px;margin-bottom:14px;">
+    <button type="button" class="moments-view-toggle-btn" @click="$store.moments.view = 'map'"
+            :style="$store.moments.view === 'map'
+                ? 'background:#934B19;color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'
+                : 'background:#fff;color:#817470;border:1.5px solid var(--border);border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'">
+        <i class="fa-solid fa-map-location-dot"></i> Map View
+    </button>
+    <button type="button" class="moments-view-toggle-btn" @click="$store.moments.view = 'timeline'"
+            :style="$store.moments.view === 'timeline'
+                ? 'background:#934B19;color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'
+                : 'background:#fff;color:#817470;border:1.5px solid var(--border);border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'">
+        <i class="fa-solid fa-timeline"></i> Timeline View
+    </button>
+</div>
+
+<div x-data>
+    {{-- Single trip's personal travel-pin map — unchanged, just now shown/hidden
+         via Alpine instead of always rendered. --}}
+    <div x-show="$store.moments.view === 'map'" x-transition.opacity.duration.200ms>
+        <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);">
+            <p style="margin:0 0 12px;font-size:12px;color:#9B8EA0;display:flex;align-items:center;gap:6px;">
+                <i class="fa-solid fa-circle-info" style="color:#C8874A;"></i>
+                Click anywhere on the map to drop a pin for a place you visited.
+            </p>
+            <div
+                wire:key="moments-map-{{ $selectedTripId }}"
+                wire:ignore
+                x-data
+                x-init="initMomentsMap($el, $wire, {{ $mc['lat'] }}, {{ $mc['lng'] }}, {{ $mc['zoom'] }}, {{ json_encode($tripLabel($trip) . ' · ' . $tripStart->format('M j') . '–' . $tripEnd->format('M j, Y')) }}, {{ json_encode($this->initialPins) }})"
+                style="width:100%;height:440px;border-radius:12px;overflow:hidden;"
+            ></div>
+        </div>
+    </div>
+
+    {{-- Travel Story Timeline --}}
+    <div x-show="$store.moments.view === 'timeline'" x-transition.opacity.duration.200ms x-cloak>
+        <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:20px 24px;box-shadow:0 2px 10px rgba(0,0,0,.04);max-height:620px;overflow-y:auto;">
+            @if ($timelineGrouped->isEmpty())
+            {{-- Empty state --}}
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 24px;text-align:center;">
+                <div style="width:64px;height:64px;border-radius:16px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+                    <i class="fa-solid fa-book-open-reader" style="font-size:26px;color:#934B19;"></i>
+                </div>
+                <div style="font-size:16px;font-weight:700;color:#1c1c19;margin-bottom:8px;">Your travel diary starts here</div>
+                <div style="font-size:13px;color:#9B8EA0;max-width:320px;line-height:1.6;margin-bottom:18px;">
+                    Switch to Map View and click anywhere to post your first Moment — it'll show up here as a timeline entry.
+                </div>
+                <button type="button" @click="$store.moments.view = 'map'"
+                        style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;">
+                    <i class="fa-solid fa-map-location-dot"></i> Go to Map View
+                </button>
+            </div>
+            @else
+            <div style="position:relative;padding-left:28px;">
+                {{-- Connecting vertical line --}}
+                <div style="position:absolute;left:9px;top:6px;bottom:6px;width:2px;background:#EDE0D6;"></div>
+
+                @foreach ($timelineGrouped as $dayNumber => $dayMoments)
+                <div style="margin-bottom:28px;">
+                    <div style="position:relative;margin-bottom:14px;">
+                        <div style="position:absolute;left:-28px;top:2px;width:20px;height:20px;border-radius:50%;background:#934B19;border:3px solid #fff;box-shadow:0 0 0 2px #934B19;"></div>
+                        <div style="font-size:13px;font-weight:800;color:#934B19;text-transform:uppercase;letter-spacing:.04em;">
+                            Day {{ $dayNumber }}
+                            <span style="font-weight:500;color:#9B8EA0;text-transform:none;">— {{ \Carbon\Carbon::parse($dayMoments->first()['visited_date'])->format('l, M j') }}</span>
+                        </div>
+                    </div>
+
+                    @foreach ($dayMoments as $moment)
+                    <div id="moment-{{ $moment['id'] }}" class="timeline-entry" tabindex="0"
+                         style="position:relative;margin-bottom:14px;cursor:pointer;"
+                         onclick="focusMapOnMoment({{ $moment['id'] }})">
+                        <div style="position:absolute;left:-24px;top:18px;width:10px;height:10px;border-radius:50%;background:#C8874A;"></div>
+                        <div class="timeline-card" style="background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:14px;padding:14px;">
+                            <div class="timeline-card-inner" style="display:flex;gap:12px;">
+                                @if (count($moment['photo_urls']))
+                                <img src="{{ $moment['photo_urls'][0] }}" alt="{{ $moment['place_name'] }}"
+                                     style="width:76px;height:76px;border-radius:10px;object-fit:cover;flex-shrink:0;">
+                                @else
+                                <div style="width:76px;height:76px;border-radius:10px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa-solid fa-camera" style="color:#934B19;font-size:20px;"></i>
+                                </div>
+                                @endif
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-size:14px;font-weight:700;color:#1c1c19;margin-bottom:2px;">{{ $moment['place_name'] }}</div>
+                                    @if ($moment['description'])
+                                    <div style="font-size:12.5px;color:#4f4441;line-height:1.5;margin-bottom:6px;">{{ $moment['description'] }}</div>
+                                    @endif
+                                    <div style="font-size:11px;color:#9B8EA0;">
+                                        <i class="fa-regular fa-clock" style="font-size:10px;"></i> Posted {{ $moment['posted_at'] }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+                @endforeach
+            </div>
+            @endif
+        </div>
+    </div>
 </div>
 @endif
 @endif
@@ -203,6 +426,53 @@
 @endif
 
 <script>
+    // Map/Timeline toggle state — global Alpine stores rather than a
+    // Livewire property, so switching views is instant (no network
+    // round-trip) and never tears down the wire:ignore'd map. Two separate
+    // stores: 'overviewMoments' for the all-destinations page, 'moments'
+    // for a single selected trip — kept apart so toggling one never
+    // affects the other.
+    document.addEventListener('alpine:init', function () {
+        Alpine.store('moments', { view: 'map' });
+        Alpine.store('overviewMoments', { view: 'map' });
+    });
+
+    // Timeline card clicked → jump to Map View, fly to that moment's pin,
+    // open its popup, and give the marker a brief highlight pulse.
+    window.focusMapOnMoment = function (momentId) {
+        if (typeof Alpine === 'undefined' || !Alpine.store('moments')) return;
+        Alpine.store('moments').view = 'map';
+
+        setTimeout(function () {
+            var map    = window.__momentsMapInstance;
+            var marker = window.__momentsMarkersById && window.__momentsMarkersById[momentId];
+            if (!map || !marker) return;
+
+            map.resize();
+            map.flyTo({ center: marker.getLngLat(), zoom: 15, essential: true });
+            marker.togglePopup();
+
+            var el = marker.getElement();
+            el.classList.add('marker-pulse');
+            setTimeout(function () { el.classList.remove('marker-pulse'); }, 1400);
+        }, 60);
+    };
+
+    // Map marker clicked → jump to Timeline View, scroll to and briefly
+    // highlight the matching timeline card.
+    window.focusTimelineOnMoment = function (momentId) {
+        if (typeof Alpine === 'undefined' || !Alpine.store('moments')) return;
+        Alpine.store('moments').view = 'timeline';
+
+        setTimeout(function () {
+            var el = document.getElementById('moment-' + momentId);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('is-highlighted');
+            setTimeout(function () { el.classList.remove('is-highlighted'); }, 1600);
+        }, 60);
+    };
+
     // Defined globally so it survives Livewire re-renders; called via x-init
     // on a wire:ignore + wire:key-ed div, so a trip switch always gets a
     // fresh element (and therefore a fresh map + pin state).
@@ -245,6 +515,9 @@
 
         var pinsById    = {};
         var markersById = {};
+        // Exposed so a Timeline card click (outside this closure) can reach
+        // a specific marker — same live object, mutated in place below.
+        window.__momentsMarkersById = markersById;
 
         function buildPopup(pin) {
             var wrap = document.createElement('div');
@@ -336,6 +609,12 @@
             } else {
                 marker = new maplibregl.Marker().setLngLat([pin.lng, pin.lat]).setPopup(popup).addTo(map);
                 markersById[pin.id] = marker;
+                // Jump to the matching Timeline entry — pin.id is a plain
+                // number, captured by value, so this stays correct even if
+                // the moment is later edited (its id never changes).
+                marker.getElement().addEventListener('click', function () {
+                    if (window.focusTimelineOnMoment) window.focusTimelineOnMoment(pin.id);
+                });
             }
             rebuildPolyline();
         }
@@ -497,8 +776,45 @@
         }
 
         var memoryMarkersById = {};
+        var momentsById = {};
+        var ROUTES_ID = 'moments-overview-routes';
+
+        // One dashed line per trip, connecting that trip's own memory markers
+        // in visited-date order — mirrors initMomentsMap's rebuildPolyline,
+        // just grouped by trip_id since this map spans every destination.
+        function rebuildOverviewRoutes() {
+            var byTrip = {};
+            Object.values(momentsById).forEach(function (p) {
+                (byTrip[p.trip_id] = byTrip[p.trip_id] || []).push(p);
+            });
+
+            var features = [];
+            Object.keys(byTrip).forEach(function (tripId) {
+                var ordered = byTrip[tripId].sort(function (a, b) {
+                    return a.visited_date_sort < b.visited_date_sort ? -1 : (a.visited_date_sort > b.visited_date_sort ? 1 : 0);
+                });
+                if (ordered.length < 2) return;
+                features.push({
+                    type: 'Feature',
+                    properties: {},
+                    geometry: { type: 'LineString', coordinates: ordered.map(function (p) { return [p.lng, p.lat]; }) },
+                });
+            });
+
+            var geojson = { type: 'FeatureCollection', features: features };
+            if (map.getSource(ROUTES_ID)) {
+                map.getSource(ROUTES_ID).setData(geojson);
+            } else {
+                map.addSource(ROUTES_ID, { type: 'geojson', data: geojson });
+                map.addLayer({
+                    id: ROUTES_ID, type: 'line', source: ROUTES_ID,
+                    paint: { 'line-color': '#934B19', 'line-width': 3, 'line-opacity': 0.7, 'line-dasharray': [2, 2] },
+                });
+            }
+        }
 
         function renderMemory(pin) {
+            momentsById[pin.id] = pin;
             var popup  = new maplibregl.Popup({ offset: 20 }).setDOMContent(buildMemoryPopup(pin));
             var marker = memoryMarkersById[pin.id];
             if (marker) {
@@ -510,11 +826,14 @@
                     .addTo(map);
                 memoryMarkersById[pin.id] = marker;
             }
+            rebuildOverviewRoutes();
         }
 
         function removeMemory(pinId) {
             var marker = memoryMarkersById[pinId];
             if (marker) { marker.remove(); delete memoryMarkersById[pinId]; }
+            delete momentsById[pinId];
+            rebuildOverviewRoutes();
         }
 
         map.on('load', function () {

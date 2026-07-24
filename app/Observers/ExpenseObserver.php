@@ -22,6 +22,20 @@ class ExpenseObserver
         $this->adjustActualSpent($expense->trip_id, $expense->category, -$expense->amount);
     }
 
+    public function created(Expense $expense): void
+    {
+        $trip = Trip::find($expense->trip_id);
+
+        Notification::create([
+            'user_id' => $expense->user_id,
+            'trip_id' => $expense->trip_id,
+            'type'    => 'expense_added',
+            'message' => '₱' . number_format($expense->amount, 2) . " logged for {$expense->category}"
+                . ($trip ? " on your {$trip->destination} trip." : '.'),
+            'is_read' => false,
+        ]);
+    }
+
     public static function syncBudgetForExpense(Expense $expense): void
     {
         $budgetCategory = self::CATEGORY_MAP[$expense->category] ?? null;

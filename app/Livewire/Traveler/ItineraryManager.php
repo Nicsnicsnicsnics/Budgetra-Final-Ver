@@ -457,6 +457,41 @@ class ItineraryManager extends Component
             ->toArray();
     }
 
+    // Same moments as getAllMomentPinsProperty, enriched for the overview
+    // page's Timeline View — each one's day number within its OWN trip and
+    // that trip's destination (for grouping), since "Day N" only makes
+    // sense per-trip when the timeline spans every trip at once.
+    public function getAllMomentsTimelineProperty(): array
+    {
+        $tripsById = $this->trips->keyBy('id');
+
+        return Moment::whereIn('trip_id', $tripsById->keys())
+            ->with('photos')
+            ->orderBy('visited_date')
+            ->orderBy('created_at')
+            ->get()
+            ->map(function (Moment $m) use ($tripsById) {
+                $pin  = $this->momentService->pinToArray($m);
+                $trip = $tripsById->get($m->trip_id);
+
+                if ($trip) {
+                    $tripStartOfDay     = $trip->start_date->copy()->startOfDay();
+                    $visitedStartOfDay  = $m->visited_date->copy()->startOfDay();
+                    $dayNumber = (int) floor(($visitedStartOfDay->timestamp - $tripStartOfDay->timestamp) / 86400) + 1;
+                    $pin['day_number']        = max(1, $dayNumber);
+                    $pin['trip_destination']  = $trip->destination;
+                } else {
+                    $pin['day_number']       = 1;
+                    $pin['trip_destination'] = 'Unknown trip';
+                }
+
+                $pin['posted_at'] = $m->created_at->format('M j, Y g:i A');
+                return $pin;
+            })
+            ->values()
+            ->toArray();
+    }
+
     public function getInitialPinsProperty(): array
     {
         if (!$this->selectedTripId) return [];
@@ -464,6 +499,34 @@ class ItineraryManager extends Component
             ->orderBy('visited_date')
             ->get()
             ->map(fn (Moment $m) => $this->momentService->pinToArray($m))
+            ->values()
+            ->toArray();
+    }
+
+    // Same moments as getInitialPinsProperty, enriched with each one's day
+    // number within the trip (Day 1, Day 2, ...) and when it was actually
+    // posted — powers the Timeline view without duplicating any stored data.
+    public function getTimelineMomentsProperty(): array
+    {
+        if (!$this->selectedTripId || !$this->selectedTrip) return [];
+
+        $tripStartOfDay = $this->selectedTrip->start_date->copy()->startOfDay();
+
+        return Moment::where('trip_id', $this->selectedTripId)
+            ->with('photos')
+            ->orderBy('visited_date')
+            ->orderBy('created_at')
+            ->get()
+            ->map(function (Moment $m) use ($tripStartOfDay) {
+                $pin = $this->momentService->pinToArray($m);
+                $visitedStartOfDay = $m->visited_date->copy()->startOfDay();
+                // Raw timestamp math on purpose — Carbon's diffInDays sign
+                // convention isn't worth relying on here.
+                $dayNumber = (int) floor(($visitedStartOfDay->timestamp - $tripStartOfDay->timestamp) / 86400) + 1;
+                $pin['day_number'] = max(1, $dayNumber);
+                $pin['posted_at']  = $m->created_at->format('M j, Y g:i A');
+                return $pin;
+            })
             ->values()
             ->toArray();
     }

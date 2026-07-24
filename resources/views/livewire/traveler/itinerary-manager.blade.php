@@ -28,7 +28,7 @@
 
 @else
 <div style="flex:1;display:flex;align-items:center;justify-content:center;">
-<div style="width:100%;max-width:720px;">
+<div style="width:100%;max-width:{{ $tab === 'moments' ? '1180px' : '720px' }};">
 
     @php
     $iataToCity = [

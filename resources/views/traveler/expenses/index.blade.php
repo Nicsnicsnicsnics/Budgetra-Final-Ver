@@ -3,49 +3,8 @@
 
 @push('styles')
 <style>
-    /* ── Stat cards ─────────────────────────────────────── */
-    .expense-stat-card { transition: box-shadow .2s ease, transform .2s ease; }
-    .expense-stat-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
     .expense-dest-link { transition: background .15s ease, border-color .15s ease; }
     .expense-filter-select { transition: border-color .2s; }
-    @keyframes expenseFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* ── Spending Analytics: category bar chart ───────────── */
-    .chart-bar-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; animation: expenseFadeIn .3s ease both; cursor: default; }
-    .chart-bar-label { width: 150px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
-    .chart-bar-label i { width: 14px; text-align: center; }
-    .chart-bar-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-    .chart-bar-track { flex: 1; height: 20px; background: var(--border-light); border-radius: 4px; overflow: hidden; }
-    .chart-bar-fill { height: 100%; border-radius: 0 4px 4px 0; transition: width .5s ease; }
-    .chart-bar-value { width: 130px; flex-shrink: 0; text-align: right; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
-    .chart-bar-row:focus-visible, .chart-bar-row:hover .chart-bar-track { outline: none; filter: brightness(0.96); }
-    @media (max-width: 640px) {
-        .chart-bar-label { width: 110px; font-size: 12px; }
-        .chart-bar-value { width: 90px; font-size: 11px; }
-    }
-
-    /* ── Spending Analytics: daily trend chart ────────────── */
-    .chart-trend-wrap { display: flex; align-items: flex-end; gap: 3px; height: 140px; padding-top: 24px; }
-    .chart-trend-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
-    .chart-trend-bar {
-        width: 100%; max-width: 24px; background: #2a78d6; border-radius: 4px 4px 0 0;
-        position: relative; transition: filter .15s ease; min-height: 4px;
-    }
-    .chart-trend-bar:hover, .chart-trend-bar:focus-visible { filter: brightness(1.15); outline: none; }
-    .chart-trend-bar.is-peak { background: #184f95; }
-    .chart-trend-peak-label {
-        position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
-        font-size: 10px; font-weight: 700; color: var(--text); white-space: nowrap;
-    }
-    .chart-trend-tick { font-size: 10px; color: var(--muted); margin-top: 6px; white-space: nowrap; }
-    .chart-empty { padding: 24px 0; text-align: center; font-size: 13px; color: var(--muted); }
-
-    /* Shared chart tooltip */
-    .chart-tooltip {
-        display: none; position: fixed; z-index: 2000; background: var(--dark); color: #fff;
-        font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 6px; pointer-events: none;
-        transform: translate(-50%, -100%); white-space: nowrap; box-shadow: var(--shadow);
-    }
 
     /* ── Transaction cards ─────────────────────────────────── */
     .txn-card {
@@ -129,34 +88,12 @@
     ];
     $tripLabel = fn($t) => ($t->origin ?? 'Manila') . ' to ' . ($iataToCity[$t->destination_code ?? ''] ?? $t->destination);
 
-    // Trip-wide totals for the summary cards / charts — a fresh, unpaginated
-    // query, since $expenses below is paginated (only ~20 rows) and would
-    // undercount totals. Read-only: no controller/model changes.
-    $tripExpenses = $selectedTripId
-        ? \App\Models\Expense::where('trip_id', $selectedTripId)->where('user_id', auth()->id())->get()
-        : collect();
-    $totalSpent    = $tripExpenses->sum('amount');
-    $expenseCount  = $tripExpenses->count();
-    $budgetLimit   = (float) ($selectedTrip->budget_limit ?? 0);
-    $budgetPct     = $budgetLimit > 0 ? min(100, round($totalSpent / $budgetLimit * 100)) : 0;
-    $categoryTotals = $tripExpenses->groupBy('category')->map(fn($g) => $g->sum('amount'))->sortDesc();
-    $topCategory    = $categoryTotals->keys()->first();
-
-    // Mirrors ExpenseObserver::CATEGORY_MAP — display-only, not business logic.
-    $budgetCategoryMap = [
-        'Transportation' => 'Transportation', 'Accommodation' => 'Accommodation', 'Food' => 'Food',
-        'Activities' => 'Tourist Attractions', 'Shopping' => 'Shopping', 'Emergency Expenses' => 'Emergency Funds',
-    ];
-    $tripBudgets = $selectedTripId
-        ? \App\Models\TripBudget::where('trip_id', $selectedTripId)->get()->keyBy('category')
-        : collect();
+    // Validated categorical palette (dataviz skill: 6 slots, fixed order,
+    // CVD-safe). Used for the category icon badge on each transaction card.
     $categoryIcons = [
         'Transportation' => 'fa-plane', 'Accommodation' => 'fa-bed', 'Food' => 'fa-utensils',
         'Activities' => 'fa-camera-retro', 'Shopping' => 'fa-bag-shopping', 'Emergency Expenses' => 'fa-shield-halved',
     ];
-    // Validated categorical palette (dataviz skill: 6 slots, fixed order,
-    // CVD-safe — node scripts/validate_palette.js confirmed ALL CHECKS PASS).
-    // Used consistently for this category everywhere: chart, badges, transaction icons.
     $categoryColors = [
         'Transportation'     => '#2a78d6',
         'Accommodation'      => '#eb6834',
@@ -165,22 +102,6 @@
         'Shopping'           => '#e87ba4',
         'Emergency Expenses' => '#008300',
     ];
-
-    // Daily spending, for the trend chart — every day of the trip, zero-filled.
-    $dailyTotals = [];
-    if ($selectedTrip) {
-        foreach (\Carbon\CarbonPeriod::create($selectedTrip->start_date, $selectedTrip->end_date) as $date) {
-            $dailyTotals[$date->toDateString()] = 0;
-        }
-        foreach ($tripExpenses as $exp) {
-            $key = $exp->expense_date->toDateString();
-            $dailyTotals[$key] = ($dailyTotals[$key] ?? 0) + (float) $exp->amount;
-        }
-        ksort($dailyTotals);
-    }
-    $maxDaily    = !empty($dailyTotals) ? max($dailyTotals) : 0;
-    $peakDay     = $maxDaily > 0 ? array_search($maxDaily, $dailyTotals) : null;
-    $labelEvery  = count($dailyTotals) > 10 ? (int) ceil(count($dailyTotals) / 6) : 1;
 
     // Preserve active filters when switching destination.
     $filterParams = request()->only(['category', 'date_from', 'date_to']);
@@ -223,35 +144,7 @@
         @endif
     </div>
 
-    @if ($selectedTrip)
-    {{-- Summary cards --}}
-    <div class="stats-row">
-        <div class="stat-card expense-stat-card">
-            <div class="stat-card-accent" style="background:var(--primary);"></div>
-            <div class="stat-label"><i class="fa-solid fa-wallet"></i> Total Spent</div>
-            <div class="stat-value">₱{{ number_format($totalSpent, 0) }}</div>
-            <div class="stat-sub">{{ $expenseCount }} transaction{{ $expenseCount === 1 ? '' : 's' }}</div>
-        </div>
-        <div class="stat-card expense-stat-card">
-            <div class="stat-card-accent" style="background:{{ $budgetPct >= 80 ? 'var(--danger)' : ($budgetPct >= 50 ? 'var(--warning)' : 'var(--success)') }};"></div>
-            <div class="stat-label"><i class="fa-solid fa-chart-pie"></i> Budget Used</div>
-            <div class="stat-value">{{ $budgetPct }}%</div>
-            <div class="stat-progress-wrap">
-                <div class="progress">
-                    <div class="progress-bar" style="width:{{ $budgetPct }}%;background:{{ $budgetPct >= 80 ? 'var(--danger)' : ($budgetPct >= 50 ? 'var(--warning)' : 'var(--success)') }};"></div>
-                </div>
-            </div>
-        </div>
-        <div class="stat-card expense-stat-card">
-            <div class="stat-card-accent" style="background:var(--secondary);"></div>
-            <div class="stat-label"><i class="fa-solid fa-crown"></i> Top Category</div>
-            <div class="stat-value" style="font-size:19px;">{{ $topCategory ?? '—' }}</div>
-            <div class="stat-sub">{{ $topCategory ? '₱'.number_format($categoryTotals[$topCategory], 0).' spent' : 'No expenses yet' }}</div>
-        </div>
-    </div>
-    @endif
-
-    {{-- Filters — one row, scoping everything below (charts + transactions) --}}
+    {{-- Filters --}}
     <div class="card mb-16"><div class="card-body" style="padding:16px 20px;">
         <form method="GET" action="{{ route('expenses.index') }}" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
             <input type="hidden" name="trip_id" value="{{ $selectedTripId }}">
@@ -279,69 +172,6 @@
             @endif
         </form>
     </div></div>
-
-    @if ($selectedTrip)
-    {{-- Spending Analytics --}}
-    <div class="card mb-24"><div class="card-body">
-        <h3 class="mb-16" style="font-size:15px;">Spending by Category</h3>
-        @forelse ($categoryTotals as $cat => $amt)
-        @php
-            $color     = $categoryColors[$cat] ?? '#6B7280';
-            $pct       = $totalSpent > 0 ? round($amt / $totalSpent * 100) : 0;
-            $budgetCat = $budgetCategoryMap[$cat] ?? null;
-            $budget    = $budgetCat ? ($tripBudgets[$budgetCat] ?? null) : null;
-            $budgetPctCat = ($budget && $budget->estimated_cost > 0) ? min(100, round($amt / $budget->estimated_cost * 100)) : null;
-            $statusDot = $budgetPctCat === null ? null : ($budgetPctCat >= 100 ? 'var(--danger)' : ($budgetPctCat >= 80 ? 'var(--warning)' : 'var(--success)'));
-            $tip = $cat . ': ₱' . number_format($amt, 0) . ' (' . $pct . '% of spending)' . ($budget ? ' — ₱'.number_format($budget->estimated_cost,0).' budgeted' : '');
-        @endphp
-        <div class="chart-bar-row" tabindex="0" data-tooltip="{{ $tip }}">
-            <div class="chart-bar-label">
-                <i class="fa-solid {{ $categoryIcons[$cat] ?? 'fa-circle' }}" style="color:{{ $color }};"></i>
-                <span>{{ $cat }}</span>
-                @if ($statusDot)
-                <span class="chart-bar-status-dot" style="background:{{ $statusDot }};" title="Budget status"></span>
-                @endif
-            </div>
-            <div class="chart-bar-track">
-                <div class="chart-bar-fill" style="width:{{ max($pct, 3) }}%;background:{{ $color }};"></div>
-            </div>
-            <div class="chart-bar-value">₱{{ number_format($amt, 0) }}{{ $budget ? ' / ₱'.number_format($budget->estimated_cost, 0) : '' }}</div>
-        </div>
-        @empty
-        <div class="chart-empty">No spending yet for this trip.</div>
-        @endforelse
-
-        @if ($tripExpenses->isNotEmpty())
-        <div style="height:1px;background:var(--border-light);margin:20px 0 16px;"></div>
-        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;">
-            <h3 style="font-size:15px;">Daily Spending</h3>
-            @if ($peakDay)
-            <span style="font-size:11px;color:var(--muted);">Peak: {{ \Carbon\Carbon::parse($peakDay)->format('M j') }}</span>
-            @endif
-        </div>
-        <div class="chart-trend-wrap">
-            @foreach ($dailyTotals as $day => $amt)
-            @php
-                $h = $maxDaily > 0 ? max(4, round($amt / $maxDaily * 100)) : 4;
-                $isPeak = $peakDay === $day;
-                $dayTip = \Carbon\Carbon::parse($day)->format('D, M j') . ': ₱' . number_format($amt, 0);
-            @endphp
-            <div class="chart-trend-col">
-                <div class="chart-trend-bar {{ $isPeak ? 'is-peak' : '' }}" style="height:{{ $h }}%;"
-                     tabindex="0" data-tooltip="{{ $dayTip }}">
-                    @if ($isPeak && $amt > 0)
-                    <span class="chart-trend-peak-label">₱{{ number_format($amt, 0) }}</span>
-                    @endif
-                </div>
-                @if ($loop->index % $labelEvery === 0)
-                <div class="chart-trend-tick">{{ \Carbon\Carbon::parse($day)->format('M j') }}</div>
-                @endif
-            </div>
-            @endforeach
-        </div>
-        @endif
-    </div></div>
-    @endif
 
     {{-- Transactions --}}
     <div class="card" style="overflow:hidden;padding-bottom:60px;">
@@ -402,41 +232,6 @@
 
 </div>
 
-{{-- Shared tooltip for the analytics charts --}}
-<div id="chartTooltip" class="chart-tooltip"></div>
-
 @endif
 
 @endsection
-
-@push('scripts')
-<script>
-(function () {
-    var tooltip = document.getElementById('chartTooltip');
-    if (!tooltip) return;
-
-    function showTip(el) {
-        tooltip.textContent = el.getAttribute('data-tooltip');
-        tooltip.style.display = 'block';
-    }
-    function hideTip() { tooltip.style.display = 'none'; }
-    function positionAtPointer(e) {
-        tooltip.style.left = e.clientX + 'px';
-        tooltip.style.top = (e.clientY - 14) + 'px';
-    }
-    function positionAtElement(el) {
-        var r = el.getBoundingClientRect();
-        tooltip.style.left = (r.left + r.width / 2) + 'px';
-        tooltip.style.top = (r.top - 10) + 'px';
-    }
-
-    document.querySelectorAll('[data-tooltip]').forEach(function (el) {
-        el.addEventListener('mouseenter', function () { showTip(el); });
-        el.addEventListener('mousemove', positionAtPointer);
-        el.addEventListener('mouseleave', hideTip);
-        el.addEventListener('focus', function () { showTip(el); positionAtElement(el); });
-        el.addEventListener('blur', hideTip);
-    });
-})();
-</script>
-@endpush
