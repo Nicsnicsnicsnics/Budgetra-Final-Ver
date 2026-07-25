@@ -1623,6 +1623,7 @@ window.sortVenues = function(dir) {
                         <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $attrSd ? \Carbon\Carbon::parse($attrSd)->format('M j, Y') : '—' }}</span>
                     </div>
                 </div>
+                <div style="width:1px;background:var(--border);flex-shrink:0;"></div>
                 <div style="flex:1;">
                     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
                     <div style="display:flex;align-items:center;gap:8px;">

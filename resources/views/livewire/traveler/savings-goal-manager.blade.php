@@ -1,4 +1,4 @@
-<div style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;width:360px;flex-shrink:0;">
+<div style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;width:420px;flex-shrink:0;">
 
     @php
         $trip       = $goal->trip;
@@ -16,7 +16,7 @@
     @endphp
 
     {{-- Cover image --}}
-    <div style="position:relative;height:150px;background:linear-gradient(135deg,#934B19,#C8874A);overflow:hidden;flex-shrink:0;">
+    <div style="position:relative;height:200px;background:linear-gradient(135deg,#934B19,#C8874A);overflow:hidden;flex-shrink:0;">
         @if($cover)
         <img src="{{ $cover }}" alt="{{ $dest }}"
              style="width:100%;height:100%;object-fit:cover;display:block;"
@@ -25,26 +25,26 @@
         <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.1),rgba(0,0,0,0.55));"></div>
 
         {{-- Stacked badges top-left --}}
-        <div style="position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:5px;">
-            <span style="background:{{ $typeColor }};color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.5px;display:inline-block;text-align:center;">{{ $tType }}</span>
+        <div style="position:absolute;top:14px;left:14px;display:flex;flex-direction:column;gap:6px;">
+            <span style="background:{{ $typeColor }};color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:0.5px;display:inline-block;text-align:center;">{{ $tType }}</span>
             @php $statusLabel = match($tripStatus) { 'active' => 'Ongoing', 'upcoming' => 'Upcoming', default => ucfirst($tripStatus) }; @endphp
-            <span style="background:{{ $statusColor }};color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;display:inline-block;">{{ $statusLabel }}</span>
+            <span style="background:{{ $statusColor }};color:#fff;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;text-transform:uppercase;display:inline-block;">{{ $statusLabel }}</span>
         </div>
 
         {{-- Trip info overlay --}}
-        <div style="position:absolute;bottom:12px;left:14px;right:14px;">
-            <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;line-height:1.3;">{{ $dest }}</div>
+        <div style="position:absolute;bottom:14px;left:18px;right:18px;">
+            <div style="font-size:19px;font-weight:700;color:#fff;margin-bottom:6px;line-height:1.3;">{{ $dest }}</div>
             @if($trip)
-            <div style="display:flex;flex-direction:column;gap:3px;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
                 @if($fromCode)
-                <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.9);">
-                    <i class="fa-solid fa-plane" style="font-size:10px;color:#F5C97A;"></i>
+                <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.9);">
+                    <i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>
                     <span>{{ $fromCode }}{{ $toCode ? ' to '.$toCode : '' }}</span>
                 </div>
                 @endif
                 @if($dateFrom)
-                <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.9);">
-                    <i class="fa-regular fa-calendar-days" style="font-size:10px;color:#F5C97A;"></i>
+                <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.9);">
+                    <i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>
                     <span>{{ $dateFrom }} – {{ $dateTo }}</span>
                 </div>
                 @endif
@@ -54,49 +54,49 @@
     </div>
 
     {{-- Body --}}
-    <div style="padding:16px 18px 18px;display:flex;flex-direction:column;flex:1;">
+    <div style="padding:20px 22px 22px;display:flex;flex-direction:column;flex:1;">
 
         @php $cardPct = $targetCost > 0 ? min(100, round($goal->current_savings / $targetCost * 100, 1)) : 0; @endphp
         @php $cardDone = $goal->current_savings >= $targetCost; @endphp
 
         {{-- Progress label + pct --}}
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9B8EA0;">Savings Progress</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9B8EA0;">Savings Progress</span>
             @if($cardDone)
-            <span style="font-size:11px;font-weight:700;color:#16A34A;">Completed</span>
+            <span style="font-size:13px;font-weight:700;color:#16A34A;">Completed</span>
             @else
-            <span style="font-size:13px;font-weight:700;color:#1A0A00;">{{ $cardPct }}%</span>
+            <span style="font-size:15px;font-weight:700;color:#1A0A00;">{{ $cardPct }}%</span>
             @endif
         </div>
 
         {{-- Progress bar --}}
-        <div style="height:5px;background:#F3F4F6;border-radius:99px;overflow:hidden;margin-bottom:14px;">
+        <div style="height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;margin-bottom:18px;">
             <div style="height:100%;width:{{ $cardPct }}%;background:{{ $cardDone ? '#16A34A' : '#934B19' }};border-radius:99px;transition:width 0.3s;"></div>
         </div>
 
         {{-- Saved / Target --}}
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;">
             <div>
-                <div style="font-size:10px;font-weight:600;color:#9B8EA0;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Saved Amount</div>
-                <div style="font-size:20px;font-weight:800;color:#C8874A;">PHP {{ number_format($goal->current_savings, 2) }}</div>
+                <div style="font-size:11px;font-weight:600;color:#9B8EA0;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Saved Amount</div>
+                <div style="font-size:23px;font-weight:800;color:#C8874A;">PHP {{ number_format($goal->current_savings, 2) }}</div>
             </div>
             <div style="text-align:right;">
-                <div style="font-size:10px;font-weight:600;color:#9B8EA0;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Target Goal</div>
-                <div style="font-size:20px;font-weight:800;color:#1A0A00;">PHP {{ number_format($targetCost, 2) }}</div>
+                <div style="font-size:11px;font-weight:600;color:#9B8EA0;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Target Goal</div>
+                <div style="font-size:23px;font-weight:800;color:#1A0A00;">PHP {{ number_format($targetCost, 2) }}</div>
             </div>
         </div>
 
         {{-- Button --}}
         <div style="margin-top:auto;">
             @if($cardDone)
-            <div style="width:100%;padding:12px;border-radius:10px;background:#F0FDF4;color:#16A34A;font-size:13px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;">
+            <div style="width:100%;padding:14px;border-radius:10px;background:#F0FDF4;color:#16A34A;font-size:14px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;">
                 <i class="fa-solid fa-check"></i> Goal Reached!
             </div>
             @else
             <button wire:click="openDeposit"
-                    style="width:100%;background:#934B19;color:#fff;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:'Hanken Grotesk',sans-serif;"
+                    style="width:100%;background:#934B19;color:#fff;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:'Hanken Grotesk',sans-serif;"
                     onmouseenter="this.style.background='#783603'" onmouseleave="this.style.background='#934B19'">
-                <i class="fa-solid fa-circle-plus" style="font-size:14px;"></i> Add Savings
+                <i class="fa-solid fa-circle-plus" style="font-size:15px;"></i> Add Savings
             </button>
             @endif
         </div>

@@ -58,7 +58,7 @@
                 <div style="position:absolute;top:14px;left:14px;display:flex;flex-direction:column;gap:6px;">
                     @php $typeColor = $tType === 'GROUP' ? '#A855F7' : '#14B8A6'; @endphp
                     <span style="background:{{ $typeColor }};color:#fff;font-size:11px;font-weight:700;letter-spacing:0.5px;padding:4px 12px;border-radius:20px;display:inline-block;text-align:center;">{{ $tType }}</span>
-                    @php $statusLabel = match($trip->status) { 'active' => 'Ongoing', 'upcoming' => 'Upcoming', default => ucfirst($trip->status) }; @endphp
+                    @php $statusLabel = match($trip->status) { 'active' => 'Ongoing', 'upcoming' => 'Upcoming', 'past' => 'Finished', default => ucfirst($trip->status) }; @endphp
                     <span style="background:{{ $statusColor }};color:#fff;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;text-transform:uppercase;display:inline-block;">{{ $statusLabel }}</span>
                 </div>
                 {{-- Kebab menu top-right --}}
@@ -333,7 +333,7 @@
             <div style="margin-bottom:22px;">
                 <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#817470;margin-bottom:6px;">Status</div>
                 <div style="display:flex;gap:6px;">
-                    @foreach(['upcoming'=>'Upcoming','active'=>'Ongoing'] as $statusVal => $statusLabel)
+                    @foreach(['upcoming'=>'Upcoming','active'=>'Ongoing','past'=>'Finished'] as $statusVal => $statusLabel)
                     <button type="button" wire:click="$set('editStatus', '{{ $statusVal }}')"
                             style="flex:1;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;border:1.5px solid {{ $editStatus === $statusVal ? '#934b19' : '#e8ddd4' }};background:{{ $editStatus === $statusVal ? '#FDF3EB' : '#fff' }};color:{{ $editStatus === $statusVal ? '#934b19' : '#817470' }};">
                         {{ $statusLabel }}

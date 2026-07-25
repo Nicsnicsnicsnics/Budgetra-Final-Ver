@@ -39,17 +39,30 @@
             <form method="POST" action="{{ route('register') }}">
                 @csrf
 
-                {{-- Full Name --}}
+                {{-- First Name --}}
                 <div class="form-group">
-                    <label class="form-label" for="full_name">Full Name</label>
+                    <label class="form-label" for="first_name">First Name</label>
                     <div class="input-wrapper">
                         <span class="input-icon"><i class="fa-regular fa-user"></i></span>
-                        <input id="full_name" type="text" name="full_name"
-                               value="{{ old('full_name') }}"
-                               class="form-control {{ $errors->has('full_name') ? 'is-invalid' : '' }}"
-                               placeholder="John Doe" required autofocus>
+                        <input id="first_name" type="text" name="first_name"
+                               value="{{ old('first_name') }}"
+                               class="form-control {{ $errors->has('first_name') ? 'is-invalid' : '' }}"
+                               placeholder="John" required autofocus>
                     </div>
-                    @error('full_name')<div class="error">{{ $message }}</div>@enderror
+                    @error('first_name')<div class="error">{{ $message }}</div>@enderror
+                </div>
+
+                {{-- Last Name --}}
+                <div class="form-group">
+                    <label class="form-label" for="last_name">Last Name</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon"><i class="fa-regular fa-user"></i></span>
+                        <input id="last_name" type="text" name="last_name"
+                               value="{{ old('last_name') }}"
+                               class="form-control {{ $errors->has('last_name') ? 'is-invalid' : '' }}"
+                               placeholder="Doe" required>
+                    </div>
+                    @error('last_name')<div class="error">{{ $message }}</div>@enderror
                 </div>
 
                 {{-- Email --}}

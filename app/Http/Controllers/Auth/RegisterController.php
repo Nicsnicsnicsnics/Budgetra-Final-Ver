@@ -15,20 +15,21 @@ class RegisterController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'email'     => 'required|email|max:255|unique:users,email',
-            'password'  => 'required|string|min:8|confirmed',
+            'first_name' => 'required|string|max:100',
+            'last_name'  => 'required|string|max:100',
+            'email'      => 'required|email|max:255|unique:users,email',
+            'password'   => 'required|string|min:8|confirmed',
         ]);
 
         $user = User::create([
-            'full_name' => $validated['full_name'],
-            'email'     => $validated['email'],
-            'password'  => $validated['password'],
-            'role'      => 'traveler',
+            'first_name' => $validated['first_name'],
+            'last_name'  => $validated['last_name'],
+            'full_name'  => trim($validated['first_name'].' '.$validated['last_name']),
+            'email'      => $validated['email'],
+            'password'   => $validated['password'],
+            'role'       => 'traveler',
         ]);
 
-        auth()->login($user);
-
-        return redirect()->route('dashboard');
+        return redirect()->route('login');
     }
 }
