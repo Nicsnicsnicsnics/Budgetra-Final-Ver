@@ -15,7 +15,7 @@
 
 <div class="auth-wrapper">
     {{-- Left panel --}}
-    <div class="auth-panel-left" style="position:relative;overflow:hidden;">
+    <div class="auth-panel-left" style="position:relative;overflow:hidden;order:2;">
         <div style="position:absolute;inset:0;background-image:url('{{ asset('stockimages/loginsidebar.jpg') }}');background-size:cover;background-position:center;filter:blur(3px);transform:scale(1.05);"></div>
         <div style="position:absolute;inset:0;background:rgba(0,0,0,.25);"></div>
         <div style="position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:center;">
@@ -24,7 +24,7 @@
     </div>
 
     {{-- Right panel --}}
-    <div class="auth-panel-right">
+    <div class="auth-panel-right" style="order:1;">
         <div class="auth-form-wrap">
             <h1 class="auth-title">Welcome Back!</h1>
             <p class="auth-subtitle">Enter your credentials to access your trips.</p>
