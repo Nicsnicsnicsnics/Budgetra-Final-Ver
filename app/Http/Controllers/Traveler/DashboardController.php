@@ -15,8 +15,8 @@ class DashboardController extends Controller
             return view('traveler.dashboard.index', ['trips' => collect(), 'totalBudget' => 0, 'totalSpent' => 0]);
         }
 
-        $trips = $user->trips()->latest()->get()->map(function (Trip $trip) {
-            $spent = $trip->expenses()->sum('amount');
+        $trips = $user->trips()->withSum('expenses', 'amount')->latest()->get()->map(function (Trip $trip) {
+            $spent = $trip->expenses_sum_amount ?? 0;
             $today = Carbon::today();
             $trip->setAttribute('total_spent', $spent);
             $trip->setAttribute('pct_used', $trip->budget_limit > 0 ? round($spent / $trip->budget_limit * 100) : 0);

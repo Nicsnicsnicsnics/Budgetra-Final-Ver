@@ -50,6 +50,7 @@
                 <div class="form-group">
                     <label class="form-label" for="password">Password</label>
                     <div class="input-wrapper">
+                        <span class="input-icon"><i class="fa-solid fa-key"></i></span>
                         <input id="password" type="password" name="password"
                                class="form-control {{ $errors->has('password') ? 'is-invalid' : '' }}"
                                placeholder="••••••••" required>

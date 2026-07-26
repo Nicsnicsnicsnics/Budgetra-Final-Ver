@@ -42,13 +42,13 @@ class MultiTripHub extends Component
 
     public function getTripsProperty()
     {
-        $query = auth()->user()->trips()->latest('start_date');
+        $query = auth()->user()->trips()->withSum('expenses', 'amount')->latest('start_date');
         if ($this->search) {
             $query->where('destination', 'like', "%{$this->search}%");
         }
         return $query->get()->map(function (Trip $trip) {
             $today = Carbon::today();
-            $spent = $trip->expenses()->sum('amount');
+            $spent = $trip->expenses_sum_amount ?? 0;
             $days  = max(1, (int) $trip->start_date->diffInDays($trip->end_date));
             $trip->setAttribute('total_spent', (float) $spent);
             $trip->setAttribute('pct_used',    $trip->budget_limit > 0 ? round($spent / $trip->budget_limit * 100) : 0);

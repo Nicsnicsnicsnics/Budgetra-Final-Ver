@@ -32,6 +32,7 @@
     }
 @endphp
 
+@persist('sidebar')
 <aside class="sidebar" id="appSidebar">
 
     <div class="sidebar-header">
@@ -48,7 +49,7 @@
 
     <nav class="sidebar-nav">
         @foreach ($links as $link)
-        <a href="{{ $link['href'] }}"
+        <a href="{{ $link['href'] }}" wire:navigate
            class="sidebar-link {{ $active === $link['key'] ? 'active' : '' }}"
            title="{{ $link['label'] }}">
             <i class="{{ $link['icon'] }}"></i>
@@ -65,7 +66,7 @@
         <div class="sidebar-bottom-links">
             {{-- Profile & Settings --}}
             @foreach ($bottomLinks as $link)
-            <a href="{{ $link['href'] }}"
+            <a href="{{ $link['href'] }}" wire:navigate
                class="sidebar-link {{ $active === $link['key'] ? 'active' : '' }}"
                title="{{ $link['label'] }}">
                 <i class="{{ $link['icon'] }}"></i>
@@ -85,6 +86,7 @@
     </nav>
 
 </aside>
+@endpersist
 
 <script>
 (function () {
@@ -100,10 +102,15 @@
 
     applyState(localStorage.getItem('sidebarCollapsed') === '1');
 
-    btn.addEventListener('click', function () {
-        var c = !wrap.classList.contains('sidebar-collapsed');
-        localStorage.setItem('sidebarCollapsed', c ? '1' : '0');
-        applyState(c);
-    });
+    // The toggle button lives inside the persisted sidebar block, so its listener
+    // survives wire:navigate transitions — guard against binding it more than once.
+    if (!btn.dataset.bound) {
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', function () {
+            var c = !wrap.classList.contains('sidebar-collapsed');
+            localStorage.setItem('sidebarCollapsed', c ? '1' : '0');
+            applyState(c);
+        });
+    }
 })();
 </script>

@@ -46,7 +46,7 @@ class SerpApiService
 
         // 3. Make real request
         try {
-            $response = Http::timeout(20)->connectTimeout(10)->retry(2, 500)->get('https://serpapi.com/search', $params);
+            $response = Http::timeout(20)->connectTimeout(10)->retry(2, 500, throw: false)->get('https://serpapi.com/search', $params);
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             report($e);
             return null;

@@ -161,6 +161,7 @@ class SavedTrips extends Component
     private function fetchTrips()
     {
         return Trip::where('user_id', auth()->id())
+            ->withSum('expenses', 'amount')
             ->latest('created_at')
             ->get()
             ->map(function (Trip $trip) {
@@ -174,7 +175,7 @@ class SavedTrips extends Component
 
                 // Real spending from logged Expenses, vs. the planned budget —
                 // lets the card show actual money tracking, not just the estimate.
-                $actualSpent = (float) $trip->expenses()->sum('amount');
+                $actualSpent = (float) ($trip->expenses_sum_amount ?? 0);
                 $budget      = (float) ($trip->total_cost ?? $trip->budget_limit ?? 0);
                 $trip->setAttribute('actual_spent', $actualSpent);
                 $trip->setAttribute('spend_pct', $budget > 0 ? min(100, round($actualSpent / $budget * 100)) : 0);

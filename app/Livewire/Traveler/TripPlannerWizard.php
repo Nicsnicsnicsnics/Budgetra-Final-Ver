@@ -1018,9 +1018,19 @@ class TripPlannerWizard extends Component
             $checkOut = $this->mcEndDate   ?: $this->endDate   ?: date('Y-m-d', strtotime('+12 days'));
             $nights   = max(1, \Carbon\Carbon::parse($checkIn)->diffInDays(\Carbon\Carbon::parse($checkOut)));
             try {
-                $this->mcHotelResults = $serp->searchHotelsRaw($this->mcTo, $checkIn, $checkOut, $nights, $this->hotelType) ?? [];
+                $data = $serp->searchHotelsRaw($this->mcTo, $checkIn, $checkOut, $nights, $this->hotelType);
+                if (empty($data)) {
+                    $serper = new SerperService();
+                    $data = $serper->searchHotels($this->mcTo, $checkIn, $checkOut, $nights, $this->hotelType);
+                }
+                $this->mcHotelResults = $data ?? [];
             } catch (\Throwable $e) {
-                $this->mcHotelResults = [];
+                try {
+                    $serper = new SerperService();
+                    $this->mcHotelResults = $serper->searchHotels($this->mcTo, $checkIn, $checkOut, $nights, $this->hotelType) ?? [];
+                } catch (\Throwable $e2) {
+                    $this->mcHotelResults = [];
+                }
             }
             $this->mcHotelLoading = false;
             return;
@@ -1139,9 +1149,19 @@ class TripPlannerWizard extends Component
         $nights   = max(1, \Carbon\Carbon::parse($checkIn)->diffInDays(\Carbon\Carbon::parse($checkOut)));
         $serp = new SerpApiService();
         try {
-            $this->mcHotelResults = $serp->searchHotelsRaw($this->mcTo, $checkIn, $checkOut, $nights, $this->hotelType) ?? [];
+            $data = $serp->searchHotelsRaw($this->mcTo, $checkIn, $checkOut, $nights, $this->hotelType);
+            if (empty($data)) {
+                $serper = new SerperService();
+                $data = $serper->searchHotels($this->mcTo, $checkIn, $checkOut, $nights, $this->hotelType);
+            }
+            $this->mcHotelResults = $data ?? [];
         } catch (\Throwable $e) {
-            $this->mcHotelResults = [];
+            try {
+                $serper = new SerperService();
+                $this->mcHotelResults = $serper->searchHotels($this->mcTo, $checkIn, $checkOut, $nights, $this->hotelType) ?? [];
+            } catch (\Throwable $e2) {
+                $this->mcHotelResults = [];
+            }
         }
         if (empty($this->mcHotelResults)) {
             $this->mcHotelResults = $this->fallbackHotels($this->mcTo, $nights, $this->hotelType);
