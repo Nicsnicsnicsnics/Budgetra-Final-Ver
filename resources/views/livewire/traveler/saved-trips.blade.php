@@ -148,9 +148,6 @@
 
             <div style="padding:18px 20px 4px;display:flex;align-items:center;justify-content:space-between;">
                 <span style="font-size:15px;font-weight:700;color:#1A0A00;">Trip Summary</span>
-                <button wire:click="closeDetail" style="background:none;border:none;cursor:pointer;color:#9B8EA0;font-size:14px;padding:4px;">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
             </div>
 
             {{-- Summary rows --}}

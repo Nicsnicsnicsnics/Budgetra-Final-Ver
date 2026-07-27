@@ -2321,7 +2321,7 @@ window.sortAttractions = function(dir) {
             </div>
 
             {{-- Itinerary collapsible --}}
-            <div x-data="{ open: false }" style="background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px;">
+            <div x-data="{ open: true }" style="background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px;">
                 <button @click="open=!open" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:none;border:none;cursor:pointer;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <i class="fa-regular fa-calendar-check" style="color:var(--muted);font-size:12px;"></i>
@@ -2361,7 +2361,7 @@ window.sortAttractions = function(dir) {
             </div>
 
             {{-- Selection Summary collapsible --}}
-            <div x-data="{ open: false }" style="background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;">
+            <div x-data="{ open: true }" style="background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;">
                 <button @click="open=!open" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:none;border:none;cursor:pointer;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <i class="fa-regular fa-bookmark" style="color:var(--muted);font-size:12px;"></i>
@@ -2491,16 +2491,16 @@ window.sortAttractions = function(dir) {
 
         {{-- Manual Planning --}}
         <div wire:click="selectPlanningMode('manual')"
-             style="background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .2s;display:flex;flex-direction:column;height:100%;"
+             style="background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .2s;display:flex;flex-direction:column;height:fit-content;align-self:start;"
              onmouseenter="this.style.boxShadow='0 12px 40px rgba(0,0,0,0.12)';this.style.transform='translateY(-4px)'"
              onmouseleave="this.style.boxShadow='none';this.style.transform='none'">
-            <div style="flex:1;min-height:0;overflow:hidden;">
-                <img src="{{ asset('stockimages/manualplanning.png') }}" alt="Manual Planning" style="width:100%;height:100%;object-fit:cover;">
+            <div style="height:340px;flex-shrink:0;overflow:hidden;">
+                <img src="{{ asset('stockimages/manualplanning.png') }}?v={{ filemtime(public_path('stockimages/manualplanning.png')) }}" alt="Manual Planning" style="width:100%;height:100%;object-fit:cover;">
             </div>
             <div style="padding:24px 28px 28px;flex-shrink:0;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
                     <span style="font-size:21px;font-weight:800;color:var(--dark);">Manual Planning</span>
-                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;background:#F0EDE8;color:#7B5C3A;border-radius:20px;padding:4px 12px;white-space:nowrap;">Precision Control</span>
+                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;background:#F3EBE1;color:#4A3B32;border-radius:20px;padding:4px 12px;white-space:nowrap;">Full Control</span>
                 </div>
                 <p style="font-size:14px;color:var(--muted);line-height:1.5;margin:0 0 18px;">
                     Build your own trip with full control over every details.
@@ -2513,16 +2513,16 @@ window.sortAttractions = function(dir) {
 
         {{-- AI Planning --}}
         <div wire:click="selectPlanningMode('ai')"
-             style="background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .2s;display:flex;flex-direction:column;height:100%;"
+             style="background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .2s;display:flex;flex-direction:column;height:fit-content;align-self:start;"
              onmouseenter="this.style.boxShadow='0 12px 40px rgba(0,0,0,0.12)';this.style.transform='translateY(-4px)'"
              onmouseleave="this.style.boxShadow='none';this.style.transform='none'">
-            <div style="flex:1;min-height:0;overflow:hidden;">
-                <img src="{{ asset('stockimages/aiplanning.png') }}" alt="AI Planning" style="width:100%;height:100%;object-fit:cover;">
+            <div style="height:340px;flex-shrink:0;overflow:hidden;">
+                <img src="{{ asset('stockimages/aipoweredplanning.png') }}?v={{ filemtime(public_path('stockimages/aipoweredplanning.png')) }}" alt="AI Planning" style="width:100%;height:100%;object-fit:cover;">
             </div>
             <div style="padding:24px 28px 28px;flex-shrink:0;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
                     <span style="font-size:21px;font-weight:800;color:var(--dark);">AI Powered Planning</span>
-                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;background:#FEF3E2;color:#B45309;border:1px solid #FDE68A;border-radius:20px;padding:4px 12px;white-space:nowrap;">Recommended</span>
+                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;background:#FEF3E2;color:#451A03;border:1px solid #FDE68A;border-radius:20px;padding:4px 12px;white-space:nowrap;">Recommended</span>
                 </div>
                 <p style="font-size:14px;color:var(--muted);line-height:1.5;margin:0 0 18px;">
                     Type in your trip details and let TARA build the perfect trip for you.

@@ -49,7 +49,7 @@
 
     <nav class="sidebar-nav">
         @foreach ($links as $link)
-        <a href="{{ $link['href'] }}" wire:navigate
+        <a href="{{ $link['href'] }}" wire:navigate data-segment="{{ $link['segment'] }}"
            class="sidebar-link {{ $active === $link['key'] ? 'active' : '' }}"
            title="{{ $link['label'] }}">
             <i class="{{ $link['icon'] }}"></i>
@@ -66,7 +66,7 @@
         <div class="sidebar-bottom-links">
             {{-- Profile & Settings --}}
             @foreach ($bottomLinks as $link)
-            <a href="{{ $link['href'] }}" wire:navigate
+            <a href="{{ $link['href'] }}" wire:navigate data-segment="{{ $link['segment'] }}"
                class="sidebar-link {{ $active === $link['key'] ? 'active' : '' }}"
                title="{{ $link['label'] }}">
                 <i class="{{ $link['icon'] }}"></i>
@@ -111,6 +111,24 @@
             localStorage.setItem('sidebarCollapsed', c ? '1' : '0');
             applyState(c);
         });
+    }
+
+    // The sidebar is persisted across navigations, so Livewire never re-renders
+    // it (and its server-computed "active" class) after wire:navigate transitions.
+    // Recompute the active link from the current URL on every navigation instead.
+    function syncActiveLink() {
+        var path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+        var links = document.querySelectorAll('#appSidebar .sidebar-link[data-segment]');
+        links.forEach(function (link) {
+            var seg = link.dataset.segment;
+            var isActive = path === seg || path.indexOf(seg + '/') === 0;
+            link.classList.toggle('active', isActive);
+        });
+    }
+    syncActiveLink();
+    if (!window.__sidebarActiveSyncBound) {
+        window.__sidebarActiveSyncBound = true;
+        document.addEventListener('livewire:navigated', syncActiveLink);
     }
 })();
 </script>
