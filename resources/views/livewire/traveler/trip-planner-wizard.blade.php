@@ -3,7 +3,7 @@
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 1 — Plan Your Trip (manual)
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode === 'manual' && $step === 1)
+@if ($planningMode !== '' && $step === 1)
 @php
 $localCities = [
     ['name'=>'Manila','code'=>'MNL'],['name'=>'Cebu City','code'=>'CEB'],['name'=>'Davao City','code'=>'DVO'],
@@ -419,7 +419,7 @@ window.pytManual = function() {
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 2 — Select Your Flight (manual)
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode === 'manual' && $step === 2)
+@if ($planningMode !== '' && $step === 2)
 @php
 $localCities2 = [
     ['name'=>'Manila','code'=>'MNL'],['name'=>'Cebu City','code'=>'CEB'],['name'=>'Davao City','code'=>'DVO'],
@@ -1069,7 +1069,7 @@ window.sortVenues = function(dir) {
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 3 — Select Your Accommodation (manual)
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode === 'manual' && $step === 3)
+@if ($planningMode !== '' && $step === 3)
 <style>
 [x-cloak]{display:none!important;}
 .acc-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;display:flex;align-items:stretch;transition:box-shadow .15s;}
@@ -1308,7 +1308,7 @@ window.sortVenues = function(dir) {
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 4 — Select Food & Dining
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode === 'manual' && $step === 4)
+@if ($planningMode !== '' && $step === 4)
 <style>
 .venue-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;display:flex;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .15s;}
 .venue-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.09);}
@@ -1552,7 +1552,7 @@ window.sortVenues = function(dir) {
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 5 — Select Attractions
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode === 'manual' && $step === 5)
+@if ($planningMode !== '' && $step === 5)
 <style>
 .attr-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;display:flex;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .15s;}
 .attr-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.09);}
@@ -1763,7 +1763,7 @@ window.sortAttractions = function(dir) {
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 6 — Emergency Fund
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode === 'manual' && $step === 6)
+@if ($planningMode !== '' && $step === 6)
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;padding:40px 24px;text-align:center;">
 
     <h1 style="font-size:28px;font-weight:800;color:var(--dark);margin:0 0 10px;">Emergency Fund</h1>
@@ -1819,7 +1819,7 @@ window.sortAttractions = function(dir) {
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 7 — Generate Itinerary
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode === 'manual' && $step === 7)
+@if ($planningMode !== '' && $step === 7)
 @php
     $profile      = auth()->user()?->userProfile;
     $interests    = $profile?->interests    ?? [];
@@ -1936,7 +1936,7 @@ window.sortAttractions = function(dir) {
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 8 — Itinerary Preview
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode === 'manual' && $step === 8)
+@if ($planningMode !== '' && $step === 8)
 @php
     $profile8      = auth()->user()?->userProfile;
     $interests8    = $profile8?->interests    ?? [];
@@ -2228,7 +2228,7 @@ window.sortAttractions = function(dir) {
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 9 — Trip Summary & Cost Estimation
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode === 'manual' && $step === 9)
+@if ($planningMode !== '' && $step === 9)
 @php
     $s9dest  = trim($manualTo ?: $mcTo ?: 'Unknown');
     $s9from  = trim($manualFrom ?: 'Manila');
@@ -2495,7 +2495,7 @@ window.sortAttractions = function(dir) {
              onmouseenter="this.style.boxShadow='0 12px 40px rgba(0,0,0,0.12)';this.style.transform='translateY(-4px)'"
              onmouseleave="this.style.boxShadow='none';this.style.transform='none'">
             <div style="height:340px;flex-shrink:0;overflow:hidden;">
-                <img src="{{ asset('stockimages/manualplanning.png') }}?v={{ filemtime(public_path('stockimages/manualplanning.png')) }}" alt="Manual Planning" style="width:100%;height:100%;object-fit:cover;">
+                <img src="{{ asset('stockimages/manualplanning.jpg') }}?v={{ filemtime(public_path('stockimages/manualplanning.jpg')) }}" alt="Manual Planning" style="width:100%;height:100%;object-fit:cover;">
             </div>
             <div style="padding:24px 28px 28px;flex-shrink:0;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
@@ -2512,12 +2512,12 @@ window.sortAttractions = function(dir) {
         </div>
 
         {{-- AI Planning --}}
-        <div wire:click="selectPlanningMode('ai')"
-             style="background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .2s;display:flex;flex-direction:column;height:fit-content;align-self:start;"
+        <a href="{{ route('trips.plan.ai') }}" wire:navigate
+             style="background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .2s;display:flex;flex-direction:column;height:fit-content;align-self:start;text-decoration:none;color:inherit;"
              onmouseenter="this.style.boxShadow='0 12px 40px rgba(0,0,0,0.12)';this.style.transform='translateY(-4px)'"
              onmouseleave="this.style.boxShadow='none';this.style.transform='none'">
             <div style="height:340px;flex-shrink:0;overflow:hidden;">
-                <img src="{{ asset('stockimages/aipoweredplanning.png') }}?v={{ filemtime(public_path('stockimages/aipoweredplanning.png')) }}" alt="AI Planning" style="width:100%;height:100%;object-fit:cover;">
+                <img src="{{ asset('stockimages/aipoweredplanning.jpg') }}?v={{ filemtime(public_path('stockimages/aipoweredplanning.jpg')) }}" alt="AI Planning" style="width:100%;height:100%;object-fit:cover;">
             </div>
             <div style="padding:24px 28px 28px;flex-shrink:0;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
@@ -2531,7 +2531,7 @@ window.sortAttractions = function(dir) {
                     LAUNCH ASSISTANT <i class="fa-solid fa-arrow-right" style="font-size:12px;"></i>
                 </span>
             </div>
-        </div>
+        </a>
 
     </div>
 </div>

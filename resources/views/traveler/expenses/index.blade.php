@@ -64,7 +64,7 @@
     @else
     <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;">No expenses yet</h2>
     <p class="text-muted" style="margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Plan a trip first before logging your expenses.</p>
-    <a href="{{ route('trips.plan') }}" class="btn btn-primary btn-lg">
+    <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
         <i class="fa-solid fa-plane"></i> Plan Your First Trip
     </a>
     @endif

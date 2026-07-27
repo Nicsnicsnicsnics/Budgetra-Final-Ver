@@ -263,7 +263,7 @@ class ProfileBuilder extends Component
     public function confirmProfile(): void
     {
         $this->persistProfile();
-        $this->redirect(route($this->returnTo ?: 'dashboard'), navigate: true);
+        $this->redirect(route($this->returnTo ?: 'trips.plan'), navigate: true);
     }
 
     // Quick-edit path: arrived here via "Edit" from the AI planner to change

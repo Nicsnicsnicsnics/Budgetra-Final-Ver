@@ -192,8 +192,9 @@
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($aiStep === '')
 @php
+    $greeting = 'Good day, ' . (auth()->user()->name ?? '') . '!';
     $hour = now()->hour;
-    $greeting = match(true) {
+    $unusedGreeting = match(true) {
         $hour >= 5 && $hour < 12  => 'Good morning',
         $hour >= 12 && $hour < 17 => 'Good afternoon',
         $hour >= 17 && $hour < 21 => 'Good evening',
@@ -227,17 +228,12 @@
         }
     </style>
 
-    <div style="position:absolute;top:24px;left:24px;z-index:2;">
-        <a href="{{ route('trips.plan') }}" wire:navigate class="llm-back-link">
-            <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Planner
-        </a>
-    </div>
-
     @if (empty($messages))
         {{-- First-time welcome state: greeting + composer + quick pills --}}
         <div class="llm-fade-up" style="text-align:center;width:100%;max-width:600px;">
 
             <h1 class="llm-greeting">✦ {{ $greeting }}</h1>
+            <p style="font-size:14px;color:var(--muted);margin:0 0 20px;">Plan your trip with TARA</p>
 
             @if (!empty($this->profileInterests))
                 <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin-bottom:24px;">
