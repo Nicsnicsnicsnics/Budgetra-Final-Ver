@@ -8,6 +8,7 @@ use App\Models\UserProfile;
 class ProfileBuilder extends Component
 {
     public int    $step       = 1;
+    public string $returnTo   = '';
     public string $homeCity   = '';
     public string $dailyBudgetDisplay = '';
     public float  $dailyBudget = 0;
@@ -115,6 +116,21 @@ class ProfileBuilder extends Component
             $this->selectedSubInterests= $profile->sub_interests ?? [];
             $this->preferredTransportation = $profile->preferred_transportation ?? '';
             $this->preferredAccommodation  = $profile->preferred_accommodation  ?? '';
+        }
+
+        // Allow deep-linking straight to a specific step (e.g. "Edit" from
+        // the AI planner jumps right to the interests step) instead of
+        // always starting the whole wizard over from step 1.
+        $requestedStep = (int) request()->query('step', 0);
+        if ($requestedStep >= 1 && $requestedStep <= 6) {
+            $this->step = $requestedStep;
+        }
+
+        // Whitelist which "come back to" routes are allowed, so this can't
+        // be abused as an open redirect via the query string.
+        $requestedReturn = (string) request()->query('return', '');
+        if (in_array($requestedReturn, ['trips.plan.ai'], true)) {
+            $this->returnTo = $requestedReturn;
         }
     }
 
@@ -227,7 +243,7 @@ class ProfileBuilder extends Component
         }
     }
 
-    public function confirmProfile(): void
+    private function persistProfile(): void
     {
         UserProfile::updateOrCreate(
             ['user_id' => auth()->id()],
@@ -242,7 +258,22 @@ class ProfileBuilder extends Component
                 'preferred_accommodation'  => $this->preferredAccommodation,
             ]
         );
-        $this->redirect(route('dashboard'), navigate: true);
+    }
+
+    public function confirmProfile(): void
+    {
+        $this->persistProfile();
+        $this->redirect(route($this->returnTo ?: 'dashboard'), navigate: true);
+    }
+
+    // Quick-edit path: arrived here via "Edit" from the AI planner to change
+    // just the interests. Saves immediately and returns, instead of forcing
+    // the traveler through the remaining transportation/accommodation/group
+    // steps of the full onboarding wizard again.
+    public function saveInterestsAndReturn(): void
+    {
+        $this->persistProfile();
+        $this->redirect(route($this->returnTo ?: 'dashboard'), navigate: true);
     }
 
     public function render()
