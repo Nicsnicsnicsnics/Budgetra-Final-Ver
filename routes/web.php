@@ -36,6 +36,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/trips',                  \App\Livewire\Traveler\TripPlannerWizard::class)->name('trips.index');
     Route::get('/multi-trips',            \App\Livewire\Traveler\MultiTripHub::class)->name('multi-trips.index');
     Route::get('/trips/plan',             \App\Livewire\Traveler\TripPlannerWizard::class)->name('trips.plan');
+    Route::get('/trips/plan/ai',          \App\Livewire\Traveler\Llm::class)->name('trips.plan.ai');
     Route::get('/trips/type',             [Traveler\TripController::class, 'type'])->name('trips.type');
     Route::get('/trips/create',           [Traveler\TripController::class, 'create'])->name('trips.create');
     Route::post('/trips',                 [Traveler\TripController::class, 'store'])->name('trips.store');
