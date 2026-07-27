@@ -192,7 +192,7 @@
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($aiStep === '')
 @php
-    $greeting = 'Good day, ' . (auth()->user()->name ?? '') . '!';
+    $greeting = 'Good day, ' . (auth()->user()->first_name ?? '') . '!';
     $hour = now()->hour;
     $unusedGreeting = match(true) {
         $hour >= 5 && $hour < 12  => 'Good morning',

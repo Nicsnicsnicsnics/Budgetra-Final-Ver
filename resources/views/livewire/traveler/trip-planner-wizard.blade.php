@@ -2321,7 +2321,7 @@ window.sortAttractions = function(dir) {
             </div>
 
             {{-- Itinerary collapsible --}}
-            <div x-data="{ open: true }" style="background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px;">
+            <div x-data="{ open: false }" style="background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px;">
                 <button @click="open=!open" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:none;border:none;cursor:pointer;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <i class="fa-regular fa-calendar-check" style="color:var(--muted);font-size:12px;"></i>
@@ -2361,7 +2361,7 @@ window.sortAttractions = function(dir) {
             </div>
 
             {{-- Selection Summary collapsible --}}
-            <div x-data="{ open: true }" style="background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;">
+            <div x-data="{ open: false }" style="background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;">
                 <button @click="open=!open" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:none;border:none;cursor:pointer;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <i class="fa-regular fa-bookmark" style="color:var(--muted);font-size:12px;"></i>

@@ -432,10 +432,24 @@
     // stores: 'overviewMoments' for the all-destinations page, 'moments'
     // for a single selected trip — kept apart so toggling one never
     // affects the other.
-    document.addEventListener('alpine:init', function () {
-        Alpine.store('moments', { view: 'map' });
-        Alpine.store('overviewMoments', { view: 'map' });
-    });
+    (function () {
+        // Stores must exist before Alpine evaluates any $store.* binding on
+        // this page. On a hard refresh Alpine hasn't booted yet, so we wait
+        // for 'alpine:init'. But on a wire:navigate SPA hop into this page
+        // from elsewhere, Alpine already booted long ago and 'alpine:init'
+        // will never fire again — so if Alpine is already present, register
+        // the stores immediately instead of waiting for an event that's
+        // already happened.
+        function initMomentsStores() {
+            if (!Alpine.store('moments')) Alpine.store('moments', { view: 'map' });
+            if (!Alpine.store('overviewMoments')) Alpine.store('overviewMoments', { view: 'map' });
+        }
+        if (window.Alpine) {
+            initMomentsStores();
+        } else {
+            document.addEventListener('alpine:init', initMomentsStores);
+        }
+    })();
 
     // Timeline card clicked → jump to Map View, fly to that moment's pin,
     // open its popup, and give the marker a brief highlight pulse.
