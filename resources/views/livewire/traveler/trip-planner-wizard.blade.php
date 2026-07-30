@@ -1788,6 +1788,7 @@ window.sortAttractions = function(dir) {
      STEP 6 — Emergency Fund
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($planningMode !== '' && $step === 6)
+<style>.emergency-fund-input::placeholder{font-weight:400;color:#C4B8AC;}</style>
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;padding:40px 24px;text-align:center;">
 
     <h1 style="font-size:38px;font-weight:800;color:var(--dark);margin:0 0 14px;">Emergency Fund</h1>
@@ -1812,6 +1813,7 @@ window.sortAttractions = function(dir) {
                  style="display:flex;align-items:center;gap:14px;background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:20px 22px;">
                 <i class="fa-solid fa-piggy-bank" style="color:#934B19;font-size:22px;flex-shrink:0;"></i>
                 <input type="text" x-model="display" @input="format($event)" placeholder="Please input amount"
+                       class="emergency-fund-input"
                        style="border:none;background:transparent;font-size:20px;font-weight:700;color:var(--dark);outline:none;width:100%;"
                        autocomplete="off">
             </div>
@@ -2168,6 +2170,22 @@ window.sortAttractions = function(dir) {
     @php
         $optionsToRender = count($aiItineraryOptions) ? $aiItineraryOptions : ($aiItinerary ? [$aiItinerary] : []);
     @endphp
+
+    {{-- Every AI provider failed/timed out for every option — surface this
+         instead of silently rendering an empty page. --}}
+    @if(!$aiLoading && empty($optionsToRender))
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size:24px;color:#fff;"></i>
+        </div>
+        <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:#1A0A00;">Couldn't generate itinerary suggestions</h3>
+        <p style="color:#9B8EA0;font-size:13px;max-width:320px;line-height:1.6;margin:0 0 18px;">Our AI providers are temporarily unavailable or rate-limited. Please try again in a moment.</p>
+        <button wire:click="generateItinerary" wire:loading.attr="disabled" wire:target="generateItinerary"
+                style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:11px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+            <i class="fa-solid fa-rotate" style="font-size:11px;"></i> Try Again
+        </button>
+    </div>
+    @endif
 
     {{-- Day grid --}}
     @php

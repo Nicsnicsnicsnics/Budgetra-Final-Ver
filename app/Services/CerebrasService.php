@@ -3,28 +3,21 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 
-class GroqService
+class CerebrasService
 {
     private string $key;
-    private string $endpoint = 'https://api.groq.com/openai/v1/chat/completions';
-    private string $model    = 'llama-3.3-70b-versatile';
+    private string $endpoint = 'https://api.cerebras.ai/v1/chat/completions';
+    private string $model    = 'gpt-oss-120b';
 
     public function __construct()
     {
-        $this->key = config('services.groq.key', '');
+        $this->key = config('services.cerebras.key', '');
     }
 
     public function generate(string $prompt, int $timeout = 18): ?string
     {
         if (!$this->key) return null;
 
-        // Groq's free tier rate-limits bursts of requests (429). Generating
-        // several itinerary options back-to-back regularly trips this, so
-        // retry once after a short wait instead of just dropping the
-        // option — but keep the wait short. The caller (which is trying
-        // up to 3 providers per option across 5 options) has a fixed total
-        // time budget, and a long Retry-After wait here is exactly what
-        // blew through PHP's max_execution_time before.
         for ($attempt = 0; $attempt < 2; $attempt++) {
             $response = Http::timeout($timeout)
                 ->withToken($this->key)
@@ -53,6 +46,7 @@ class GroqService
         return null;
     }
 
+    // Same contract as GeminiService/GroqService/OpenRouterService::suggestAdditionalItinerary.
     public function suggestAdditionalItinerary(
         string  $destination,
         string  $startDate,

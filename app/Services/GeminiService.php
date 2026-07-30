@@ -14,9 +14,9 @@ class GeminiService
         $this->endpoint = config('services.gemini.endpoint');
     }
 
-    public function generate(string $prompt): ?string
+    public function generate(string $prompt, int $timeout = 18): ?string
     {
-        $response = Http::timeout(30)->post("{$this->endpoint}?key={$this->key}", [
+        $response = Http::timeout($timeout)->post("{$this->endpoint}?key={$this->key}", [
             'contents' => [
                 ['parts' => [['text' => $prompt]]],
             ],
@@ -145,7 +145,8 @@ PROMPT;
         array   $interests,
         array   $alreadySelected = [],
         ?string $constraint = null,
-        string  $departTime = ''
+        string  $departTime = '',
+        int     $timeout = 18
     ): ?array {
         $days         = max(1, (int) round((strtotime($endDate) - strtotime($startDate)) / 86400));
         $selected     = implode(', ', $alreadySelected) ?: 'none';
@@ -198,7 +199,7 @@ Return this exact JSON structure:
 }
 PROMPT;
 
-        $raw = $this->generate($prompt);
+        $raw = $this->generate($prompt, $timeout);
         if (!$raw) return null;
 
         $raw = preg_replace('/```json\s*/i', '', $raw);

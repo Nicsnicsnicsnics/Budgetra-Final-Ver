@@ -53,6 +53,18 @@ return [
         'key' => env('GROQ_API_KEY', ''),
     ],
 
+    'cerebras' => [
+        'key' => env('CEREBRAS_API_KEY', ''),
+    ],
+
+    'mistral' => [
+        'key' => env('MISTRAL_API_KEY', ''),
+    ],
+
+    'openrouter' => [
+        'key' => env('OPENROUTER_API_KEY', ''),
+    ],
+
     'serpapi' => [
         'key' => env('SERPAPI_KEY', ''),
     ],

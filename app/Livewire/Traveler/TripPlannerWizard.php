@@ -101,10 +101,11 @@ class TripPlannerWizard extends Component
     // A little variety per generated option so the choices actually read
     // differently instead of being near-duplicates of each other. Each
     // entry also carries a short label shown in the option list.
+    // Trimmed from 5 to 3 — each option can fall through up to 3 AI
+    // providers (see suggestItinerary()), so fewer options means a lower
+    // worst-case wait while still giving a real comparison grid.
     private const ITINERARY_OPTION_CONSTRAINTS = [
-        ['label' => 'Hidden Gems',      'prompt' => 'Focus on hidden gems and lesser-known local spots.'],
         ['label' => 'Balanced Mix',     'prompt' => 'Mix cultural, culinary, and outdoor experiences for a well-rounded trip.'],
-        ['label' => 'Relaxed & Premium','prompt' => 'Prioritize a relaxed pace with fewer, higher-quality experiences and premium dining.'],
         ['label' => 'Adventure Focus',  'prompt' => 'Prioritize outdoor adventure, active excursions, and thrill activities.'],
         ['label' => 'Budget Friendly',  'prompt' => 'Prioritize affordable, high-value activities and local eats to stretch the budget further.'],
     ];
@@ -1033,23 +1034,40 @@ class TripPlannerWizard extends Component
         $this->step = 7;
     }
 
-    // Gemini first, Groq as fallback — shared by every place that asks the
-    // AI for one itinerary suggestion.
-    private function suggestItinerary(array $args): ?array
+    // Gemini → Groq → Cerebras → Mistral → OpenRouter — shared by every
+    // place that asks the AI for one itinerary suggestion. Each is tried
+    // only if the previous one failed or returned nothing (dead key, rate
+    // limit, exhausted quota, no billing, etc.), so one provider being
+    // down doesn't stall generation as long as another still has
+    // capacity. As of the last check: Gemini's key returns 401
+    // UNAUTHENTICATED and Cerebras's account has no billing set up (402
+    // on every model) — both fail fast and just fall through; Groq and
+    // Mistral currently have working keys.
+    //
+    // $deadline is a microtime(true) cutoff for this ENTIRE call (all
+    // providers combined) — generateItinerary() calls this up to 5 times
+    // in a row, and trying every provider at a fixed 30s timeout each, per
+    // option, is how a single request used to blow past PHP's 120s
+    // max_execution_time and fatal out. Once the deadline is hit we stop
+    // trying further providers for this option and just report failure —
+    // that option gets skipped same as any other provider failure.
+    private function suggestItinerary(array $args, ?float $deadline = null): ?array
     {
-        try {
-            $result = (new \App\Services\GeminiService())->suggestAdditionalItinerary(...$args);
-        } catch (\Throwable) {
-            $result = null;
-        }
-        if (!$result) {
+        $deadline ??= microtime(true) + 45;
+        foreach ([\App\Services\GeminiService::class, \App\Services\GroqService::class, \App\Services\CerebrasService::class, \App\Services\MistralService::class, \App\Services\OpenRouterService::class] as $serviceClass) {
+            $remaining = $deadline - microtime(true);
+            if ($remaining < 4) break;
+
             try {
-                $result = (new \App\Services\GroqService())->suggestAdditionalItinerary(...$args);
+                $result = (new $serviceClass())->suggestAdditionalItinerary(...$args, timeout: (int) min(18, floor($remaining)));
             } catch (\Throwable) {
                 $result = null;
             }
+            if ($result) {
+                return $this->applyDepartureCost($result);
+            }
         }
-        return $result ? $this->applyDepartureCost($result) : $result;
+        return null;
     }
 
     // The AI is instructed to add a "Head to Airport / Departure" entry with
@@ -1133,7 +1151,19 @@ class TripPlannerWizard extends Component
         // Generate a small batch of distinct options up front instead of one
         // itinerary — each call gets its own "flavor" constraint so they
         // read as genuinely different choices rather than near-duplicates.
-        foreach (self::ITINERARY_OPTION_CONSTRAINTS as $option) {
+        // Firing them all back-to-back regularly trips Groq's free-tier
+        // rate limit and starves the option grid down to fewer successful
+        // results, so space them out a little.
+        //
+        // Each option can try up to 3 providers (see suggestItinerary()).
+        // Capping every option to a fixed slice of an overall ~65s budget
+        // (well under PHP's 120s max_execution_time, sized for 3 options
+        // now instead of 5) is what stops multiple options × 3 providers ×
+        // 30s timeouts from fataling out mid-request the way it did before.
+        $overallDeadline = microtime(true) + 65;
+        foreach (self::ITINERARY_OPTION_CONSTRAINTS as $i => $option) {
+            if (microtime(true) >= $overallDeadline) break;
+            if ($i > 0) usleep(600_000);
             $args = [
                 $dest,
                 $this->startDate ?: now()->toDateString(),
@@ -1146,7 +1176,8 @@ class TripPlannerWizard extends Component
                 $option['prompt'],
                 $departTime,
             ];
-            $result = $this->suggestItinerary($args);
+            $optionDeadline = min($overallDeadline, microtime(true) + 20);
+            $result = $this->suggestItinerary($args, $optionDeadline);
             if ($result) {
                 $result['_optionLabel'] = $option['label'];
                 $this->aiItineraryOptions[] = $result;
