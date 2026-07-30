@@ -45,10 +45,6 @@
 
 @section('content')
 
-@if (session('success'))
-<div class="alert alert-success">{{ session('success') }}</div>
-@endif
-
 @if ($trips->isEmpty())
 {{-- No trips empty state --}}
 <div class="empty-state-center" style="min-height:80vh;">
@@ -107,7 +103,7 @@
     $filterParams = request()->only(['category', 'date_from', 'date_to']);
 @endphp
 
-<div style="max-width:960px;margin:0 auto;width:100%;">
+<div x-data="{ confirmDeleteId: null, confirmDeleteDesc: '' }" style="max-width:960px;margin:0 auto;width:100%;">
 
     {{-- Header: destination selector --}}
     <div style="margin-bottom:20px;">
@@ -209,12 +205,13 @@
                     <a href="{{ route('expenses.edit', $expense) }}" class="txn-action-btn" title="Edit">
                         <i class="fa-solid fa-pen"></i>
                     </a>
-                    <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('Delete this expense?')">
+                    <form id="expense-delete-{{ $expense->id }}" method="POST" action="{{ route('expenses.destroy', $expense) }}">
                         @csrf @method('DELETE')
-                        <button type="submit" class="txn-action-btn txn-action-danger" title="Delete">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
                     </form>
+                    <button type="button" class="txn-action-btn txn-action-danger" title="Delete"
+                            @click="confirmDeleteId = {{ $expense->id }}; confirmDeleteDesc = @js($expense->description ?? $expense->category)">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 </div>
             </div>
             @endforeach
@@ -229,6 +226,25 @@
     <a href="{{ route('expenses.create') }}{{ $selectedTripId ? '?trip_id='.$selectedTripId : '' }}" class="expense-fab" title="Add Expense">
         <i class="fa-solid fa-plus"></i>
     </a>
+
+    {{-- Delete Confirmation Modal --}}
+    <div x-show="confirmDeleteId" x-cloak style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#fff;border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
+            <div style="background:#FEF2F2;padding:28px 24px 20px;text-align:center;">
+                <div style="width:52px;height:52px;border-radius:50%;background:#FEE2E2;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                    <i class="fa-solid fa-trash-can" style="font-size:22px;color:#DC2626;"></i>
+                </div>
+                <div style="font-size:17px;font-weight:700;color:#1A0A00;margin-bottom:6px;">Delete Expense?</div>
+                <div style="font-size:13px;color:#6B7280;line-height:1.5;">
+                    <strong x-text="confirmDeleteDesc"></strong> will be permanently deleted.<br>This action cannot be undone.
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;padding:18px 24px;">
+                <button type="button" @click="confirmDeleteId = null" style="flex:1;padding:11px;border-radius:10px;border:1.5px solid var(--border);background:#fff;color:var(--dark);font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+                <button type="button" @click="document.getElementById('expense-delete-' + confirmDeleteId).submit()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#DC2626;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Delete</button>
+            </div>
+        </div>
+    </div>
 
 </div>
 

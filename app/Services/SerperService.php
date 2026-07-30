@@ -111,6 +111,7 @@ class SerperService
         $typeLabel = match($type) {
             'apartment' => 'apartments',
             'inn'       => 'inns and guesthouses',
+            'resort'    => 'resorts',
             default     => 'hotels',
         };
         $data = $this->request("best {$typeLabel} in {$destination}", $destination);
@@ -147,6 +148,7 @@ class SerperService
             $typeKey = match(true) {
                 str_contains($rawType, 'apartment') || str_contains($rawType, 'condo') || str_contains($rawType, 'suite') => 'apartment',
                 str_contains($rawType, 'inn') || str_contains($rawType, 'hostel') || str_contains($rawType, 'lodge') || str_contains($rawType, 'guesthouse') => 'inn',
+                str_contains($rawType, 'resort') => 'resort',
                 default => $type,
             };
 

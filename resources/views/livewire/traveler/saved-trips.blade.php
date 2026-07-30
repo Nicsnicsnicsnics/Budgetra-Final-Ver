@@ -25,8 +25,42 @@
         @endif
     </div>
     @else
-    <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;align-items:flex-start;">
-        @foreach ($trips as $trip)
+    @php
+        $draftTrips  = $trips->where('status', '=', 'draft');
+        $activeTrips = $trips->whereNotIn('status', ['past', 'draft']);
+        $pastTrips   = $trips->where('status', '=', 'past');
+        $stGroups = [
+            ['key' => 'active', 'label' => 'Active Trips', 'icon' => 'fa-solid fa-plane-departure',  'items' => $activeTrips, 'noun' => 'active trips'],
+            ['key' => 'draft',  'label' => 'Draft Trips',  'icon' => 'fa-regular fa-file-lines',      'items' => $draftTrips,  'noun' => 'draft trips'],
+            ['key' => 'past',   'label' => 'Past Trips',   'icon' => 'fa-solid fa-clock-rotate-left', 'items' => $pastTrips,   'noun' => 'past trips'],
+        ];
+    @endphp
+
+    @foreach ($stGroups as $stGroup)
+    <div x-data="{ open: false }" style="margin-bottom:20px;background:#fff;border:1.5px solid var(--border);border-radius:999px;transition:border-radius .15s,border-color .15s,box-shadow .15s;"
+         :style="open ? 'border-radius:20px;border-color:#934B19;box-shadow:0 4px 16px rgba(147,75,25,.10);' : ''">
+        <button @click="open=!open" type="button" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:none;border:none;cursor:pointer;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:30px;height:30px;border-radius:50%;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="{{ $stGroup['icon'] }}" style="color:#934B19;font-size:13px;"></i>
+                </div>
+                <span style="font-size:15px;font-weight:700;color:#1A0A00;">{{ $stGroup['label'] }}</span>
+                <span style="font-size:11px;font-weight:700;color:#934B19;background:#FDF3EB;border-radius:20px;padding:2px 10px;">{{ $stGroup['items']->count() }}</span>
+            </div>
+            <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
+        </button>
+        <div x-show="open" x-transition style="padding:16px 18px 20px;border-top:1px solid var(--border);">
+            @if ($stGroup['items']->isEmpty())
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
+                <div style="width:56px;height:56px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+                    <i class="{{ $stGroup['icon'] }}" style="font-size:24px;color:#fff;"></i>
+                </div>
+                <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:#1A0A00;">No {{ $stGroup['label'] }} yet</h3>
+                <p style="color:#9B8EA0;font-size:13px;max-width:280px;line-height:1.6;margin:0;">Plan a trip first to see your {{ $stGroup['noun'] }}.</p>
+            </div>
+            @else
+            <div style="display:flex;flex-wrap:wrap;gap:28px 32px;justify-content:center;align-items:flex-start;">
+                @foreach ($stGroup['items'] as $trip)
         <div style="display:flex;align-items:stretch;">
         @php
             $dest     = $trip->trip_name ?? $trip->destination ?? 'Unknown';
@@ -43,7 +77,7 @@
                 'upcoming' => '#3B82F6',
                 default    => '#6B7280',
             };
-            $spendColor = $trip->spend_pct >= 80 ? '#DC2626' : ($trip->spend_pct >= 50 ? '#D97706' : '#22C55E');
+            $spendColor = $trip->spend_pct >= 80 ? '#DC2626' : ($trip->spend_pct >= 50 ? '#D97706' : '#1A0A00');
         @endphp
         <div wire:key="trip-{{ $trip->id }}" style="background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;width:420px;flex-shrink:0;">
             {{-- Cover image --}}
@@ -106,12 +140,12 @@
                         <div style="font-size:11px;font-weight:600;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.5px;">Spent</div>
                         <div style="font-size:12px;font-weight:700;color:{{ $spendColor }};">{{ $trip->spend_pct }}%</div>
                     </div>
+                    <div style="height:7px;background:#F3F4F6;border-radius:99px;overflow:hidden;margin-bottom:9px;">
+                        <div style="height:100%;border-radius:99px;background:{{ $spendColor }};width:{{ $trip->spend_pct }}%;transition:width .4s ease;"></div>
+                    </div>
                     <div style="font-size:23px;font-weight:700;color:#C8874A;">
                         PHP {{ number_format($trip->actual_spent, 0) }}
                         <span style="font-size:13px;font-weight:500;color:#9B8EA0;">/ {{ number_format($displayCost, 0) }}</span>
-                    </div>
-                    <div style="height:7px;background:#F3F4F6;border-radius:99px;overflow:hidden;margin-top:9px;">
-                        <div style="height:100%;border-radius:99px;background:{{ $spendColor }};width:{{ $trip->spend_pct }}%;transition:width .4s ease;"></div>
                     </div>
                 </div>
 
@@ -134,7 +168,7 @@
             $dtDest  = $dt->trip_name ?? $dt->destination;
             $dtTotal = $dt->total_cost ?? $dt->budget_limit ?? 0;
             $sd      = $dt->summary_data ?? [];
-            $dtSpendColor = $dt->spend_pct >= 80 ? '#DC2626' : ($dt->spend_pct >= 50 ? '#D97706' : '#22C55E');
+            $dtSpendColor = $dt->spend_pct >= 80 ? '#DC2626' : ($dt->spend_pct >= 50 ? '#D97706' : '#1A0A00');
             $rows = [
                 'transportation' => ['label' => 'Transportation',  'icon' => 'fa-solid fa-plane'],
                 'accommodation'  => ['label' => 'Accommodation',   'icon' => 'fa-solid fa-bed'],
@@ -151,8 +185,7 @@
             </div>
 
             {{-- Summary rows --}}
-            <div style="margin:12px 16px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #F0E8DF;">
-                <div style="padding:10px 14px 6px;font-size:10px;font-weight:700;color:#9B8EA0;letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid #F5EFE8;">Summary</div>
+            <div style="margin:12px 16px 12px;border-radius:14px;overflow:hidden;border:1px solid #F0E8DF;">
                 @if(empty($sd))
                 <div style="padding:20px 14px;text-align:center;">
                     <i class="fa-solid fa-circle-info" style="font-size:20px;color:#D4C5B5;margin-bottom:8px;display:block;"></i>
@@ -164,6 +197,7 @@
                     $rowData   = $sd[$key] ?? null;
                     $rowCost   = $rowData['cost'] ?? 0;
                     $rowDetail = $rowData['detail'] ?? null;
+                    $rowExtra  = $rowData['extra'] ?? 0;
                     if (!$rowCost && !$rowDetail) continue;
                 @endphp
                 <div style="padding:12px 14px;border-bottom:1px solid #F5EFE8;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
@@ -171,6 +205,9 @@
                         <div style="font-size:12px;font-weight:600;color:#1A0A00;margin-bottom:2px;">{{ $meta['label'] }}</div>
                         @if($rowDetail)
                         <div style="font-size:10px;color:#9B8EA0;line-height:1.4;">{{ $rowDetail }}</div>
+                        @endif
+                        @if($rowExtra > 0)
+                        <div style="font-size:10px;color:#934B19;font-weight:600;line-height:1.4;margin-top:2px;">+{{ $rowExtra }} more from suggested itinerary</div>
                         @endif
                     </div>
                     <div style="font-size:12px;font-weight:600;color:#1A0A00;white-space:nowrap;flex-shrink:0;">
@@ -181,21 +218,6 @@
                 @endif
             </div>
 
-            {{-- Actual spent vs. planned total --}}
-            <div style="margin:0 16px 12px;padding:12px 14px;background:#fff;border-radius:14px;border:1px solid #F0E8DF;">
-                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">
-                    <span style="font-size:10px;font-weight:700;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.6px;">Actually Spent</span>
-                    <span style="font-size:11px;font-weight:700;color:{{ $dtSpendColor }};">{{ $dt->spend_pct }}%</span>
-                </div>
-                <div style="font-size:16px;font-weight:800;color:#1A0A00;margin-bottom:8px;">
-                    PHP {{ number_format($dt->actual_spent, 0) }}
-                    <span style="font-size:11px;font-weight:500;color:#9B8EA0;"> of PHP {{ number_format($dtTotal, 0) }}</span>
-                </div>
-                <div style="height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
-                    <div style="height:100%;border-radius:99px;background:{{ $dtSpendColor }};width:{{ $dt->spend_pct }}%;"></div>
-                </div>
-            </div>
-
             {{-- Total --}}
             <div style="padding:0 16px 18px;">
                 <div style="font-size:10px;font-weight:700;color:#9B8EA0;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;">Total Cost</div>
@@ -204,8 +226,12 @@
         </div>
         @endif
         </div>
-        @endforeach
+                @endforeach
+            </div>
+            @endif
+        </div>
     </div>
+    @endforeach
     @endif
 
     {{-- Delete Confirmation Modal --}}
@@ -219,7 +245,7 @@
                 </div>
                 <div style="font-size:17px;font-weight:700;color:#1A0A00;margin-bottom:6px;">Delete Trip?</div>
                 <div style="font-size:13px;color:#6B7280;line-height:1.5;">
-                    <strong>{{ $deleteTripName }} trip</strong> will be permanently deleted.<br>This action cannot be undone.
+                    <strong>{{ $deleteTripName }}</strong> will be permanently deleted.<br>This action cannot be undone.
                 </div>
             </div>
             {{-- Actions --}}

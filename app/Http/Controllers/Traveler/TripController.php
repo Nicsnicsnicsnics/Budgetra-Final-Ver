@@ -34,7 +34,7 @@ class TripController extends Controller
             'end_date'      => 'required|date|after_or_equal:start_date',
             'num_travelers' => 'nullable|integer|min:1|max:50',
             'budget_limit'  => 'nullable|numeric|min:0',
-            'travel_type'   => 'required|in:Solo,Family,Couple,Friends',
+            'travel_type'   => 'required|in:Solo,Group',
             'notes'         => 'nullable|string|max:1000',
         ]);
 
@@ -66,7 +66,7 @@ class TripController extends Controller
             'end_date'      => 'required|date|after_or_equal:start_date',
             'num_travelers' => 'nullable|integer|min:1|max:50',
             'budget_limit'  => 'nullable|numeric|min:0',
-            'travel_type'   => 'required|in:Solo,Family,Couple,Friends',
+            'travel_type'   => 'required|in:Solo,Group',
             'notes'         => 'nullable|string|max:1000',
         ]);
 

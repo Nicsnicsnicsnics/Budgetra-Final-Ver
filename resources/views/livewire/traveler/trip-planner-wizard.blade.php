@@ -71,7 +71,12 @@ $allCities = array_merge(
     </div>
 
     {{-- Card --}}
-    <div x-data="pytManual()" x-init="init()"
+    {{-- wire:key forces Livewire to treat this as a fresh element every time
+         step becomes 1 again (e.g. via "Back to Planner"), instead of
+         possibly morph-reusing a stale DOM node and skipping Alpine's
+         x-init — which is what actually re-seeds fromLabel/toLabel/dates/
+         budget from the still-intact server-side values. --}}
+    <div wire:key="pyt-manual-card-{{ $step }}" x-data="pytManual()" x-init="init()"
          style="background:#fff;border:1.5px solid var(--border);border-radius:24px;width:100%;max-width:720px;box-shadow:0 4px 24px rgba(0,0,0,.06);">
 
         <div style="padding:36px 36px 0;">
@@ -142,7 +147,7 @@ $allCities = array_merge(
 
             {{-- BUDGET --}}
             <div style="margin-bottom:18px;">
-                <div class="pyt-label">Preferred Budget Range</div>
+                <div class="pyt-label">Preferred Budget Range (must not exceed 7 digits)</div>
                 <div class="pyt-field" style="cursor:default;display:flex;align-items:center;gap:10px;">
                     <i class="fa-solid fa-money-bill-wave" style="color:#934B19;font-size:15px;flex-shrink:0;"></i>
                     <input type="text"
@@ -151,7 +156,7 @@ $allCities = array_merge(
                            class="pyt-budget-input"
                            x-ref="budgetInput"
                            @input="
-                               const fmt = p => { const n = p.trim().replace(/[^0-9]/g,''); return n ? parseInt(n).toLocaleString('en-PH') : ''; };
+                               const fmt = p => { const n = p.trim().replace(/[^0-9]/g,'').slice(0,7); return n ? parseInt(n).toLocaleString('en-PH') : ''; };
                                const raw = $el.value; const parts = raw.split('-');
                                $el.value = parts.length===2 ? fmt(parts[0])+' - '+fmt(parts[1]) : fmt(parts[0]);
                            "
@@ -231,10 +236,11 @@ $allCities = array_merge(
                 <i class="fa-solid fa-circle-info" style="color:var(--muted);font-size:13px;flex-shrink:0;"></i>
                 <span style="font-size:13px;color:var(--muted);">Fill in the details to start your journey calculation.</span>
             </div>
-            <button wire:click="saveDraft"
+            <button wire:click="saveDraft" wire:loading.attr="disabled" wire:target="saveDraft"
                     style="background:#fff;border:1.5px solid var(--border);color:var(--dark);border-radius:10px;padding:13px 24px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;"
                     onmouseenter="this.style.background='#F5F0EB'" onmouseleave="this.style.background='#fff'">
-                Save Draft
+                <span wire:loading.remove wire:target="saveDraft">Save Draft</span>
+                <span wire:loading wire:target="saveDraft"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
             <button wire:click="proceedFromTripDetails" wire:loading.attr="disabled" wire:target="proceedFromTripDetails"
                     style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:13px 34px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;"
@@ -271,16 +277,15 @@ window.pytManual = function() {
         endCells: [],
 
         init() {
-            this.startCells = this._buildCells(this.startYear, this.startMonth);
-            this.endCells   = this._buildCells(this.endYear,   this.endMonth);
-            this.$watch('startYear',  () => { this.startCells = this._buildCells(this.startYear,  this.startMonth); });
-            this.$watch('startMonth', () => { this.startCells = this._buildCells(this.startYear,  this.startMonth); });
-            this.$watch('endYear',    () => { this.endCells   = this._buildCells(this.endYear,    this.endMonth);   });
-            this.$watch('endMonth',   () => { this.endCells   = this._buildCells(this.endYear,    this.endMonth);   });
+            this.rebuildCells();
+            this.$watch('startYear',  () => this.rebuildCells());
+            this.$watch('startMonth', () => this.rebuildCells());
+            this.$watch('endYear',    () => this.rebuildCells());
+            this.$watch('endMonth',   () => this.rebuildCells());
             document.addEventListener('click', () => this.closeCals());
         },
 
-        _buildCells(y, m) {
+        _buildCells(y, m, bound, boundIsMin) {
             const todayStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
             const first = new Date(y, m-1, 1).getDay();
             const days  = new Date(y, m, 0).getDate();
@@ -288,14 +293,17 @@ window.pytManual = function() {
             for (let i = 0; i < first; i++) cells.push({ d: null, key: 'e'+y+m+i, val: '', past: false });
             for (let d = 1; d <= days; d++) {
                 const val = y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-                cells.push({ d, key: 'd'+y+m+d, val, past: val < todayStr });
+                const past = val < todayStr || (bound && (boundIsMin ? val < bound : val > bound));
+                cells.push({ d, key: 'd'+y+m+d, val, past });
             }
             return cells;
         },
 
+        // The start calendar can't go past the chosen end date; the end
+        // calendar can't go before the chosen start date.
         rebuildCells() {
-            this.startCells = this._buildCells(this.startYear, this.startMonth);
-            this.endCells   = this._buildCells(this.endYear,   this.endMonth);
+            this.startCells = this._buildCells(this.startYear, this.startMonth, this.endVal || null, false);
+            this.endCells   = this._buildCells(this.endYear,   this.endMonth,   this.startVal || null, true);
         },
 
         toggleDrop(which) {
@@ -353,8 +361,13 @@ window.pytManual = function() {
             const m = which === 'start' ? this.startMonth : this.endMonth;
             const val = y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
             const label = months[m-1].slice(0,3) + ' ' + String(d).padStart(2,'0') + ', ' + y;
-            if (which === 'start') { this.startVal = val; this.startLabel = label; }
-            else                   { this.endVal   = val; this.endLabel   = label; }
+            if (which === 'start') {
+                this.startVal = val; this.startLabel = label;
+                if (this.endVal && this.endVal < val) { this.endVal = ''; this.endLabel = ''; $wire.set('endDate', ''); }
+            } else {
+                this.endVal = val; this.endLabel = label;
+                if (this.startVal && this.startVal > val) { this.startVal = ''; this.startLabel = ''; $wire.set('startDate', ''); }
+            }
             $wire.set(which === 'start' ? 'startDate' : 'endDate', val);
             this.rebuildCells();
             this.activeCal = '';
@@ -608,7 +621,7 @@ $allCities2 = array_merge(
                     </div>
                     <div class="cal-grid">
                         <template x-for="d in ['Su','Mo','Tu','We','Th','Fr','Sa']"><div class="cal-day-name" x-text="d"></div></template>
-                        <template x-for="cell in calCells2(sY,sM)" :key="cell.key">
+                        <template x-for="cell in calCells2(sY,sM,'start')" :key="cell.key">
                             <div class="cal-day" :class="{'selected':cell.d&&fmt2(sY,sM,cell.d)===startVal2,'past':cell.past,'empty':!cell.d}"
                                  @click.stop="cell.d&&!cell.past&&pickDate2('start',cell.d)" x-text="cell.d||''"></div>
                         </template>
@@ -634,7 +647,7 @@ $allCities2 = array_merge(
                     </div>
                     <div class="cal-grid">
                         <template x-for="d in ['Su','Mo','Tu','We','Th','Fr','Sa']"><div class="cal-day-name" x-text="d"></div></template>
-                        <template x-for="cell in calCells2(eY,eM)" :key="cell.key">
+                        <template x-for="cell in calCells2(eY,eM,'end')" :key="cell.key">
                             <div class="cal-day" :class="{'selected':cell.d&&fmt2(eY,eM,cell.d)===endVal2,'past':cell.past,'empty':!cell.d}"
                                  @click.stop="cell.d&&!cell.past&&pickDate2('end',cell.d)" x-text="cell.d||''"></div>
                         </template>
@@ -697,7 +710,7 @@ $allCities2 = array_merge(
                     </div>
                     <div class="cal-grid">
                         <template x-for="d in ['Su','Mo','Tu','We','Th','Fr','Sa']"><div class="cal-day-name" x-text="d"></div></template>
-                        <template x-for="cell in calCells2(mcY,mcM)" :key="cell.key">
+                        <template x-for="cell in calCells2(mcY,mcM,'mc-start')" :key="cell.key">
                             <div class="cal-day" :class="{'selected':cell.d&&fmt2(mcY,mcM,cell.d)===mcStartVal,'past':cell.past,'empty':!cell.d}"
                                  @click.stop="cell.d&&!cell.past&&pickDate2('mc-start',cell.d)" x-text="cell.d||''"></div>
                         </template>
@@ -722,7 +735,7 @@ $allCities2 = array_merge(
                     </div>
                     <div class="cal-grid">
                         <template x-for="d in ['Su','Mo','Tu','We','Th','Fr','Sa']"><div class="cal-day-name" x-text="d"></div></template>
-                        <template x-for="cell in calCells2(mc2Y,mc2M)" :key="cell.key">
+                        <template x-for="cell in calCells2(mc2Y,mc2M,'mc-end')" :key="cell.key">
                             <div class="cal-day" :class="{'selected':cell.d&&fmt2(mc2Y,mc2M,cell.d)===mcEndVal,'past':cell.past,'empty':!cell.d}"
                                  @click.stop="cell.d&&!cell.past&&pickDate2('mc-end',cell.d)" x-text="cell.d||''"></div>
                         </template>
@@ -993,10 +1006,25 @@ window.pytFlight = function() {
             else                         { y=this.mc2Y; m=this.mc2M; }
             const val   = this.fmt2(y,m,d);
             const label = months[m-1].slice(0,3)+' '+String(d).padStart(2,'0')+', '+y;
-            if      (which==='start')    { this.startVal2=val;   this.startLabel2=label;   $wire.set('startDate',val); }
-            else if (which==='end')      { this.endVal2=val;     this.endLabel2=label;     $wire.set('endDate',val);   }
-            else if (which==='mc-start') { this.mcStartVal=val;  this.mcStartLabel=label; $wire.set('mcStartDate',val); }
-            else                         { this.mcEndVal=val;    this.mcEndLabel=label;   $wire.set('mcEndDate',val); }
+            if (which==='start') {
+                this.startVal2=val; this.startLabel2=label; $wire.set('startDate',val);
+                // A start date picked after the existing end date leaves an
+                // invalid range — clear the now-stale end date instead of
+                // silently allowing start > end.
+                if (this.endVal2 && this.endVal2 < val) { this.endVal2=''; this.endLabel2=''; $wire.set('endDate',''); }
+            }
+            else if (which==='end') {
+                this.endVal2=val; this.endLabel2=label; $wire.set('endDate',val);
+                if (this.startVal2 && this.startVal2 > val) { this.startVal2=''; this.startLabel2=''; $wire.set('startDate',''); }
+            }
+            else if (which==='mc-start') {
+                this.mcStartVal=val; this.mcStartLabel=label; $wire.set('mcStartDate',val);
+                if (this.mcEndVal && this.mcEndVal < val) { this.mcEndVal=''; this.mcEndLabel=''; $wire.set('mcEndDate',''); }
+            }
+            else {
+                this.mcEndVal=val; this.mcEndLabel=label; $wire.set('mcEndDate',val);
+                if (this.mcStartVal && this.mcStartVal > val) { this.mcStartVal=''; this.mcStartLabel=''; $wire.set('mcStartDate',''); }
+            }
             this.activeCal2='';
         },
 
@@ -1015,13 +1043,25 @@ window.pytFlight = function() {
 
         monthName2(y,m) { return months[m-1]; },
 
-        calCells2(y,m) {
+        calCells2(y,m,which) {
             const first = new Date(y,m-1,1).getDay();
             const days  = new Date(y,m,0).getDate();
             const todayStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+            // Keep the range coherent: the start calendar can't go past the
+            // chosen end date, and the end calendar can't go before the
+            // chosen start date.
+            let bound = null, boundIsMin = false;
+            if      (which==='start')    { bound=this.endVal2   || null; }
+            else if (which==='end')      { bound=this.startVal2 || null; boundIsMin=true; }
+            else if (which==='mc-start') { bound=this.mcEndVal  || null; }
+            else if (which==='mc-end')   { bound=this.mcStartVal|| null; boundIsMin=true; }
             const cells=[];
             for(let i=0;i<first;i++) cells.push({d:null,key:'e'+i,past:false});
-            for(let d=1;d<=days;d++) { const ds=this.fmt2(y,m,d); cells.push({d,key:'d'+d,past:ds<todayStr}); }
+            for(let d=1;d<=days;d++) {
+                const ds=this.fmt2(y,m,d);
+                const past = ds<todayStr || (bound && (boundIsMin ? ds<bound : ds>bound));
+                cells.push({d,key:'d'+d,past});
+            }
             return cells;
         },
 
@@ -1128,39 +1168,26 @@ window.sortVenues = function(dir) {
             {{-- GUESTS --}}
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);position:relative;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Guests</div>
-                <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="guestOpen=!guestOpen">
+                <div style="display:flex;align-items:center;gap:8px;">
                     <i class="fa-solid fa-user-group" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                    <span style="font-size:14px;font-weight:600;color:var(--dark);flex:1;" x-text="guests"></span>
-                    <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
-                </div>
-                <div x-show="guestOpen" @click.outside="guestOpen=false" x-cloak
-                     style="position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:200;min-width:180px;overflow:hidden;">
-                    @foreach(['1 Adult','2 Adults','3 Adults','4 Adults','2 Adults + 1 Child','2 Adults + 2 Children'] as $opt)
-                    <button @click="guests='{{ $opt }}';guestOpen=false"
-                            :style="guests==='{{ $opt }}'?'color:#934B19;font-weight:700;background:#FDF8F4;':''"
-                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;cursor:pointer;">
-                        {{ $opt }}
-                    </button>
-                    @endforeach
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);flex:1;">1 Adult</span>
                 </div>
             </div>
 
             {{-- TRAVEL DATES --}}
             @php $accSd = $mcHotelStep && $mcStartDate ? $mcStartDate : $startDate; $accEd = $mcHotelStep && $mcEndDate ? $mcEndDate : $endDate; @endphp
-            <div style="flex:1;min-width:0;padding:16px 20px;display:flex;gap:16px;">
-                <div style="flex:1;">
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
-                        <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accSd ? \Carbon\Carbon::parse($accSd)->format('M j, Y') : '—' }}</span>
-                    </div>
+            <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accSd ? \Carbon\Carbon::parse($accSd)->format('M j, Y') : '—' }}</span>
                 </div>
-                <div style="flex:1;">
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
-                        <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accEd ? \Carbon\Carbon::parse($accEd)->format('M j, Y') : '—' }}</span>
-                    </div>
+            </div>
+            <div style="flex:1;min-width:0;padding:16px 20px;">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accEd ? \Carbon\Carbon::parse($accEd)->format('M j, Y') : '—' }}</span>
                 </div>
             </div>
         </div>
@@ -1178,7 +1205,8 @@ window.sortVenues = function(dir) {
     </div>
 
     {{-- Filter row --}}
-    <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:16px;padding-right:20px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
         <div style="position:relative;" x-data="{accPriceOpen:false,accPriceDir:'asc'}">
             <button @click="accPriceOpen=!accPriceOpen"
                     style="display:inline-flex;align-items:center;gap:10px;background:#fff;color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
@@ -1200,7 +1228,7 @@ window.sortVenues = function(dir) {
                 </button>
             </div>
         </div>
-        @foreach(['hotel'=>'Hotel','apartment'=>'Apartment','inn'=>'Inn'] as $val => $label)
+        @foreach(['hotel'=>'Hotel','apartment'=>'Apartment','inn'=>'Inn','resort'=>'Resort'] as $val => $label)
         <label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:500;color:var(--dark);">
             <input type="radio" name="acc_type" value="{{ $val }}"
                    x-model="filterType"
@@ -1209,6 +1237,14 @@ window.sortVenues = function(dir) {
             {{ $label }}
         </label>
         @endforeach
+        </div>
+
+        <button wire:click="skipAccommodation" wire:loading.attr="disabled" wire:target="skipAccommodation"
+                style="background:#934B19;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"
+                onmouseenter="this.style.background='#7A3C12'" onmouseleave="this.style.background='#934B19'">
+            <span wire:loading.remove wire:target="skipAccommodation">Skip this step <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
+            <span wire:loading wire:target="skipAccommodation"><i class="fa-solid fa-spinner fa-spin"></i></span>
+        </button>
     </div>
 
     {{-- Results --}}
@@ -1295,13 +1331,6 @@ window.sortVenues = function(dir) {
     @endif
     @endif
 
-    <div style="display:flex;justify-content:center;margin-top:20px;">
-        <button wire:click="skipAccommodation" wire:loading.attr="disabled" wire:target="skipAccommodation"
-                style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:8px 16px;text-decoration:underline;">
-            Skip this step
-        </button>
-    </div>
-
 </div>
 @endif
 
@@ -1375,20 +1404,18 @@ window.sortVenues = function(dir) {
             </div>
             {{-- Travel dates --}}
             @php $venueSd = $mcVenueStep && $mcStartDate ? $mcStartDate : $startDate; $venueEd = $mcVenueStep && $mcEndDate ? $mcEndDate : $endDate; @endphp
-            <div style="flex:1;min-width:0;padding:16px 20px;display:flex;gap:16px;">
-                <div style="flex:1;">
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                        <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueSd ? \Carbon\Carbon::parse($venueSd)->format('M j, Y') : '—' }}</span>
-                    </div>
+            <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueSd ? \Carbon\Carbon::parse($venueSd)->format('M j, Y') : '—' }}</span>
                 </div>
-                <div style="flex:1;">
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                        <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueEd ? \Carbon\Carbon::parse($venueEd)->format('M j, Y') : '—' }}</span>
-                    </div>
+            </div>
+            <div style="flex:1;min-width:0;padding:16px 20px;">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueEd ? \Carbon\Carbon::parse($venueEd)->format('M j, Y') : '—' }}</span>
                 </div>
             </div>
         </div>
@@ -1404,7 +1431,7 @@ window.sortVenues = function(dir) {
 
 
     {{-- Filter row --}}
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;" x-data="{vPriceOpen:false,vPriceDir:'asc'}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;padding-right:20px;flex-wrap:wrap;" x-data="{vPriceOpen:false,vPriceDir:'asc'}">
         <div style="position:relative;">
             <button @click="vPriceOpen=!vPriceOpen"
                     style="display:inline-flex;align-items:center;gap:10px;background:#fff;color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
@@ -1426,6 +1453,13 @@ window.sortVenues = function(dir) {
                 </button>
             </div>
         </div>
+
+        <button wire:click="skipVenue" wire:loading.attr="disabled" wire:target="skipVenue"
+                style="background:#934B19;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"
+                onmouseenter="this.style.background='#7A3C12'" onmouseleave="this.style.background='#934B19'">
+            <span wire:loading.remove wire:target="skipVenue">Skip this step <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
+            <span wire:loading wire:target="skipVenue"><i class="fa-solid fa-spinner fa-spin"></i></span>
+        </button>
     </div>
 
     {{-- Results --}}
@@ -1439,7 +1473,7 @@ window.sortVenues = function(dir) {
     @elseif(empty($venueResults))
     <div style="text-align:center;padding:60px 20px;">
         <i class="fa-solid fa-utensils" style="font-size:40px;color:var(--border);margin-bottom:16px;display:block;"></i>
-        <p style="color:var(--muted);font-size:15px;">No venues found. Try searching above.</p>
+        <p style="color:var(--muted);font-size:15px;">{{ $venueError ?: 'No venues found. Try searching above.' }}</p>
     </div>
     @else
     <div id="venue-list" style="display:flex;flex-direction:column;gap:12px;">
@@ -1493,7 +1527,7 @@ window.sortVenues = function(dir) {
     @elseif(empty($mcVenueResults))
     <div style="text-align:center;padding:60px 20px;">
         <i class="fa-solid fa-utensils" style="font-size:40px;color:var(--border);margin-bottom:16px;display:block;"></i>
-        <p style="color:var(--muted);font-size:15px;">No venues found for {{ $mcTo }}.</p>
+        <p style="color:var(--muted);font-size:15px;">{{ $venueError ?: 'No venues found for '.$mcTo.'.' }}</p>
     </div>
     @else
     <div id="mc-venue-list" style="display:flex;flex-direction:column;gap:12px;">
@@ -1537,13 +1571,6 @@ window.sortVenues = function(dir) {
     </div>
     @endif
     @endif
-
-    <div style="display:flex;justify-content:center;margin-top:20px;">
-        <button wire:click="skipVenue" wire:loading.attr="disabled" wire:target="skipVenue"
-                style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:8px 16px;text-decoration:underline;">
-            Skip this step
-        </button>
-    </div>
 
 </div>
 
@@ -1615,21 +1642,18 @@ window.sortVenues = function(dir) {
                     </select>
                 </div>
             </div>
-            <div style="flex:1;min-width:0;padding:16px 20px;display:flex;gap:16px;">
-                <div style="flex:1;">
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                        <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $attrSd ? \Carbon\Carbon::parse($attrSd)->format('M j, Y') : '—' }}</span>
-                    </div>
+            <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $attrSd ? \Carbon\Carbon::parse($attrSd)->format('M j, Y') : '—' }}</span>
                 </div>
-                <div style="width:1px;background:var(--border);flex-shrink:0;"></div>
-                <div style="flex:1;">
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                        <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $attrEd ? \Carbon\Carbon::parse($attrEd)->format('M j, Y') : '—' }}</span>
-                    </div>
+            </div>
+            <div style="flex:1;min-width:0;padding:16px 20px;">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $attrEd ? \Carbon\Carbon::parse($attrEd)->format('M j, Y') : '—' }}</span>
                 </div>
             </div>
         </div>
@@ -1644,7 +1668,7 @@ window.sortVenues = function(dir) {
     </div>
 
     {{-- Filter row --}}
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;" x-data="{aPriceOpen:false,aPriceDir:'asc'}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;padding-right:20px;flex-wrap:wrap;" x-data="{aPriceOpen:false,aPriceDir:'asc'}">
         <div style="position:relative;">
             <button @click="aPriceOpen=!aPriceOpen"
                     style="display:inline-flex;align-items:center;gap:10px;background:#fff;color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
@@ -1666,6 +1690,13 @@ window.sortVenues = function(dir) {
                 </button>
             </div>
         </div>
+
+        <button wire:click="skipAttraction" wire:loading.attr="disabled" wire:target="skipAttraction"
+                style="background:#934B19;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"
+                onmouseenter="this.style.background='#7A3C12'" onmouseleave="this.style.background='#934B19'">
+            <span wire:loading.remove wire:target="skipAttraction">Skip this step <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
+            <span wire:loading wire:target="skipAttraction"><i class="fa-solid fa-spinner fa-spin"></i></span>
+        </button>
     </div>
 
     {{-- Results --}}
@@ -1678,7 +1709,7 @@ window.sortVenues = function(dir) {
     @elseif(empty($activeAttractions))
     <div style="text-align:center;padding:60px 20px;">
         <i class="fa-solid fa-binoculars" style="font-size:40px;color:var(--border);margin-bottom:16px;display:block;"></i>
-        <p style="color:var(--muted);font-size:15px;">No attractions found. Try searching above.</p>
+        <p style="color:var(--muted);font-size:15px;">{{ $attractionError ?: 'No attractions found. Try searching above.' }}</p>
     </div>
     @else
     <div style="display:flex;flex-direction:column;gap:12px;">
@@ -1736,13 +1767,6 @@ window.sortVenues = function(dir) {
     </div>
     @endif
 
-    <div style="display:flex;justify-content:center;margin-top:20px;">
-        <button wire:click="skipAttraction" wire:loading.attr="disabled" wire:target="skipAttraction"
-                style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:8px 16px;text-decoration:underline;">
-            Skip this step
-        </button>
-    </div>
-
 </div>
 @script
 <script>
@@ -1766,46 +1790,44 @@ window.sortAttractions = function(dir) {
 @if ($planningMode !== '' && $step === 6)
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;padding:40px 24px;text-align:center;">
 
-    <h1 style="font-size:28px;font-weight:800;color:var(--dark);margin:0 0 10px;">Emergency Fund</h1>
-    <p style="font-size:14px;color:var(--muted);margin:0 0 32px;max-width:420px;line-height:1.6;">Set aside a safety net for unexpected expenses during your journey.</p>
+    <h1 style="font-size:38px;font-weight:800;color:var(--dark);margin:0 0 14px;">Emergency Fund</h1>
+    <p style="font-size:16px;color:var(--muted);margin:0 0 40px;max-width:560px;line-height:1.6;">Set aside a safety net for unexpected expenses during your journey.</p>
 
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;width:100%;max-width:480px;box-shadow:0 2px 12px rgba(0,0,0,0.06);overflow:hidden;">
+    <div style="background:#fff;border:1.5px solid var(--border);border-radius:20px;width:100%;max-width:680px;box-shadow:0 4px 20px rgba(0,0,0,0.07);overflow:hidden;">
 
         {{-- Input area --}}
-        <div style="padding:28px 28px 24px;text-align:left;">
-            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px;">Your Allocated Emergency Fund</div>
+        <div style="padding:40px 40px 32px;text-align:left;">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:14px;">Your Allocated Emergency Fund (must not exceed 7 digits)</div>
             <div x-data="{
                     display: '',
                     init() {
                         if ($wire.emergency) this.display = Number($wire.emergency).toLocaleString('en-PH');
                     },
                     format(e) {
-                        let raw = e.target.value.replace(/[^\d]/g, '');
+                        let raw = e.target.value.replace(/[^\d]/g, '').slice(0, 7);
                         this.display = raw ? Number(raw).toLocaleString('en-PH') : '';
                         $wire.set('emergency', raw ? Number(raw) : 0);
                     }
                  }"
-                 style="display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:13px 16px;">
-                <i class="fa-solid fa-piggy-bank" style="color:#934B19;font-size:15px;flex-shrink:0;"></i>
+                 style="display:flex;align-items:center;gap:14px;background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:20px 22px;">
+                <i class="fa-solid fa-piggy-bank" style="color:#934B19;font-size:22px;flex-shrink:0;"></i>
                 <input type="text" x-model="display" @input="format($event)" placeholder="Please input amount"
-                       style="border:none;background:transparent;font-size:14px;color:var(--dark);outline:none;width:100%;"
+                       style="border:none;background:transparent;font-size:20px;font-weight:700;color:var(--dark);outline:none;width:100%;"
                        autocomplete="off">
             </div>
+            @if ($emergencyError)
+            <p style="color:#DC2626;font-size:13px;margin:10px 0 0;">{{ $emergencyError }}</p>
+            @endif
         </div>
 
         {{-- Footer --}}
-        <div style="border-top:1.5px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px;">
-            <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
-                <i class="fa-solid fa-circle-info" style="font-size:12px;color:var(--muted);flex-shrink:0;"></i>
-                <span style="font-size:12px;color:var(--muted);line-height:1.4;">This amount is excluded from your daily budget</span>
+        <div style="border-top:1.5px solid var(--border);padding:20px 28px;display:flex;align-items:center;gap:16px;">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                <i class="fa-solid fa-circle-info" style="font-size:14px;color:var(--muted);flex-shrink:0;"></i>
+                <span style="font-size:13px;color:var(--muted);line-height:1.4;">This amount is excluded from your daily budget</span>
             </div>
-            <button wire:click="saveDraft"
-                    style="background:#fff;border:1.5px solid var(--border);color:var(--dark);border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;"
-                    onmouseenter="this.style.background='#F5F0EB'" onmouseleave="this.style.background='#fff'">
-                Save Draft
-            </button>
             <button wire:click="confirmEmergencyFund" wire:loading.attr="disabled" wire:target="confirmEmergencyFund"
-                    style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;"
+                    style="background:#934B19;color:#fff;border:none;border-radius:12px;padding:13px 26px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;"
                     onmouseenter="this.style.background='#7A3C12'" onmouseleave="this.style.background='#934B19'">
                 <span wire:loading.remove wire:target="confirmEmergencyFund">Confirm Amount</span>
                 <span wire:loading wire:target="confirmEmergencyFund"><i class="fa-solid fa-spinner fa-spin"></i></span>
@@ -1860,42 +1882,42 @@ window.sortAttractions = function(dir) {
 
         {{-- Destination --}}
         <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:22px;">
-            <div style="min-width:90px;display:flex;align-items:center;gap:6px;">
+            <div style="width:100px;flex-shrink:0;display:flex;align-items:center;gap:6px;">
                 <i class="fa-solid fa-location-dot" style="color:var(--muted);font-size:11px;"></i>
                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Destination</span>
             </div>
-            <div style="flex:1;">
-                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;">
-                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $route }}</span>
-                    <i class="fa-solid fa-chevron-down" style="color:var(--muted);font-size:11px;"></i>
+            <div style="flex:1;min-width:0;">
+                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box;">
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $route }}</span>
+                    <i class="fa-solid fa-chevron-down" style="color:var(--muted);font-size:11px;flex-shrink:0;"></i>
                 </div>
             </div>
         </div>
 
         {{-- Travel Dates --}}
         <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:22px;">
-            <div style="min-width:90px;display:flex;align-items:center;gap:6px;">
+            <div style="width:100px;flex-shrink:0;display:flex;align-items:center;gap:6px;">
                 <i class="fa-regular fa-calendar" style="color:var(--muted);font-size:11px;"></i>
                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Travel Dates</span>
             </div>
-            <div style="flex:1;">
-                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;">
-                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $sd }} – {{ $ed }}</span>
-                    <i class="fa-regular fa-clock" style="color:#934B19;font-size:13px;"></i>
+            <div style="flex:1;min-width:0;">
+                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box;">
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $sd }} – {{ $ed }}</span>
+                    <i class="fa-regular fa-clock" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
                 </div>
             </div>
         </div>
 
         {{-- Budget Range --}}
         <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:22px;">
-            <div style="min-width:90px;display:flex;align-items:center;gap:6px;">
+            <div style="width:100px;flex-shrink:0;display:flex;align-items:center;gap:6px;">
                 <i class="fa-solid fa-wallet" style="color:var(--muted);font-size:11px;"></i>
                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Budget Range</span>
             </div>
-            <div style="flex:1;">
-                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;">
-                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $budMin }} – {{ $budMax }}</span>
-                    <i class="fa-solid fa-coins" style="color:#934B19;font-size:13px;"></i>
+            <div style="flex:1;min-width:0;">
+                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box;">
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $budMin }} – {{ $budMax }}</span>
+                    <i class="fa-solid fa-coins" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
                 </div>
             </div>
         </div>
@@ -2001,75 +2023,83 @@ window.sortAttractions = function(dir) {
         $selActivities[] = ['time'=>$sc['time'],'title'=>$sc['title'],'description'=>$sc['sub'],'type'=>$sc['type'],'cost'=>$sc['cost'],'isFree'=>$sc['isFree'],'icon'=>$sc['icon'],'isUserPick'=>true];
     }
 
-    // Day 1 = traveler selections only
-    $allDays = [['day'=>1,'label'=>'Arrival','activities'=>$selActivities,'isUserDay'=>true]];
-
-    // AI days start from Day 2; inject return-flight cost onto last day's departure activity
+    // Builds the Day-1-selections + AI-days list for a given itinerary
+    // array — used once per option now that every option renders its own
+    // full day-by-day list inline instead of only the selected one.
     $returnDepCost = $flightDepCost + ($mcFlightDepCost ?? 0);
-    if ($aiItinerary && !empty($aiItinerary['days'])) {
-        $aiDayList = $aiItinerary['days'];
-        $lastIdx   = count($aiDayList) - 1;
-        foreach ($aiDayList as $i => $aiDay) {
-            $aiDay['isUserDay'] = false;
-            $aiDay['day']       = $i + 2;
-            // On the last AI day, add return cost to the "Head to Airport" activity
-            if ($i === $lastIdx && $returnDepCost > 0) {
-                foreach ($aiDay['activities'] as &$actItem) {
-                    if (stripos($actItem['title'] ?? '', 'airport') !== false || stripos($actItem['title'] ?? '', 'departure') !== false) {
-                        $actItem['cost'] = $returnDepCost;
-                        break;
+    $buildAllDays = function (?array $itin) use ($selActivities, $returnDepCost) {
+        $days = [['day'=>1,'label'=>'Arrival','activities'=>$selActivities,'isUserDay'=>true]];
+        if ($itin && !empty($itin['days'])) {
+            $aiDayList = $itin['days'];
+            $lastIdx   = count($aiDayList) - 1;
+            foreach ($aiDayList as $i => $aiDay) {
+                $aiDay['isUserDay'] = false;
+                $aiDay['day']       = $i + 2;
+                if ($i === $lastIdx && $returnDepCost > 0) {
+                    foreach ($aiDay['activities'] as &$actItem) {
+                        if (stripos($actItem['title'] ?? '', 'airport') !== false || stripos($actItem['title'] ?? '', 'departure') !== false) {
+                            $actItem['cost'] = $returnDepCost;
+                            break;
+                        }
                     }
+                    unset($actItem);
                 }
-                unset($actItem);
+                $days[] = $aiDay;
             }
-            $allDays[] = $aiDay;
         }
-    }
+        return $days;
+    };
+    $allDays = $buildAllDays($aiItinerary);
 @endphp
 
 <style>
 .itin8-wrap{padding:20px 0;}
 
 /* Top bar */
-.itin8-topbar{background:#ffffff;border:1px solid #d3c3be;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.itin8-topbar{background:transparent;border:none;padding:0;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .itin8-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
 .itin8-tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:#4f4441;line-height:16px;}
 .itin8-tag i{font-size:9px;color:#817470;}
 .itin8-left{flex:1;min-width:0;}
-.itin8-right{flex-shrink:0;}
-.itin8-cost-card{background:#fff;border:1px solid #d3c3be;border-radius:10px;padding:12px 16px;box-shadow:0 2px 8px rgba(45,27,20,0.08);text-align:right;}
-.itin8-cost-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#4f4441;margin-bottom:2px;line-height:16px;}
-.itin8-budget-status{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:16px;margin-bottom:4px;}
-.itin8-budget-status.under{color:#b07e00;}
-.itin8-budget-status.over{color:#ba1a1a;}
-.itin8-budget-status.on{color:#934b19;}
+.itin8-right{flex-shrink:0;width:340px;}
+.itin8-cost-card{background:#fff;border:1px solid #d3c3be;border-radius:10px;padding:12px 16px;box-shadow:0 2px 8px rgba(45,27,20,0.08);text-align:right;width:100%;box-sizing:border-box;}
+.itin8-cost-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#4f4441;margin-bottom:6px;line-height:16px;}
+.itin8-budget-status{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:16px;padding:2px 10px;border-radius:99px;margin-bottom:6px;}
+.itin8-budget-status.under{background:#FEF3C7;color:#b07e00;}
+.itin8-budget-status.over{background:#FEE2E2;color:#ba1a1a;}
+.itin8-budget-status.on{background:#FDF3EB;color:#934b19;}
 .itin8-cost-val{font-size:28px;font-weight:700;color:#934b19;line-height:1.15;letter-spacing:-0.01em;}
-.itin8-actions{display:flex;align-items:center;gap:8px;margin-top:12px;}
+.itin8-actions{display:flex;align-items:center;gap:8px;margin-top:12px;width:100%;}
+.itin8-actions .itin8-btn-ghost,.itin8-actions .itin8-btn-save{flex:1;justify-content:center;}
 .itin8-btn-ghost{background:#ffffff;border:1px solid #d3c3be;color:#1c1c19;border-radius:0.5rem;padding:8px 16px;font-size:12px;font-weight:700;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:16px;}
 .itin8-btn-ghost:hover{background:#f0ede9;}
 .itin8-btn-save{background:#934b19;color:#ffffff;border:none;border-radius:0.5rem;padding:8px 18px;font-size:12px;font-weight:700;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:16px;}
 .itin8-btn-save:hover{background:#783603;}
 .itin8-desc{font-size:14px;font-weight:400;color:#4f4441;line-height:20px;margin:0;}
 
-/* Day grid */
-.itin8-days{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;padding-bottom:20px;}
-.itin8-day-col{display:flex;flex-direction:column;gap:8px;}
-.itin8-day-header{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 6px;}
+/* Day sections — stacked vertically, one below another */
+.itin8-days{display:flex;flex-direction:column;gap:18px;padding-bottom:20px;}
+.itin8-day-col{display:flex;flex-direction:column;background:#fff;border:1px solid #e8ddd4;border-radius:16px;padding:20px 22px 22px;box-shadow:0 2px 10px rgba(45,27,20,0.05);}
+.itin8-day-header{display:flex;align-items:center;gap:12px;padding:0 0 14px;border-bottom:1px solid #f0ede8;margin-bottom:18px;}
 .itin8-day-num{width:40px;height:40px;border-radius:9999px;background:#934b19;color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;font-family:'Hanken Grotesk',sans-serif;}
-.itin8-day-label{font-size:13px;font-weight:600;color:#1c1c19;line-height:18px;}
+.itin8-day-label{font-size:15px;font-weight:700;color:#1c1c19;line-height:20px;}
 .itin8-day-date{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#817470;margin-bottom:1px;}
 
-/* Activity cards */
-.itin8-act-card{background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(45,27,20,0.08);border-left:4px solid #d3c3be;padding:12px 14px;font-family:'Hanken Grotesk',sans-serif;display:flex;flex-direction:column;}
+/* Vertical timeline of activities within a day */
+.itin8-timeline{position:relative;padding-left:26px;}
+.itin8-timeline::before{content:'';position:absolute;left:15px;top:8px;bottom:8px;width:2px;background:#EDE0D6;}
+.itin8-act-card{position:relative;background:#fcf9f6;border-radius:12px;border:1px solid #efe6dd;padding:14px 16px;font-family:'Hanken Grotesk',sans-serif;margin-bottom:14px;}
+.itin8-act-card:last-child{margin-bottom:0;}
 .itin8-act-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-.itin8-act-icon{width:32px;height:32px;border-radius:9999px;border:1px solid #d3c3be;background:#fcf9f4;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.itin8-act-icon{position:absolute;left:-26px;top:14px;width:32px;height:32px;border-radius:9999px;border:2px solid #fff;background:#fcf9f6;box-shadow:0 0 0 2px #d3c3be;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .itin8-act-icon .material-symbols-outlined{font-size:16px;}
-.itin8-act-time{font-size:11px;font-weight:500;color:#817470;line-height:16px;}
-.itin8-act-title{font-size:13px;font-weight:600;color:#1c1c19;margin-bottom:3px;line-height:18px;}
-.itin8-act-sub{font-size:11px;font-weight:400;color:#4f4441;line-height:16px;margin-bottom:8px;font-style:italic;flex:1;}
-.itin8-act-footer{border-top:1px solid #e8ddd4;padding-top:8px;margin-top:auto;display:flex;align-items:center;justify-content:space-between;}
+.itin8-act-time{font-size:11px;font-weight:600;color:#817470;line-height:16px;}
+.itin8-act-body{margin-bottom:8px;}
+.itin8-act-title{font-size:14px;font-weight:700;color:#1c1c19;line-height:19px;margin-bottom:3px;}
+.itin8-act-sub{font-size:12px;font-weight:400;color:#4f4441;line-height:17px;font-style:italic;}
+.itin8-act-footer{border-top:1px solid #ece2d8;padding-top:8px;display:flex;align-items:center;justify-content:space-between;}
 .itin8-act-cost-label{font-size:11px;color:#817470;font-weight:500;}
-.itin8-act-cost-val{font-size:12px;font-weight:700;color:#934b19;}
+.itin8-act-cost-val{font-size:13px;font-weight:700;color:#934b19;}
 .itin8-loading{display:flex;align-items:center;gap:10px;padding:32px 0;color:#4f4441;font-size:14px;}
 .material-symbols-outlined{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;}
 </style>
@@ -2086,10 +2116,10 @@ window.sortAttractions = function(dir) {
         {{-- Left: date + tags + description --}}
         <div class="itin8-left">
             <div class="itin8-meta">
-                <div class="itin8-tag"><i class="fa-regular fa-calendar"></i> {{ $sd8 }} – {{ $ed8 }}</div>
-                @foreach($allTags8 as $t8)
-                <div class="itin8-tag"><i class="fa-solid fa-tag"></i> {{ $t8 }}</div>
-                @endforeach
+                <div class="itin8-tag"><i class="fa-regular fa-calendar"></i> {{ $sd8 }} - {{ $ed8 }}</div>
+                @if(count($allTags8))
+                <div class="itin8-tag"><i class="fa-solid fa-utensils"></i> {{ implode(', ', $allTags8) }}</div>
+                @endif
             </div>
             <p class="itin8-desc">
                 A perfectly balanced trip exploring <strong style="color:var(--dark);">{{ trim($manualTo ?: $mcTo) }}</strong> built from your selections and AI-suggested activities.
@@ -2099,25 +2129,27 @@ window.sortAttractions = function(dir) {
         {{-- Right: estimated cost + budget status + action buttons --}}
         <div class="itin8-right">
             <div class="itin8-cost-card">
-                <div class="itin8-cost-label">Estimated Cost</div>
-                @if($overBudget8)
-                    <div class="itin8-budget-status over">Over Budget</div>
-                @elseif($underBudget8)
-                    <div class="itin8-budget-status under">Under Budget</div>
-                @else
-                    <div class="itin8-budget-status on">On Budget</div>
-                @endif
+                <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;">
+                    <div class="itin8-cost-label" style="margin-bottom:0;">Estimated Cost</div>
+                    @if($overBudget8)
+                        <div class="itin8-budget-status over" style="margin-bottom:0;">Over Budget</div>
+                    @elseif($underBudget8)
+                        <div class="itin8-budget-status under" style="margin-bottom:0;">Under Budget</div>
+                    @else
+                        <div class="itin8-budget-status on" style="margin-bottom:0;">On Budget</div>
+                    @endif
+                </div>
                 <div class="itin8-cost-val">₱{{ number_format($totalCost8) }}</div>
-            </div>
-            <div class="itin8-actions" style="justify-content:flex-end;margin-top:10px;">
-                <button class="itin8-btn-ghost" wire:click="regenerateItinerary" wire:loading.attr="disabled" wire:target="regenerateItinerary">
-                    <span wire:loading.remove wire:target="regenerateItinerary"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Generate Other Options</span>
-                    <span wire:loading wire:target="regenerateItinerary"><i class="fa-solid fa-spinner fa-spin"></i> Generating…</span>
-                </button>
-                <button class="itin8-btn-save" wire:click="goToSummary" wire:loading.attr="disabled" wire:target="goToSummary">
-                    <span wire:loading.remove wire:target="goToSummary">Save Itinerary <i class="fa-solid fa-floppy-disk" style="font-size:11px;"></i></span>
-                    <span wire:loading wire:target="goToSummary"><i class="fa-solid fa-spinner fa-spin"></i></span>
-                </button>
+                <div class="itin8-actions" style="justify-content:flex-end;margin-top:12px;">
+                    <button class="itin8-btn-ghost" wire:click="regenerateItinerary" wire:loading.attr="disabled" wire:target="regenerateItinerary">
+                        <span wire:loading.remove wire:target="regenerateItinerary" style="white-space:nowrap;"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Generate Other Options</span>
+                        <span wire:loading wire:target="regenerateItinerary" style="white-space:nowrap;"><i class="fa-solid fa-spinner fa-spin"></i> Generating…</span>
+                    </button>
+                    <button class="itin8-btn-save" wire:click="goToSummary" wire:loading.attr="disabled" wire:target="goToSummary">
+                        <span wire:loading.remove wire:target="goToSummary" style="white-space:nowrap;">Save Itinerary <i class="fa-solid fa-floppy-disk" style="font-size:11px;"></i></span>
+                        <span wire:loading wire:target="goToSummary"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -2127,9 +2159,15 @@ window.sortAttractions = function(dir) {
     @if($aiLoading)
     <div class="itin8-loading">
         <i class="fa-solid fa-spinner fa-spin" style="color:#934B19;font-size:18px;"></i>
-        Generating AI-suggested activities for your trip…
+        Generating itinerary options for your trip…
     </div>
     @endif
+
+    {{-- Each option renders as its own header + full day-by-day list,
+         stacked one below another — no separate picker/single-preview. --}}
+    @php
+        $optionsToRender = count($aiItineraryOptions) ? $aiItineraryOptions : ($aiItinerary ? [$aiItinerary] : []);
+    @endphp
 
     {{-- Day grid --}}
     @php
@@ -2166,8 +2204,96 @@ window.sortAttractions = function(dir) {
         'default'                => ['icon'=>'explore',         'color'=>'#817470'],
     ];
     @endphp
+
+    {{-- Pricing-tier-style comparison: one vertical card per option, laid
+         out side by side. Each card lists the traveler's own selections
+         (same across every card) plus that option's AI-suggested day themes
+         — tailored to the traveler's profile interests, destination, and
+         budget from earlier in the wizard. --}}
+    @if(count($optionsToRender) > 1)
+    @php
+        // Sort cheapest → most expensive while keeping each option's original
+        // index (selectItineraryOption() indexes into aiItineraryOptions, so
+        // the display order can't change which index gets sent on click).
+        $optCosts = [];
+        foreach ($optionsToRender as $idx => $opt) {
+            $c = 0;
+            foreach ($opt['days'] ?? [] as $d) {
+                foreach ($d['activities'] ?? [] as $a) {
+                    if (isset($a['cost']) && is_numeric($a['cost'])) $c += (float) $a['cost'];
+                }
+            }
+            $optCosts[$idx] = $c;
+        }
+        asort($optCosts);
+    @endphp
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-bottom:28px;align-items:stretch;">
+        @foreach($optCosts as $optIdx => $optCost)
+        @php
+            $opt            = $optionsToRender[$optIdx];
+            $optDaysPreview = $buildAllDays($opt);
+            $optLabel       = $opt['_optionLabel'] ?? ('Option ' . ($optIdx + 1));
+            $optActive      = $selectedItineraryIndex === $optIdx;
+        @endphp
+        <div wire:click="selectItineraryOption({{ $optIdx }})"
+             style="cursor:pointer;border-radius:16px;padding:22px 20px;display:flex;flex-direction:column;
+                    {{ $optActive ? 'background:#FDF3EB;border:1.5px solid #934b19;box-shadow:0 6px 20px rgba(147,75,25,0.12);' : 'background:#fff;border:1.5px solid #e8ddd4;' }}">
+
+            {{-- Header --}}
+            <div style="font-size:13px;font-weight:700;color:{{ $optActive ? '#934b19' : '#1c1c19' }};margin-bottom:2px;">{{ $optLabel }}</div>
+            <div style="font-size:11px;color:#817470;margin-bottom:14px;">{{ $sd8 }} – {{ $ed8 }}</div>
+            <div style="font-size:26px;font-weight:800;color:#934b19;line-height:1.1;margin-bottom:14px;">₱{{ number_format($optCost) }}</div>
+
+            <button type="button" style="width:100%;padding:9px 0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:18px;font-family:'Hanken Grotesk',sans-serif;
+                           {{ $optActive ? 'background:#934b19;color:#fff;border:none;' : 'background:#fff;color:#934b19;border:1.5px solid #934b19;' }}">
+                {{ $optActive ? 'Selected' : 'Select This Option' }}
+            </button>
+
+            {{-- Traveler's own selections — same across every option --}}
+            @if(!empty($selCards))
+            <div style="font-size:11px;font-weight:700;color:#817470;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Your Selections</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+                @foreach($selCards as $sc8)
+                <div style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#4f4441;line-height:1.4;">
+                    <i class="fa-solid fa-check" style="color:#22C55E;font-size:10px;margin-top:3px;flex-shrink:0;"></i>
+                    <span>{{ $sc8['title'] }}</span>
+                </div>
+                @endforeach
+            </div>
+            @endif
+
+            {{-- AI-suggested days for this specific option --}}
+            <div style="font-size:11px;font-weight:700;color:#817470;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">AI Suggested</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                @foreach($optDaysPreview as $dpItem)
+                @if(!($dpItem['isUserDay'] ?? false))
+                @php
+                    $dpNum   = $dpItem['day'] ?? ($loop->iteration);
+                    $dpLabel = $dpItem['label'] ?? ('Day ' . $dpNum);
+                @endphp
+                <div style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#4f4441;line-height:1.4;">
+                    <i class="fa-solid fa-sparkles" style="color:#934b19;font-size:10px;margin-top:3px;flex-shrink:0;"></i>
+                    <span><strong style="color:#1c1c19;">Day {{ $dpNum }}:</strong> {{ $dpLabel }}</span>
+                </div>
+                @endif
+                @endforeach
+            </div>
+        </div>
+        @endforeach
+    </div>
+    @endif
+
+    {{-- Single-option fallback (e.g. only one option ever generated) — the
+         cards grid above only renders when there's more than one, so show
+         the full day-by-day breakdown here in that edge case. --}}
+    @if(count($optionsToRender) <= 1)
+    @php
+        $selectedOption = $optionsToRender[$selectedItineraryIndex] ?? ($optionsToRender[0] ?? null);
+        $optDays        = $buildAllDays($selectedOption);
+    @endphp
+
     <div class="itin8-days">
-        @foreach($allDays as $dayItem)
+        @foreach($optDays as $dayItem)
         @php
             $dayNum  = $dayItem['day'] ?? ($loop->iteration);
             $dayLabel= $dayItem['label'] ?? ('Day ' . $dayNum);
@@ -2181,46 +2307,44 @@ window.sortAttractions = function(dir) {
                 </div>
                 <div class="itin8-day-num">{{ $dayNum }}</div>
             </div>
-            @foreach($dayItem['activities'] ?? [] as $act)
-            @php
-                $actType = $act['type'] ?? 'default';
-                $msInfo  = $typeToMs[$actType] ?? $typeToMs['default'];
-                $msIcon  = $msInfo['icon'];
-                $msColor = $msInfo['color'];
-                $actCost = $act['cost'] ?? null;
-                $actFree = $act['isFree'] ?? false;
-            @endphp
-            <div class="itin8-act-card" style="border-left-color:{{ $msColor }};">
-                <div class="itin8-act-top">
-                    <div class="itin8-act-icon">
+            <div class="itin8-timeline">
+                @foreach($dayItem['activities'] ?? [] as $act)
+                @php
+                    $actType = $act['type'] ?? 'default';
+                    $msInfo  = $typeToMs[$actType] ?? $typeToMs['default'];
+                    $msIcon  = $msInfo['icon'];
+                    $msColor = $msInfo['color'];
+                    $actCost = $act['cost'] ?? null;
+                    $actFree = $act['isFree'] ?? false;
+                @endphp
+                <div class="itin8-act-card">
+                    <div class="itin8-act-icon" style="box-shadow:0 0 0 2px {{ $msColor }};">
                         <span class="material-symbols-outlined" style="color:{{ $msColor }};">{{ $msIcon }}</span>
                     </div>
-                    <div class="itin8-act-time">{{ $act['time'] ?? '' }}</div>
+                    <div class="itin8-act-top">
+                        <div class="itin8-act-time">{{ $act['time'] ?? '' }}</div>
+                    </div>
+                    <div class="itin8-act-body">
+                        <div class="itin8-act-title">{{ $act['title'] ?? ($act['name'] ?? '') }}</div>
+                        @if($act['description'] ?? ($act['sub'] ?? ''))
+                        <div class="itin8-act-sub">{{ $act['description'] ?? $act['sub'] }}</div>
+                        @endif
+                    </div>
+                    <div class="itin8-act-footer">
+                        <span class="itin8-act-cost-label">Est. Cost</span>
+                        @if($actFree)<span class="itin8-act-cost-val">FREE</span>
+                        @elseif($actCost !== null && $actCost !== '' && $actCost != 0)
+                            <span class="itin8-act-cost-val">{{ is_numeric($actCost) ? '₱'.number_format((float)$actCost) : $actCost }}</span>
+                        @else<span class="itin8-act-cost-val" style="color:#9B8EA0;font-weight:400;">—</span>
+                        @endif
+                    </div>
                 </div>
-                <div class="itin8-act-title">{{ $act['title'] ?? ($act['name'] ?? '') }}</div>
-                @if($act['description'] ?? ($act['sub'] ?? ''))
-                <div class="itin8-act-sub">{{ $act['description'] ?? $act['sub'] }}</div>
-                @endif
-                <div class="itin8-act-footer">
-                    <span class="itin8-act-cost-label">Est. Cost</span>
-                    @if($actFree)<span class="itin8-act-cost-val">FREE</span>
-                    @elseif($actCost !== null && $actCost !== '' && $actCost != 0)
-                        <span class="itin8-act-cost-val">{{ is_numeric($actCost) ? '₱'.number_format((float)$actCost) : $actCost }}</span>
-                    @else<span class="itin8-act-cost-val" style="color:#9B8EA0;font-weight:400;">—</span>
-                    @endif
-                </div>
+                @endforeach
             </div>
-            @endforeach
         </div>
         @endforeach
     </div>
-
-    {{-- Add Custom Activity button --}}
-    <div style="display:flex;justify-content:center;padding-top:4px;">
-        <button style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:2px solid #934b19;border-radius:8px;padding:10px 20px;font-size:12px;font-weight:700;color:#934b19;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;">
-            <span class="material-symbols-outlined" style="font-size:16px;">add</span> Add Custom Activity
-        </button>
-    </div>
+    @endif
 
 </div>
 @endif
@@ -2268,16 +2392,18 @@ window.sortAttractions = function(dir) {
     if ($selectedAttraction)  $s9picks[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedAttraction['name']??'Attraction',                            'cost'=>$s9attr,   'editStep'=>5];
 @endphp
 
-<div style="max-width:860px;margin:0 auto;padding:20px 0;">
+<div style="max-width:1200px;margin:0 auto;padding:20px 0;">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-        <button wire:click="$set('step', 8)" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;padding:0;">
-            <i class="fa-solid fa-arrow-left" style="font-size:10px;"></i> Back to Planner
+        <button wire:click="$set('step', 8)" style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;">
+            <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Planner
         </button>
         <div style="display:flex;gap:8px;">
-            <button style="padding:8px 16px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:12px;font-weight:600;color:var(--dark);cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
-                <i class="fa-solid fa-download" style="font-size:10px;"></i> Download PDF
+            <button wire:click="downloadPdf" wire:loading.attr="disabled" wire:target="downloadPdf"
+                    style="padding:8px 16px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:12px;font-weight:600;color:var(--dark);cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                <span wire:loading.remove wire:target="downloadPdf"><i class="fa-solid fa-download" style="font-size:10px;"></i> Download PDF</span>
+                <span wire:loading wire:target="downloadPdf"><i class="fa-solid fa-spinner fa-spin"></i> Preparing…</span>
             </button>
             <button wire:click="saveItinerary" wire:loading.attr="disabled"
                     style="padding:8px 18px;border:none;border-radius:8px;background:#934B19;color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;">
@@ -2287,49 +2413,49 @@ window.sortAttractions = function(dir) {
         </div>
     </div>
 
-    <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0 0 16px;">Trip Summary &amp; Cost Estimation</h2>
+    <h2 style="font-size:24px;font-weight:800;color:var(--dark);margin:0 0 20px;">Trip Summary &amp; Cost Estimation</h2>
 
-    <div style="display:grid;grid-template-columns:1fr 260px;gap:16px;align-items:start;">
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start;">
 
         {{-- Left column --}}
         <div>
             {{-- Route & dates card --}}
-            <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px;">
-                <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:24px 26px;margin-bottom:14px;">
+                <div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;">
                     <div>
-                        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">FROM</div>
-                        <div style="font-size:17px;font-weight:800;color:#934B19;">{{ $s9from }}</div>
-                        <div style="font-size:10px;color:var(--muted);">{{ $selectedFlight['dep_id'] ?? 'MNL' }}</div>
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">FROM</div>
+                        <div style="font-size:21px;font-weight:800;color:#934B19;">{{ $s9from }}</div>
+                        <div style="font-size:11px;color:var(--muted);">{{ $selectedFlight['dep_id'] ?? 'MNL' }}</div>
                     </div>
-                    <div style="flex:1;text-align:center;">
-                        <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">{{ $s9days }}-Day Journey</div>
+                    <div style="flex:1;text-align:center;min-width:120px;">
+                        <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">{{ $s9days }}-Day Journey</div>
                         <div style="border-top:2px dashed #D1C5B8;position:relative;">
                             <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #D1C5B8;display:inline-block;"></span>
                         </div>
                     </div>
                     <div>
-                        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">TO</div>
-                        <div style="font-size:17px;font-weight:800;color:#934B19;">{{ $s9dest }}</div>
-                        <div style="font-size:10px;color:var(--muted);">{{ $selectedFlight['arr_id'] ?? '' }}</div>
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">TO</div>
+                        <div style="font-size:21px;font-weight:800;color:#934B19;">{{ $s9dest }}</div>
+                        <div style="font-size:11px;color:var(--muted);">{{ $selectedFlight['arr_id'] ?? '' }}</div>
                     </div>
-                    <div style="border-left:1.5px solid var(--border);padding-left:16px;">
-                        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:3px;">DATES</div>
-                        <div style="font-size:13px;font-weight:700;color:var(--dark);">{{ \Carbon\Carbon::parse($startDate)->format('M j') }} - {{ \Carbon\Carbon::parse($endDate)->format('M j, Y') }}</div>
-                        <div style="font-size:10px;color:var(--muted);">{{ $s9sdow }} - {{ $s9edow }}</div>
+                    <div style="border-left:1.5px solid var(--border);padding-left:22px;">
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:4px;">DATES</div>
+                        <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ \Carbon\Carbon::parse($startDate)->format('M j') }} - {{ \Carbon\Carbon::parse($endDate)->format('M j, Y') }}</div>
+                        <div style="font-size:11px;color:var(--muted);">{{ $s9sdow }} - {{ $s9edow }}</div>
                     </div>
                 </div>
             </div>
 
             {{-- Itinerary collapsible --}}
-            <div x-data="{ open: false }" style="background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px;">
-                <button @click="open=!open" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:none;border:none;cursor:pointer;">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <i class="fa-regular fa-calendar-check" style="color:var(--muted);font-size:12px;"></i>
-                        <span style="font-size:13px;font-weight:700;color:var(--dark);">Itinerary</span>
+            <div x-data="{ open: false }" style="background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px;">
+                <button @click="open=!open" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:none;border:none;cursor:pointer;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <i class="fa-regular fa-calendar-check" style="color:var(--muted);font-size:14px;"></i>
+                        <span style="font-size:15px;font-weight:700;color:var(--dark);">Itinerary</span>
                     </div>
-                    <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
+                    <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
                 </button>
-                <div x-show="open" x-transition style="border-top:1px solid var(--border);padding:14px 16px;">
+                <div x-show="open" x-transition style="border-top:1px solid var(--border);padding:18px 22px;">
                     @if(!empty($s9picks))
                     <div style="margin-bottom:10px;">
                         <div style="font-size:10px;font-weight:700;color:#934B19;margin-bottom:5px;">Day 1 — Arrival</div>
@@ -2361,15 +2487,15 @@ window.sortAttractions = function(dir) {
             </div>
 
             {{-- Selection Summary collapsible --}}
-            <div x-data="{ open: false }" style="background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;">
-                <button @click="open=!open" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:none;border:none;cursor:pointer;">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <i class="fa-regular fa-bookmark" style="color:var(--muted);font-size:12px;"></i>
-                        <span style="font-size:13px;font-weight:700;color:var(--dark);">Selection Summary</span>
+            <div x-data="{ open: false }" style="background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;">
+                <button @click="open=!open" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:none;border:none;cursor:pointer;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <i class="fa-regular fa-bookmark" style="color:var(--muted);font-size:14px;"></i>
+                        <span style="font-size:15px;font-weight:700;color:var(--dark);">Selection Summary</span>
                     </div>
-                    <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
+                    <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
                 </button>
-                <div x-show="open" x-transition style="border-top:1px solid var(--border);padding:14px 16px;">
+                <div x-show="open" x-transition style="border-top:1px solid var(--border);padding:18px 22px;">
                     @foreach($s9picks as $pk)
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EB;">
                         <div style="display:flex;align-items:center;gap:8px;">
@@ -2382,7 +2508,7 @@ window.sortAttractions = function(dir) {
                             </div>
                         </div>
                         <div style="text-align:right;">
-                            <button wire:click="$set('step', {{ $pk['editStep'] }})" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:#934B19;background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
+                            <button wire:click="editFromSummary({{ $pk['editStep'] }})" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:#934B19;background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
                             <div style="font-size:12px;font-weight:700;color:#1A0A00;">{{ $pk['cost'] ? '₱'.number_format($pk['cost']) : 'Free' }}</div>
                         </div>
                     </div>
@@ -2398,7 +2524,7 @@ window.sortAttractions = function(dir) {
                             </div>
                         </div>
                         <div style="text-align:right;">
-                            <button wire:click="$set('step', 6)" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:#934B19;background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
+                            <button wire:click="editFromSummary(6)" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:#934B19;background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
                             <div style="font-size:12px;font-weight:700;color:#1A0A00;">₱{{ number_format($s9emergency) }}</div>
                         </div>
                     </div>
@@ -2407,8 +2533,8 @@ window.sortAttractions = function(dir) {
         </div>
 
         {{-- Right column: Cost Breakdown --}}
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:18px;position:sticky;top:80px;">
-            <div style="font-size:14px;font-weight:800;color:var(--dark);margin-bottom:14px;">Cost Breakdown</div>
+        <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:26px;position:sticky;top:80px;">
+            <div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:18px;">Cost Breakdown</div>
 
             @php
                 $s9rows = [
@@ -2419,30 +2545,30 @@ window.sortAttractions = function(dir) {
                 ];
             @endphp
             @foreach($s9rows as [$lbl,$amt])
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:8px 0;border-bottom:1px solid #F3F0EB;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:11px 0;border-bottom:1px solid #F3F0EB;">
                 <span style="color:#6B7280;">{{ $lbl }}</span>
                 <span style="font-weight:600;color:#1A0A00;">₱ {{ number_format($amt) }}</span>
             </div>
             @endforeach
 
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:8px 0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:11px 0;">
                 <span style="color:#B91C1C;font-weight:600;">Emergency Fund</span>
                 <span style="font-weight:700;color:#B91C1C;">₱ {{ number_format($s9emergency) }}</span>
             </div>
 
-            <div style="border-top:1.5px solid #E5E0D8;margin-top:4px;padding-top:12px;">
+            <div style="border-top:1.5px solid #E5E0D8;margin-top:6px;padding-top:16px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-size:13px;font-weight:700;color:#1A0A00;">Total Cost</span>
-                    <span style="font-size:18px;font-weight:900;color:{{ $s9over ? '#B91C1C' : '#934B19' }};">PHP {{ number_format($s9total) }}</span>
+                    <span style="font-size:15px;font-weight:700;color:#1A0A00;">Total Cost</span>
+                    <span style="font-size:22px;font-weight:900;color:{{ $s9over ? '#B91C1C' : '#934B19' }};">PHP {{ number_format($s9total) }}</span>
                 </div>
                 @if($s9budget > 0)
-                <div style="margin-top:4px;font-size:11px;color:{{ $s9over ? '#B91C1C' : '#9B8EA0' }};text-align:right;">
+                <div style="margin-top:5px;font-size:12px;color:{{ $s9over ? '#B91C1C' : '#9B8EA0' }};text-align:right;">
                     {{ $s9over ? 'Over ₱'.number_format($s9budget).' budget' : 'Within ₱'.number_format($s9budget).' budget' }}
                 </div>
                 @endif
             </div>
 
-            <div style="margin-top:12px;padding-top:10px;border-top:1px solid #F0EDE8;font-size:11px;color:var(--muted);line-height:1.5;">
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid #F0EDE8;font-size:12px;color:var(--muted);line-height:1.6;">
                 All estimates include upper-bound restaurant pricing.
             </div>
         </div>

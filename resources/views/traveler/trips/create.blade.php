@@ -43,7 +43,7 @@
         <label>Travel Type</label>
         <select name="travel_type" class="form-control" required>
             <option value="">Select...</option>
-            @foreach (['Solo','Family','Couple','Friends'] as $t)
+            @foreach (['Solo','Group'] as $t)
                 <option value="{{ $t }}"
                     {{ old('travel_type', request('type')) === $t ? 'selected' : '' }}>{{ $t }}</option>
             @endforeach

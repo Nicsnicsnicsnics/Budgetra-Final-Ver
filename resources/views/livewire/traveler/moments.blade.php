@@ -549,6 +549,11 @@
                     gallery.appendChild(img);
                 });
                 wrap.appendChild(gallery);
+            } else {
+                var noPhoto = document.createElement('div');
+                noPhoto.style.cssText = 'width:70px;height:70px;border-radius:6px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:8px;';
+                noPhoto.innerHTML = '<i class="fa-solid fa-camera" style="font-size:18px;color:#934B19;"></i>';
+                wrap.appendChild(noPhoto);
             }
 
             var title = document.createElement('div');
@@ -749,6 +754,11 @@
                     gallery.appendChild(img);
                 });
                 wrap.appendChild(gallery);
+            } else {
+                var noPhoto = document.createElement('div');
+                noPhoto.style.cssText = 'width:70px;height:70px;border-radius:6px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:8px;';
+                noPhoto.innerHTML = '<i class="fa-solid fa-camera" style="font-size:18px;color:#934B19;"></i>';
+                wrap.appendChild(noPhoto);
             }
 
             var title = document.createElement('div');
