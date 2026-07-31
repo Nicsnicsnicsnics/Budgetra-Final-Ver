@@ -49,7 +49,7 @@
 
     <nav class="sidebar-nav">
         @foreach ($links as $link)
-        <a href="{{ $link['href'] }}" wire:navigate
+        <a href="{{ $link['href'] }}" wire:navigate data-segment="{{ $link['segment'] }}"
            class="sidebar-link {{ $active === $link['key'] ? 'active' : '' }}"
            title="{{ $link['label'] }}">
             <i class="{{ $link['icon'] }}"></i>
@@ -66,7 +66,7 @@
         <div class="sidebar-bottom-links">
             {{-- Profile & Settings --}}
             @foreach ($bottomLinks as $link)
-            <a href="{{ $link['href'] }}" wire:navigate
+            <a href="{{ $link['href'] }}" wire:navigate data-segment="{{ $link['segment'] }}"
                class="sidebar-link {{ $active === $link['key'] ? 'active' : '' }}"
                title="{{ $link['label'] }}">
                 <i class="{{ $link['icon'] }}"></i>
@@ -90,27 +90,51 @@
 
 <script>
 (function () {
-    var wrap = document.getElementById('dashWrapper');
-    var btn  = document.getElementById('sidebarToggle');
-    var icon = document.getElementById('sidebarToggleIcon');
-    if (!wrap || !btn) return;
-
     function applyState(collapsed) {
+        var wrap = document.getElementById('dashWrapper');
+        var icon = document.getElementById('sidebarToggleIcon');
+        if (!wrap) return;
         wrap.classList.toggle('sidebar-collapsed', collapsed);
-        icon.className = collapsed ? 'fa-solid fa-chevron-right' : 'fa-solid fa-bars';
+        if (icon) icon.className = collapsed ? 'fa-solid fa-chevron-right' : 'fa-solid fa-bars';
     }
 
     applyState(localStorage.getItem('sidebarCollapsed') === '1');
 
-    // The toggle button lives inside the persisted sidebar block, so its listener
-    // survives wire:navigate transitions — guard against binding it more than once.
-    if (!btn.dataset.bound) {
-        btn.dataset.bound = '1';
-        btn.addEventListener('click', function () {
+    // #dashWrapper isn't inside the persisted sidebar block, so it (and the
+    // button itself, depending on how a given navigation morphs the page)
+    // can be swapped for a new DOM node on a wire:navigate transition. A
+    // listener bound directly to those elements would then be left attached
+    // to a detached, invisible node. Delegate from `document` instead (bound
+    // exactly once, ever) and re-query everything fresh at click time so
+    // this keeps working no matter which nodes got recreated.
+    if (!window.__sidebarToggleBound) {
+        window.__sidebarToggleBound = true;
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#sidebarToggle')) return;
+            var wrap = document.getElementById('dashWrapper');
+            if (!wrap) return;
             var c = !wrap.classList.contains('sidebar-collapsed');
             localStorage.setItem('sidebarCollapsed', c ? '1' : '0');
             applyState(c);
         });
+    }
+
+    // The sidebar is persisted across navigations, so Livewire never re-renders
+    // it (and its server-computed "active" class) after wire:navigate transitions.
+    // Recompute the active link from the current URL on every navigation instead.
+    function syncActiveLink() {
+        var path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+        var links = document.querySelectorAll('#appSidebar .sidebar-link[data-segment]');
+        links.forEach(function (link) {
+            var seg = link.dataset.segment;
+            var isActive = path === seg || path.indexOf(seg + '/') === 0;
+            link.classList.toggle('active', isActive);
+        });
+    }
+    syncActiveLink();
+    if (!window.__sidebarActiveSyncBound) {
+        window.__sidebarActiveSyncBound = true;
+        document.addEventListener('livewire:navigated', syncActiveLink);
     }
 })();
 </script>

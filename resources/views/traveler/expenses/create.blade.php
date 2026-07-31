@@ -85,9 +85,6 @@
             <h3 class="mb-4">Expense Details</h3>
             <p class="text-muted mb-16" style="font-size:13px;">Fill in details below or let OCR auto-fill after scanning.</p>
 
-            @if (session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
             @if ($errors->any())
             <div class="alert alert-danger">{{ $errors->first() }}</div>
             @endif

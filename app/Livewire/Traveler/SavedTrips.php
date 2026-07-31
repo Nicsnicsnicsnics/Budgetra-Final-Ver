@@ -46,7 +46,7 @@ class SavedTrips extends Component
         if (!$trip) return;
         $this->editNameTripId = $id;
         $this->editNameValue = $trip->trip_name ?? $trip->destination ?? '';
-        $this->editType      = ucfirst(strtolower($trip->travel_type ?? 'Solo'));
+        $this->editType      = strcasecmp($trip->travel_type ?? 'Solo', 'Solo') === 0 ? 'Solo' : 'Group';
         $today = \Carbon\Carbon::today();
         $computed = $trip->start_date->gt($today) ? 'upcoming' : ($trip->end_date->lt($today) ? 'past' : 'active');
         $this->editStatus     = $trip->getRawOriginal('status') ?? $computed;
