@@ -89,6 +89,12 @@ class TripPlannerWizard extends Component
     // only and can be bypassed (double network request race, JS disabled).
     public bool   $isSaving = false;
 
+    // Tracks the Trip row created by autosaveDraft() (Step 1's "From/To/
+    // Budget/Dates" form autosaves in the background instead of requiring
+    // an explicit "Save Draft" click) so repeated autosaves update the
+    // same row instead of creating a new draft every time.
+    public ?int   $draftTripId = null;
+
     // Step 8 — AI-generated itinerary
     public ?array $aiItinerary          = null; // the currently selected option (what saveItinerary() reads)
     public array  $aiItineraryOptions   = [];   // 2-3 generated alternatives to choose between
@@ -1054,12 +1060,15 @@ class TripPlannerWizard extends Component
     private function suggestItinerary(array $args, ?float $deadline = null): ?array
     {
         $deadline ??= microtime(true) + 45;
+        // Neither leg of the trip has a hotel picked — ask the AI to
+        // suggest one instead of leaving the itinerary with no lodging.
+        $needsAccommodation = !$this->selectedHotel && !$this->selectedMcHotel;
         foreach ([\App\Services\GeminiService::class, \App\Services\GroqService::class, \App\Services\CerebrasService::class, \App\Services\MistralService::class, \App\Services\OpenRouterService::class] as $serviceClass) {
             $remaining = $deadline - microtime(true);
             if ($remaining < 4) break;
 
             try {
-                $result = (new $serviceClass())->suggestAdditionalItinerary(...$args, timeout: (int) min(18, floor($remaining)));
+                $result = (new $serviceClass())->suggestAdditionalItinerary(...$args, needsAccommodation: $needsAccommodation, timeout: (int) min(18, floor($remaining)));
             } catch (\Throwable) {
                 $result = null;
             }
@@ -1308,6 +1317,33 @@ class TripPlannerWizard extends Component
         $this->step = 9;
     }
 
+    // Buckets an AI-generated itinerary's activities by type into cost
+    // totals per category — shared by the step-9 preview, the PDF export,
+    // and the saved summary_data, so an AI-suggested hotel/food/attraction
+    // lands in that category's total instead of everything but transport
+    // getting dumped into "Attractions".
+    public function categorizeAiCost(array $days): array
+    {
+        $totals = ['accommodation' => 0.0, 'food' => 0.0, 'transport' => 0.0, 'attraction' => 0.0];
+        foreach ($days as $day) {
+            foreach ($day['activities'] ?? [] as $act) {
+                if (!isset($act['cost']) || !is_numeric($act['cost'])) continue;
+                $cost = (float) $act['cost'];
+                $type = strtolower($act['type'] ?? '');
+                if ($type === 'accommodation') {
+                    $totals['accommodation'] += $cost;
+                } elseif (in_array($type, ['food', 'restaurant'], true)) {
+                    $totals['food'] += $cost;
+                } elseif ($type === 'transport') {
+                    $totals['transport'] += $cost;
+                } else {
+                    $totals['attraction'] += $cost;
+                }
+            }
+        }
+        return $totals;
+    }
+
     // Renders the same route/dates/cost-breakdown/itinerary/selection-summary
     // shown on the step-9 preview into a PDF — the trip isn't saved to the
     // DB yet at this point, so this reads straight off component state
@@ -1326,14 +1362,8 @@ class TripPlannerWizard extends Component
         $attrCost   = ($this->selectedAttraction['isFree']   ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $this->selectedAttraction['price']   ?? '0'))
                     + ($this->selectedMcAttraction['isFree'] ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $this->selectedMcAttraction['price'] ?? '0'));
 
-        $aiCost = 0;
-        if ($this->aiItinerary && !empty($this->aiItinerary['days'])) {
-            foreach ($this->aiItinerary['days'] as $day) {
-                foreach ($day['activities'] ?? [] as $act) {
-                    if (isset($act['cost']) && is_numeric($act['cost'])) $aiCost += (float) $act['cost'];
-                }
-            }
-        }
+        $aiTotals = $this->categorizeAiCost($this->aiItinerary['days'] ?? []);
+        $aiCost   = array_sum($aiTotals);
 
         $emergency = (float) $this->emergency;
         $budget    = (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin);
@@ -1355,10 +1385,10 @@ class TripPlannerWizard extends Component
             'emergency'  => $emergency,
             'budget'     => $budget,
             'total'      => $total,
-            'flightCost' => $flightCost,
-            'hotelCost'  => $hotelCost,
-            'venueCost'  => $venueCost,
-            'attrCost'   => $attrCost + $aiCost,
+            'flightCost' => $flightCost + $aiTotals['transport'],
+            'hotelCost'  => $hotelCost + $aiTotals['accommodation'],
+            'venueCost'  => $venueCost + $aiTotals['food'],
+            'attrCost'   => $attrCost + $aiTotals['attraction'],
         ]);
         $pdf->setPaper('a4', 'portrait');
 
@@ -1404,27 +1434,26 @@ class TripPlannerWizard extends Component
         $attrCost    = ($this->selectedAttraction['isFree']   ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $this->selectedAttraction['price']   ?? '0'))
                      + ($this->selectedMcAttraction['isFree'] ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $this->selectedMcAttraction['price'] ?? '0'));
         // AI-suggested activities are bucketed by type so the summary can
-        // show how much of "Food & Dining" / "Attractions" came from the
-        // traveler's own pick vs. the AI-suggested itinerary.
-        $aiFoodCost = 0; $aiFoodCount = 0;
-        $aiAttrCost = 0; $aiAttrCount = 0;
-        $aiTransportCost = 0;
-        if ($this->aiItinerary && !empty($this->aiItinerary['days'])) {
-            foreach ($this->aiItinerary['days'] as $day) {
-                foreach ($day['activities'] ?? [] as $act) {
-                    $cost = (int) ($act['cost'] ?? 0);
-                    $type = strtolower($act['type'] ?? '');
-                    if (in_array($type, ['food', 'restaurant'], true)) {
-                        $aiFoodCost += $cost; $aiFoodCount++;
-                    } elseif ($type === 'transport') {
-                        $aiTransportCost += $cost;
-                    } else {
-                        $aiAttrCost += $cost; $aiAttrCount++;
-                    }
+        // show how much of "Accommodation" / "Food & Dining" / "Attractions"
+        // came from the traveler's own pick vs. the AI-suggested itinerary.
+        $aiDays = $this->aiItinerary['days'] ?? [];
+        $aiTotals = $this->categorizeAiCost($aiDays);
+        $aiAccommodationCost = $aiTotals['accommodation'];
+        $aiFoodCost          = $aiTotals['food'];
+        $aiAttrCost          = $aiTotals['attraction'];
+        $aiTransportCost     = $aiTotals['transport'];
+        $aiFoodCount = 0; $aiAttrCount = 0;
+        foreach ($aiDays as $day) {
+            foreach ($day['activities'] ?? [] as $act) {
+                $type = strtolower($act['type'] ?? '');
+                if (in_array($type, ['food', 'restaurant'], true)) {
+                    $aiFoodCount++;
+                } elseif ($type !== 'transport' && $type !== 'accommodation') {
+                    $aiAttrCount++;
                 }
             }
         }
-        $aiCost      = $aiFoodCost + $aiAttrCost + $aiTransportCost;
+        $aiCost      = array_sum($aiTotals);
         $totalCost   = $flightCost + $hotelCost + $venueCost + $attrCost + $aiCost + (float)($this->emergency ?? 0);
 
         $coverImage  = $this->selectedHotel['image']   ?? $this->selectedMcHotel['image']
@@ -1460,9 +1489,19 @@ class TripPlannerWizard extends Component
         ]);
         $attrDetail = $attrNames ? implode(' & ', $attrNames) : null;
 
+        // Neither the traveler nor a plain hotel search filled in
+        // accommodation — fall back to the AI-suggested one so the summary
+        // isn't left showing an empty ₱0 lodging line.
+        if (!$hotelDetail) {
+            foreach ($aiDays as $day) {
+                $aiHotel = collect($day['activities'] ?? [])->first(fn($a) => strtolower($a['type'] ?? '') === 'accommodation');
+                if ($aiHotel) { $hotelDetail = $aiHotel['title'] ?? 'AI-suggested stay'; break; }
+            }
+        }
+
         $summaryData = [
             'transportation' => ['detail' => $flightDetail,                        'cost' => $flightCost + $aiTransportCost],
-            'accommodation'  => ['detail' => $hotelDetail,                         'cost' => $hotelCost],
+            'accommodation'  => ['detail' => $hotelDetail,                         'cost' => $hotelCost + $aiAccommodationCost],
             'food'           => ['detail' => $venueDetail,                         'cost' => $venueCost + $aiFoodCost, 'extra' => $aiFoodCount],
             'attractions'    => ['detail' => $attrDetail,                          'cost' => $attrCost + $aiAttrCost,  'extra' => $aiAttrCount],
             'emergency_fund' => ['detail' => 'Safety buffer for unexpected costs', 'cost' => (int)($this->emergency ?? 0)],
@@ -1660,28 +1699,69 @@ class TripPlannerWizard extends Component
         $this->redirect(route('saved-trips'));
     }
 
-    public function saveDraft(): void
+    // Silently saves (or updates) a draft once all of From/To/Budget/Start
+    // Date/End Date are filled in — no button, no redirect. Called from the
+    // Step 1 form whenever those fields are complete and again when the
+    // traveler navigates away (sidebar link, new tab, tab switch), so
+    // whatever they filled in is never lost even without an explicit save.
+    public function autosaveDraft(): void
     {
-        Trip::create([
+        // Before "Next" is clicked, manualBudgetMin still holds the raw
+        // combined field value (e.g. "10,000 - 50,000") and manualBudgetMax
+        // is empty — parseBudgetInput() alone would strip the "-" and
+        // concatenate both numbers into one huge figure. Pull the real max
+        // out of the combined string in that case instead.
+        $budget = $this->manualBudgetMax !== ''
+            ? $this->parseBudgetInput($this->manualBudgetMax)
+            : $this->extractBudgetMax($this->manualBudgetMin);
+        $hasAllFields = trim($this->manualFrom) !== ''
+            && trim($this->manualTo) !== ''
+            && $budget > 0
+            && $this->startDate !== ''
+            && $this->endDate !== '';
+
+        if (!$hasAllFields) return;
+
+        $data = [
             'user_id'          => auth()->id(),
-            'destination'      => $this->manualTo ?: 'Draft',
-            'origin'           => trim($this->manualFrom ?: 'Manila'),
-            'origin_code'      => $this->manualFrom ? $this->resolveCode($this->manualFrom) : 'MNL',
-            'destination_code' => $this->manualTo ? $this->resolveCode($this->manualTo) : '',
-            'start_date'       => $this->startDate ?: now()->toDateString(),
-            'end_date'         => $this->endDate   ?: now()->toDateString(),
-            'budget_limit'     => $this->parseBudgetInput($this->manualBudgetMax ?: $this->manualBudgetMin),
+            'destination'      => $this->manualTo,
+            'origin'           => trim($this->manualFrom),
+            'origin_code'      => $this->resolveCode($this->manualFrom),
+            'destination_code' => $this->resolveCode($this->manualTo),
+            'start_date'       => $this->startDate,
+            'end_date'         => $this->endDate,
+            'budget_limit'     => $budget,
             'travel_type'      => 'Solo',
             'num_travelers'    => 1,
             'status'           => 'draft',
-        ]);
-        session()->flash('success', 'Draft saved!');
-        $this->redirect(route('saved-trips'), navigate: true);
+        ];
+
+        $existing = $this->draftTripId ? Trip::where('id', $this->draftTripId)
+            ->where('user_id', auth()->id())
+            ->where('status', 'draft')
+            ->first() : null;
+
+        if ($existing) {
+            $existing->update($data);
+        } else {
+            $this->draftTripId = Trip::create($data)->id;
+        }
     }
 
     private function parseBudgetInput(string $val): float
     {
         return (float) preg_replace('/[^\d.]/', '', $val);
+    }
+
+    // Same "min - max" / "min to max" / single-value parsing as
+    // proceedFromTripDetails(), but only pulls out the max — used by
+    // autosaveDraft() to read the still-unsplit raw budget field.
+    private function extractBudgetMax(string $raw): float
+    {
+        if (preg_match('/(\d[\d,]*)\s*(?:[-–to]+)\s*(\d[\d,]*)/i', $raw, $m)) {
+            return (float) preg_replace('/[^\d]/', '', $m[2]);
+        }
+        return $this->parseBudgetInput($raw);
     }
 
     public function selectScope(string $scope): void

@@ -236,12 +236,6 @@ $allCities = array_merge(
                 <i class="fa-solid fa-circle-info" style="color:var(--muted);font-size:13px;flex-shrink:0;"></i>
                 <span style="font-size:13px;color:var(--muted);">Fill in the details to start your journey calculation.</span>
             </div>
-            <button wire:click="saveDraft" wire:loading.attr="disabled" wire:target="saveDraft"
-                    style="background:#fff;border:1.5px solid var(--border);color:var(--dark);border-radius:10px;padding:13px 24px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;"
-                    onmouseenter="this.style.background='#F5F0EB'" onmouseleave="this.style.background='#fff'">
-                <span wire:loading.remove wire:target="saveDraft">Save Draft</span>
-                <span wire:loading wire:target="saveDraft"><i class="fa-solid fa-spinner fa-spin"></i></span>
-            </button>
             <button wire:click="proceedFromTripDetails" wire:loading.attr="disabled" wire:target="proceedFromTripDetails"
                     style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:13px 34px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;"
                     onmouseenter="this.style.background='#6A3500'" onmouseleave="this.style.background='#934B19'">
@@ -283,6 +277,19 @@ window.pytManual = function() {
             this.$watch('endYear',    () => this.rebuildCells());
             this.$watch('endMonth',   () => this.rebuildCells());
             document.addEventListener('click', () => this.closeCals());
+
+            // No explicit "Save Draft" button — instead, whenever From/To/
+            // Budget/Start/End Date change, silently persist them as a
+            // draft in the background. By the time the traveler leaves
+            // (sidebar link, new tab, switching tabs) whatever they've
+            // filled in is already saved; the visibilitychange listener is
+            // just a best-effort extra save on the way out.
+            ['manualFrom', 'manualTo', 'manualBudgetMin', 'startDate', 'endDate'].forEach(prop => {
+                this.$wire.$watch(prop, () => this.$wire.autosaveDraft());
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) this.$wire.autosaveDraft();
+            });
         },
 
         _buildCells(y, m, bound, boundIsMin) {
@@ -2143,9 +2150,9 @@ window.sortAttractions = function(dir) {
                 </div>
                 <div class="itin8-cost-val">₱{{ number_format($totalCost8) }}</div>
                 <div class="itin8-actions" style="justify-content:flex-end;margin-top:12px;">
-                    <button class="itin8-btn-ghost" wire:click="regenerateItinerary" wire:loading.attr="disabled" wire:target="regenerateItinerary">
-                        <span wire:loading.remove wire:target="regenerateItinerary" style="white-space:nowrap;"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Generate Other Options</span>
-                        <span wire:loading wire:target="regenerateItinerary" style="white-space:nowrap;"><i class="fa-solid fa-spinner fa-spin"></i> Generating…</span>
+                    <button class="itin8-btn-ghost" wire:click="generateItinerary" wire:loading.attr="disabled" wire:target="generateItinerary">
+                        <span wire:loading.remove wire:target="generateItinerary" style="white-space:nowrap;"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Generate Other Options</span>
+                        <span wire:loading wire:target="generateItinerary" style="white-space:nowrap;"><i class="fa-solid fa-spinner fa-spin"></i> Generating…</span>
                     </button>
                     <button class="itin8-btn-save" wire:click="goToSummary" wire:loading.attr="disabled" wire:target="goToSummary">
                         <span wire:loading.remove wire:target="goToSummary" style="white-space:nowrap;">Save Itinerary <i class="fa-solid fa-floppy-disk" style="font-size:11px;"></i></span>
@@ -2387,19 +2394,19 @@ window.sortAttractions = function(dir) {
     $s9attr   = ($selectedAttraction['isFree']   ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $selectedAttraction['price']   ?? '0'))
               + ($selectedMcAttraction['isFree'] ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $selectedMcAttraction['price'] ?? '0'));
 
-    // AI activity costs
-    $s9ai = 0;
-    if ($aiItinerary && !empty($aiItinerary['days'])) {
-        foreach ($aiItinerary['days'] as $d) {
-            foreach ($d['activities'] ?? [] as $a) {
-                if (isset($a['cost']) && is_numeric($a['cost'])) $s9ai += (float)$a['cost'];
-            }
-        }
-    }
+    // AI activity costs, bucketed by category so an AI-suggested hotel/food/
+    // attraction lands in that category's total instead of all non-transport
+    // AI activities getting dumped into Attractions.
+    $s9aiTotals = $this->categorizeAiCost($aiItinerary['days'] ?? []);
+    $s9ai       = array_sum($s9aiTotals);
+    $s9flight  += $s9aiTotals['transport'];
+    $s9hotel   += $s9aiTotals['accommodation'];
+    $s9venue   += $s9aiTotals['food'];
+    $s9attr    += $s9aiTotals['attraction'];
 
     $s9emergency = (float) $emergency;
     $s9budget    = (int) preg_replace('/[^\d]/', '', $manualBudgetMax ?: $manualBudgetMin);
-    $s9total     = $s9flight + $s9hotel + $s9venue + $s9attr + $s9ai + $s9emergency;
+    $s9total     = $s9flight + $s9hotel + $s9venue + $s9attr + $s9emergency;
     $s9over      = $s9budget > 0 && $s9total > $s9budget;
 
     // Selections for summary list
@@ -2419,14 +2426,14 @@ window.sortAttractions = function(dir) {
         </button>
         <div style="display:flex;gap:8px;">
             <button wire:click="downloadPdf" wire:loading.attr="disabled" wire:target="downloadPdf"
-                    style="padding:8px 16px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:12px;font-weight:600;color:var(--dark);cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                    style="padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:12px;font-weight:700;color:var(--dark);cursor:pointer;display:inline-flex;align-items:center;gap:7px;">
                 <span wire:loading.remove wire:target="downloadPdf"><i class="fa-solid fa-download" style="font-size:10px;"></i> Download PDF</span>
-                <span wire:loading wire:target="downloadPdf"><i class="fa-solid fa-spinner fa-spin"></i> Preparing…</span>
+                <span wire:loading wire:target="downloadPdf"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
             <button wire:click="saveItinerary" wire:loading.attr="disabled"
                     style="padding:8px 18px;border:none;border-radius:8px;background:#934B19;color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;">
                 <span wire:loading.remove wire:target="saveItinerary">Confirm Trip <i class="fa-solid fa-check" style="font-size:10px;"></i></span>
-                <span wire:loading wire:target="saveItinerary"><i class="fa-solid fa-spinner fa-spin"></i> Saving…</span>
+                <span wire:loading wire:target="saveItinerary"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
         </div>
     </div>

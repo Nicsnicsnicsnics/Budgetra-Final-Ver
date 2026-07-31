@@ -63,7 +63,12 @@
                 @foreach ($stGroup['items'] as $trip)
         <div style="display:flex;align-items:stretch;">
         @php
-            $dest     = $trip->trip_name ?? $trip->destination ?? 'Unknown';
+            // A never-finished draft (saved before a destination was picked)
+            // stores the literal placeholder 'Draft' in the destination
+            // column — show a clearer label instead of that raw string,
+            // which otherwise reads like an actual place name right next
+            // to the "Draft" status badge above it.
+            $dest     = $trip->trip_name ?: (($trip->destination && $trip->destination !== 'Draft') ? $trip->destination : 'No destination set');
             $fromCode = $trip->origin_code ?? 'MNL';
             $toCode   = $trip->destination_code ?? '';
             $tType    = strtoupper($trip->travel_type ?? 'SOLO');
@@ -120,7 +125,7 @@
                         {{ $dest }}
                     </div>
                     <div style="display:flex;flex-direction:column;gap:5px;">
-                        @if($fromCode)
+                        @if($fromCode && $toCode)
                         <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,0.9);">
                             <i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>
                             <span>{{ $fromCode }} to {{ $toCode }}</span>
