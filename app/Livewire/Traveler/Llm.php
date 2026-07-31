@@ -4,6 +4,8 @@ namespace App\Livewire\Traveler;
 use App\Models\Trip;
 use App\Models\TripBudget;
 use App\Services\GeminiService;
+use App\Services\GroqService;
+use App\Services\OpenRouterService;
 use App\Services\SerpApiService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -35,6 +37,20 @@ class Llm extends Component
     // instead of requiring the same trigger words every time.
     public string $awaitingSlot = '';
 
+    // How many times in a row awaitingSlot has been missed — 0 the first
+    // time we ask, then incremented each time a reply fails to resolve it.
+    // Drives which phrasing tier questionFor() uses, so three-in-a-row
+    // misses don't just alternate between the same two sentences forever.
+    public int $missCount = 0;
+
+    // Set by parseAiPrompt() within the current request only (never synced —
+    // it's private, so Livewire doesn't persist it between turns) when a
+    // message names two candidate places joined by "or" for the same slot
+    // ("Cebu or Boracay"). automateTrip() checks this right after parsing
+    // and, if set, asks for clarification instead of silently locking in
+    // whichever place the regex happened to capture first.
+    private ?string $ambiguityNotice = null;
+
     // Read-only summary of the traveler's saved interests (from onboarding),
     // shown as a quick reminder on the landing screen and folded into trip
     // generation below — editing happens on the actual profile screen, not
@@ -49,19 +65,99 @@ class Llm extends Component
         $userText = trim($this->aiPrompt);
         if ($userText === '') return;
 
-        $this->messages[] = ['role' => 'user', 'text' => $userText];
-        $this->parseAiPrompt();
-        $this->applyDirectAnswerFallback($userText);
-        $this->aiPrompt = '';
+        // What we were already waiting on before this reply — lets us tell
+        // "still missing the same thing" apart from "just started asking
+        // about something new", so a self-check can catch the one case that
+        // actually reads as ignoring the user: repeating an identical
+        // question when nothing new came in.
+        $previouslyAwaiting = $this->awaitingSlot;
 
-        $missing = $this->nextMissingQuestion();
-        if ($missing !== null) {
-            $this->awaitingSlot = $this->missingSlotKey();
-            $this->messages[] = ['role' => 'assistant', 'text' => $missing];
+        $this->messages[] = ['role' => 'user', 'text' => $userText];
+
+        // Fast, zero-cost check — a bare "Hi"/"Hello" carries no travel info
+        // to extract, so answer it warmly right away instead of silently
+        // falling through to the next missing-info question (or waiting on
+        // an AI call just to recognize a greeting).
+        if ($this->isGreetingOnly($userText)) {
+            $this->aiPrompt = '';
+            $this->messages[] = ['role' => 'assistant', 'text' => self::GREETING_REPLY];
             $this->dispatch('message-added');
             return;
         }
 
+        $this->parseAiPrompt();
+
+        // A message naming two candidate places for the same slot ("Cebu or
+        // Boracay") is never something the direct-answer fallback or AI
+        // extraction below should try to resolve on its own — ask which one
+        // right away instead.
+        if ($this->ambiguityNotice !== null) {
+            $notice = $this->ambiguityNotice;
+            $this->ambiguityNotice = null;
+            $this->messages[] = ['role' => 'assistant', 'text' => $notice];
+            $this->dispatch('message-added');
+            return;
+        }
+
+        $this->applyDirectAnswerFallback($userText);
+
+        // Regex only understands a fixed set of phrasings — anything it
+        // couldn't figure out gets a smarter (but slower, costs an API
+        // call) pass through Gemini before we give up and ask again. This
+        // same pass also catches messages that aren't about travel at all
+        // ("give me code", "who won the NBA finals") — TARA stays a travel
+        // assistant and redirects instead of quietly asking for a destination
+        // — and less common greeting phrasings ("how's it going?") the fast
+        // check above didn't recognize.
+        $classification = $this->missingSlotKey() !== '' ? $this->extractWithAi($userText) : '';
+        $this->aiPrompt = '';
+
+        if ($classification === 'off_topic') {
+            $this->messages[] = ['role' => 'assistant', 'text' =>
+                "I'm a Travel Assistant, so I can only help with travel-related questions. If you need help planning a trip, finding destinations, estimating costs, or creating an itinerary, I'd be happy to assist!"];
+            $this->dispatch('message-added');
+            return;
+        }
+
+        if ($classification === 'greeting') {
+            $this->messages[] = ['role' => 'assistant', 'text' => self::GREETING_REPLY];
+            $this->dispatch('message-added');
+            return;
+        }
+
+        // ── Self-check before replying ──────────────────────────────────
+        // 1. Never ask about a slot that's already resolved (missingSlotKey()
+        //    is computed fresh from live state, so this is structurally true
+        //    by construction — asserted here as a safety net, not a fix).
+        // 2. If still missing the exact same thing as last turn, don't repeat
+        //    the identical question — acknowledge the miss and rephrase.
+        $stillMissing = $this->missingSlotKey();
+
+        if ($stillMissing !== '') {
+            $this->missCount = $stillMissing === $previouslyAwaiting ? $this->missCount + 1 : 0;
+            $this->awaitingSlot = $stillMissing;
+            $this->messages[] = ['role' => 'assistant', 'text' => $this->questionFor($stillMissing, $this->missCount)];
+            $this->dispatch('message-added');
+            return;
+        }
+
+        // Everything looks resolved on paper — but origin and destination
+        // being the same place is never a valid trip. Catch it here, right
+        // before generation, regardless of which step resolved the values
+        // (regex, direct-answer fallback, or AI), instead of silently
+        // building a "Manila to Manila" itinerary.
+        if ($this->sameOriginAndDestination()) {
+            $conflictCity = $this->aiTo;
+            $this->aiTo = '';
+            $this->awaitingSlot = 'destination';
+            $this->missCount    = 0;
+            $this->messages[] = ['role' => 'assistant', 'text' =>
+                "Looks like your origin and destination are both {$conflictCity} — could you tell me a different destination to travel to?"];
+            $this->dispatch('message-added');
+            return;
+        }
+
+        $this->missCount    = 0;
         $this->awaitingSlot = '';
         $this->messages[] = ['role' => 'assistant', 'text' => "Got it! Let me put together your trip to {$this->aiTo}…"];
         $this->dispatch('message-added');
@@ -70,51 +166,274 @@ class Llm extends Component
         $this->dispatch('ai-process-trip');
     }
 
+    // Greetings, acknowledgments, and other filler replies that are NOT an
+    // answer to anything — a bare "Hi" or "yes" typed while we're waiting on
+    // a destination/origin must never be accepted as a place name.
+    private const NON_ANSWER_FILLERS = [
+        'hi', 'hello', 'hey', 'yo', 'sup', 'hiya',
+        'good morning', 'good afternoon', 'good evening', 'good day',
+        'ok', 'okay', 'k', 'yes', 'yeah', 'yep', 'yup', 'sure', 'alright', 'fine',
+        'no', 'nope', 'nah', 'not sure', 'idk', "i don't know", 'dunno', 'maybe',
+        'cool', 'great', 'nice', 'awesome', 'thanks', 'thank you', 'please',
+        'what', 'why', 'how', 'um', 'uh', 'hmm', 'huh',
+    ];
+
+    // The subset of the above that's specifically a greeting (not just any
+    // filler) — these get a warm hello back instead of silently being
+    // ignored. Checked with no punctuation, case-insensitive, so "Hi!",
+    // "hello.", "HOW ARE YOU?" etc. all match.
+    private const GREETINGS = [
+        'hi', 'hello', 'hey', 'yo', 'sup', 'hiya',
+        'good morning', 'good afternoon', 'good evening', 'good day',
+        'how are you', 'how are you doing', "what's up", 'whats up', 'howdy',
+    ];
+
+    private const GREETING_REPLY = "Hello! 😊 How can I help you with your travel plans today?";
+
+    private function isGreetingOnly(string $text): bool
+    {
+        $normalized = strtolower(trim($text, " \t\n\r\0\x0B.!?,"));
+        return in_array($normalized, self::GREETINGS, true);
+    }
+
+    private function isNonAnswerFiller(string $text): bool
+    {
+        $normalized = strtolower(trim($text, " \t\n\r\0\x0B.!?,"));
+        return in_array($normalized, self::NON_ANSWER_FILLERS, true);
+    }
+
     // If the keyword-based parser above found nothing for the exact slot we
     // just asked about, fall back to treating the whole reply as the direct
     // answer to that question — the most natural way anyone actually
     // answers "Where would you like to go?" is just to name the place.
+    // Only applies to short, simple replies (a handful of words) that don't
+    // look like a filler word — a longer sentence packed with multiple
+    // details isn't "just the answer", and guessing there would misfire, so
+    // that case (and any filler) is left to Gemini/re-asking instead.
     private function applyDirectAnswerFallback(string $userText): void
     {
+        if (str_word_count($userText) > 6) return;
+        if ($this->isNonAnswerFiller($userText)) return;
+
+        // For destination/origin, a blocklist of "known bad" words can never
+        // cover every non-place reply someone might type (we've already
+        // caught "Hi" and "yes" this way — "Code" slipped through the exact
+        // same hole). Flip the check around instead: only accept the direct
+        // answer if it resolves to an ACTUAL known place via the same
+        // lookup used for airport codes. Anything that doesn't match falls
+        // through to the AI classification below, which is far better
+        // suited to judging "is this really a place?" than a fixed list.
         if ($this->awaitingSlot === 'destination' && $this->aiTo === '') {
-            $this->aiTo = $this->cleanCityName($userText);
-            if ($this->aiFrom === '') $this->aiFrom = 'Manila';
-        } elseif ($this->awaitingSlot === 'budget' && $this->aiBudgetMin === 0 && $this->aiBudgetMax === 0) {
-            if (preg_match('/(\d+(?:,\d{3})*)\s*[kK]\b/', $userText, $m)) {
-                $v = (int) str_replace(',', '', $m[1]) * 1000;
-            } elseif (preg_match('/(\d[\d,]*)/', $userText, $m)) {
-                $v = (int) str_replace(',', '', $m[1]);
-            } else {
-                $v = 0;
+            // knownPlaceName() (not just an iataCode() !== '' gate) matters
+            // here: a reply padded with extra words ("Actually I want Cebu")
+            // must resolve to just "Cebu", not the whole raw sentence.
+            $resolved = $this->knownPlaceName($this->cleanCityName($userText));
+            if ($resolved !== '') {
+                $this->aiTo = $resolved;
             }
-            if ($v > 0) $this->aiBudgetMin = $this->aiBudgetMax = $v;
+        } elseif ($this->awaitingSlot === 'origin' && $this->aiFrom === '') {
+            $resolved = $this->knownPlaceName($this->cleanCityName($userText));
+            if ($resolved !== '') {
+                $this->aiFrom = $resolved;
+            }
+        } elseif ($this->awaitingSlot === 'budget' && $this->aiBudgetMin === 0 && $this->aiBudgetMax === 0) {
+            $money = '\d+(?:,\d{3})*(?:\s*[kK])?';
+            if (preg_match('/(' . $money . ')\s*(?:to|[-–])\s*(' . $money . ')/', $userText, $m)) {
+                $a = $this->parseMoneyToken($m[1]);
+                $b = $this->parseMoneyToken($m[2]);
+                $this->aiBudgetMin = min($a, $b);
+                $this->aiBudgetMax = max($a, $b);
+            } elseif (preg_match('/(\d+(?:,\d{3})*\s*[kK])\b/', $userText, $m)) {
+                $v = $this->parseMoneyToken($m[1]);
+                if ($v > 0) $this->aiBudgetMin = $this->aiBudgetMax = $v;
+            } elseif (preg_match('/(\d[\d,]*)/', $userText, $m)) {
+                $v = $this->parseMoneyToken($m[1]);
+                if ($v > 0) $this->aiBudgetMin = $this->aiBudgetMax = $v;
+            }
         }
         // 'dates' has no generic fallback — parseAiPrompt() already tried
         // every date pattern we understand on this same text; fabricating a
         // date instead of recognizing one would be worse than asking again.
     }
 
-    // The slot key ('destination'|'budget'|'dates') that nextMissingQuestion()
-    // would ask about next, or '' once everything is known.
+    // Smarter last-resort extraction via Gemini (or Groq/OpenRouter if
+    // Gemini's not available), only reached when the free regex pass above
+    // couldn't fill in something we still need — handles phrasings regex
+    // was never taught (missing prepositions, typos, dense sentences with
+    // several details at once), and also classifies whether the message is
+    // off-topic or just a greeting the fast keyword check didn't recognize.
+    // Returns 'off_topic', 'greeting', or '' (normal — proceed with
+    // extraction). Silently treats any failure (bad key, quota, network) as
+    // '' so a flaky API call never crashes the conversation or blocks it —
+    // it just falls through to asking again normally.
+    private function extractWithAi(string $userText): string
+    {
+        $known = sprintf(
+            "- Origin: %s\n- Destination: %s\n- Budget: %s\n- Travel dates: %s",
+            $this->aiFrom !== '' ? $this->aiFrom : 'unknown',
+            $this->aiTo !== '' ? $this->aiTo : 'unknown',
+            ($this->aiBudgetMin || $this->aiBudgetMax) ? "₱{$this->aiBudgetMin}-₱{$this->aiBudgetMax}" : 'unknown',
+            ($this->aiDateFrom && $this->aiDateTo) ? "{$this->aiDateFrom} to {$this->aiDateTo}" : 'unknown',
+        );
+
+        $today = date('l, M j, Y'); // e.g. "Wednesday, Jul 29, 2026"
+
+        $prompt = <<<PROMPT
+You are a travel planning assistant extracting structured information from a traveler's message.
+
+Today's date is {$today}.
+
+Known information so far:
+{$known}
+
+Traveler's new message: "{$userText}"
+
+First, decide:
+1. Is this message COMPLETELY UNRELATED to travel planning — e.g. asking you to write code, general trivia (sports scores, history, etc.), or any other task that has nothing to do with planning a trip? A message that just doesn't mention a specific field yet (like "not sure" or a vague reply) is NOT off-topic — only mark it off-topic if it's asking for something entirely outside travel.
+2. Is this message JUST a greeting or small-talk pleasantry (e.g. "hey there", "how's it going?", "good to see you") with no actual travel information and no off-topic request either?
+
+Return JSON only, no markdown:
+{
+  "off_topic": true or false,
+  "is_greeting": true or false,
+  "origin": "city name or null",
+  "destination": "city name or null",
+  "budget_min": number or null,
+  "budget_max": number or null,
+  "date_from": "abbreviated MONTH name + day, e.g. 'Jul 28' (NOT a weekday name) — or null",
+  "date_to": "abbreviated MONTH name + day + year, e.g. 'Jul 30, 2026' (NOT a weekday name) — or null"
+}
+
+Rules:
+- If "off_topic" or "is_greeting" is true, set every other field to null.
+- A message can't be both off_topic and is_greeting — pick whichever fits best, or leave both false if it contains real travel info.
+- Only include a field if this message actually mentions or changes it.
+- If a field isn't mentioned in this message, return null for it — do not guess or repeat the known values above.
+- If information is ambiguous, return null for that field rather than assuming.
+- Dates: if the traveler gives a RELATIVE time frame instead of a calendar date ("next week", "this weekend", "tomorrow", "in 3 days") and/or a DURATION instead of an end date ("for 5 days", "for a week"), compute the actual calendar dates yourself using today's date above as the reference point, and return real dates in the "Jul 28" / "Jul 30, 2026" style shown above — never return the relative phrase itself, and never return a day-of-the-week name.
+PROMPT;
+
+        try {
+            $raw = (new GeminiService())->generate($prompt);
+            if (!$raw) {
+                $raw = (new GroqService())->generate($prompt);
+            }
+            if (!$raw) {
+                $raw = (new OpenRouterService())->generate($prompt);
+            }
+            if (!$raw) return '';
+
+            $raw = trim(preg_replace('/```json\s*|```\s*/i', '', $raw));
+            $data = json_decode($raw, true);
+            if (!is_array($data)) return '';
+        } catch (\Throwable) {
+            return '';
+        }
+
+        if (!empty($data['off_topic']))  return 'off_topic';
+        if (!empty($data['is_greeting'])) return 'greeting';
+
+        // Only fill in slots that are still genuinely empty — this call runs
+        // whenever ANYTHING is missing, not necessarily dates/budget/etc.,
+        // so it must never clobber a field the regex pass already resolved
+        // correctly earlier in this same turn (the AI re-derives every
+        // field from scratch each time, and a different — possibly worse —
+        // interpretation of the same text should never overwrite a good one).
+        // knownPlaceName(), not just an isNonAnswerFiller() check — the AI
+        // can hallucinate or (since the traveler's own raw message is
+        // embedded straight into the prompt above) be steered into
+        // returning something that isn't a real place at all. Requiring it
+        // to resolve to an actual known place applies the exact same gate
+        // the regex/direct-answer paths already use, so this path can't be
+        // used to slip an arbitrary string past the "is this a place?"
+        // check the way "Code" once did on the other paths.
+        if ($this->aiFrom === '' && !empty($data['origin'])) {
+            $resolved = $this->knownPlaceName($this->cleanCityName($data['origin']));
+            if ($resolved !== '') {
+                $this->aiFrom = $resolved;
+            }
+        }
+        if ($this->aiTo === '' && !empty($data['destination'])) {
+            $resolved = $this->knownPlaceName($this->cleanCityName($data['destination']));
+            if ($resolved !== '') {
+                $this->aiTo = $resolved;
+            }
+        }
+
+        if ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0
+            && (!empty($data['budget_min']) || !empty($data['budget_max']))) {
+            $this->aiBudgetMin = (int) ($data['budget_min'] ?? $data['budget_max']);
+            $this->aiBudgetMax = (int) ($data['budget_max'] ?? $data['budget_min']);
+        }
+
+        if (($this->aiDateFrom === '' || $this->aiDateTo === '')
+            && !empty($data['date_from']) && !empty($data['date_to'])) {
+            $tsFrom = strtotime($data['date_from'] . ' ' . date('Y'));
+            $tsTo   = strtotime($data['date_to']);
+            // Sanity check: reject anything landing in the past. The AI's
+            // own date arithmetic for relative phrases ("this weekend") is
+            // occasionally wrong — a travel date before today is never a
+            // valid resolution of that, so treat it as if nothing came back
+            // rather than silently accepting a hallucinated past date.
+            if ($tsFrom && $tsTo && $tsFrom >= strtotime('today')) {
+                $this->aiDateFrom = $data['date_from'];
+                $this->aiDateTo   = $data['date_to'];
+                $this->aiDays     = (int) ceil(abs($tsTo - $tsFrom) / 86400) + 1;
+            }
+        }
+
+        return '';
+    }
+
+    // The slot key ('destination'|'origin'|'budget'|'dates') that
+    // questionFor() would ask about next, or '' once everything is known.
     private function missingSlotKey(): string
     {
         if ($this->aiTo === '') return 'destination';
+        if ($this->aiFrom === '') return 'origin';
         if ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0) return 'budget';
         if ($this->aiDateFrom === '' || $this->aiDateTo === '') return 'dates';
         return '';
     }
 
-    // Returns a friendly follow-up question for the first thing we still
-    // need (destination, then budget, then dates), or null once we have
-    // enough to generate a package — asked one at a time to feel like an
-    // actual conversation instead of a form dump.
-    private function nextMissingQuestion(): ?string
+    // Returns a friendly follow-up question for the given slot — asked one
+    // at a time to feel like an actual conversation instead of a form dump.
+    // $missCount is how many times in a row this exact slot has gone
+    // unresolved: 0 = first time asking, 1 = missed once, 2+ = missed
+    // repeatedly. Each tier has its own phrasing so three-plus misses in a
+    // row don't just alternate between the same two sentences forever —
+    // the final tier is deliberately stable (not endlessly novel) since at
+    // that point a clear, concrete example is more useful than variety.
+    private function questionFor(string $slot, int $missCount): string
     {
-        return match ($this->missingSlotKey()) {
-            'destination' => "Sure! Where would you like to go?",
-            'budget'      => "Nice choice! What's your budget for this trip?",
-            'dates'       => "Got it. When are you planning to travel? (e.g. \"August 3 to 10\")",
-            default       => null,
+        if ($missCount <= 0) {
+            return match ($slot) {
+                'destination' => "Sure! Where would you like to go?",
+                'origin'      => "Nice choice! Where will you be traveling from?",
+                'budget'      => "Got it. What's your budget for this trip?",
+                'dates'       => "Got it. When are you planning to travel? (e.g. \"August 3 to 10\")",
+                default       => '',
+            };
+        }
+
+        if ($missCount === 1) {
+            return match ($slot) {
+                'destination' => "Sorry, I didn't quite catch a destination there — which place would you like to go to?",
+                'origin'      => "Hmm, I still need a starting point — what city will you be flying from?",
+                'budget'      => "I didn't catch a number — roughly how much do you want to spend, e.g. \"20000\" or \"20k\"?",
+                'dates'       => "I still need actual travel dates — something like \"August 3 to 10\" or \"8/3/2026\" works best.",
+                default       => '',
+            };
+        }
+
+        // Missed 2+ times in a row — stop rephrasing and just give the
+        // most concrete, copy-pasteable example possible.
+        return match ($slot) {
+            'destination' => "Let's try just the place name by itself — for example: Boracay",
+            'origin'      => "Just the city name works — for example: Manila",
+            'budget'      => "Just a plain number works — for example: 20000",
+            'dates'       => "Just the dates works — for example: August 3 to 10, 2026",
+            default       => '',
         };
     }
 
@@ -145,8 +464,19 @@ class Llm extends Component
     public function processAiTrip(): void
     {
         // Layer 1: Gemini — parse natural language + full package
-        $gemini  = new GeminiService();
-        $package = $gemini->planTrip($this->conversationSummary());
+        $package = (new GeminiService())->planTrip($this->conversationSummary());
+
+        // Layer 1.5: Groq — same job, tried only when Gemini didn't come back
+        // with a usable package (e.g. quota exhausted, key issue, timeout).
+        if (!$package || empty($package['to'])) {
+            $package = (new GroqService())->planTrip($this->conversationSummary());
+        }
+
+        // Layer 1.7: OpenRouter — third AI provider, tried only if both of
+        // the above came up empty (both down, both out of quota, etc.).
+        if (!$package || empty($package['to'])) {
+            $package = (new OpenRouterService())->planTrip($this->conversationSummary());
+        }
 
         if ($package && !empty($package['to'])) {
             $this->aiFrom      = $this->cleanCityName($package['from']      ?? $this->aiFrom);
@@ -156,14 +486,31 @@ class Llm extends Component
             $this->aiDateFrom  = $package['date_from'] ?? $this->aiDateFrom;
             $this->aiDateTo    = $package['date_to']   ?? $this->aiDateTo;
             $this->aiDays      = (int)($package['days'] ?? $this->aiDays);
+
+            $transportCost     = (int)($package['transport']['cost']     ?? 0);
+            $accommodationCost = (int)($package['accommodation']['cost'] ?? 0);
+            $foodCost          = (int)($package['food']['cost']          ?? 0);
+            $attractionsCost   = (int)($package['attractions']['cost']   ?? 0);
+
+            // Recomputed here rather than trusting the AI's own self-reported
+            // "total"/"pct" — its arithmetic (over line items it just made
+            // up from a prompt built from the traveler's own raw message)
+            // can't be trusted to actually add up. buildSerpApiPackage()
+            // below already does its own sum for exactly this reason; this
+            // path previously didn't, and a wrong self-reported total would
+            // sail straight into saveAiTrip() as a real, misleading budget
+            // record.
+            $budget = $this->aiBudgetMax ?: $this->aiBudgetMin ?: 30000;
+            $total  = $transportCost + $accommodationCost + $foodCost + $attractionsCost;
+
             $this->aiPackage   = [
                 'transport'     => $package['transport']     ?? [],
                 'accommodation' => $package['accommodation'] ?? [],
                 'food'          => $package['food']          ?? [],
                 'attractions'   => $package['attractions']   ?? ['items'=>[],'cost'=>0],
-                'total'         => (int)($package['total']  ?? 0),
-                'budget'        => (int)($package['budget'] ?? $this->aiBudgetMax),
-                'pct'           => (int)($package['pct']    ?? 0),
+                'total'         => $total,
+                'budget'        => $budget,
+                'pct'           => min(100, (int)round($total / $budget * 100)),
             ];
             $this->aiStep = 'results';
             return;
@@ -255,9 +602,16 @@ class Llm extends Component
         ];
 
         // ── Gemini enrichment — fix generic names / missing prices ────────
+        // (Groq, then OpenRouter, as backups when Gemini's unavailable —
+        // same job, same rules.)
         try {
-            $gemini   = new GeminiService();
-            $enriched = $gemini->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
+            $enriched = (new GeminiService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
+            if (!$enriched) {
+                $enriched = (new GroqService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
+            }
+            if (!$enriched) {
+                $enriched = (new OpenRouterService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
+            }
             if ($enriched && is_array($enriched)) {
                 // Merge enriched strings back but preserve all numeric costs
                 foreach (['transport','accommodation','food','attractions'] as $key) {
@@ -292,7 +646,12 @@ class Llm extends Component
         ]);
     }
 
-    public function iataCode(string $city): string
+    // Returns the matched known-place name (map key) and its IATA code for
+    // the best hit within free text, or null if nothing resolves. Both
+    // iataCode() (just the code) and knownPlaceName() (just the canonical
+    // name) are thin wrappers around this, so free-text matching logic
+    // lives in exactly one place.
+    private function matchKnownPlace(string $city): ?array
     {
         $map = [
             // Philippines
@@ -433,25 +792,61 @@ class Llm extends Component
         ];
 
         $key = strtolower(trim($city));
-        if (isset($map[$key])) return $map[$key];
+        if (isset($map[$key])) return ['name' => $key, 'code' => $map[$key]];
 
-        // No exact match — try progressively shorter word-combinations, since
-        // free-text answers often tack on a country/region ("Tokyo Japan",
-        // "Cebu City, Philippines") that this table already covers as its
-        // own separate entry (both "tokyo" and "japan" map to NRT above).
+        // No exact match — try every contiguous run of words, longest first,
+        // at every starting position. Free-text answers often tack extra
+        // words onto EITHER side of the actual place name: a country/region
+        // after it ("Tokyo Japan", "Cebu City, Philippines" — both "tokyo"
+        // and "japan" are their own entries above), or filler words before
+        // it from a natural sentence reply ("Actually I want Cebu"). Scanning
+        // every window catches both instead of only ever trimming the end.
         $words = preg_split('/[\s,]+/', $key, -1, PREG_SPLIT_NO_EMPTY);
-        for ($len = count($words) - 1; $len >= 1; $len--) {
-            $candidate = implode(' ', array_slice($words, 0, $len));
-            if (isset($map[$candidate])) return $map[$candidate];
+        $count = count($words);
+        for ($len = $count - 1; $len >= 1; $len--) {
+            for ($start = 0; $start + $len <= $count; $start++) {
+                $candidate = implode(' ', array_slice($words, $start, $len));
+                if (isset($map[$candidate])) return ['name' => $candidate, 'code' => $map[$candidate]];
+            }
         }
 
-        return '';
+        return null;
+    }
+
+    // Public lookup for wherever only the IATA code matters (SerpAPI calls,
+    // etc.) — thin wrapper so the free-text matching logic isn't duplicated.
+    public function iataCode(string $city): string
+    {
+        return $this->matchKnownPlace($city)['code'] ?? '';
+    }
+
+    // Returns the canonical, properly-cased NAME of whichever known place was
+    // found within $text — NOT the raw input. "Actually I want Cebu"
+    // resolves to "Cebu", not the whole padded sentence. Empty string if
+    // nothing in $text matches a known place.
+    private function knownPlaceName(string $text): string
+    {
+        $match = $this->matchKnownPlace($text);
+        return $match !== null ? ucwords($match['name']) : '';
     }
 
     private function resolveCode(string $city): string
     {
         $code = $this->iataCode($city);
         return $code !== '' ? $code : trim($city);
+    }
+
+    // True when origin and destination are the same place — either the
+    // exact same name, or two names that resolve to the same airport (e.g.
+    // "Makati" and "Manila" both serve MNL). Checked right before a trip
+    // would be generated so "Manila to Manila" never sails through silently.
+    private function sameOriginAndDestination(): bool
+    {
+        if ($this->aiFrom === '' || $this->aiTo === '') return false;
+        if (strtolower($this->aiFrom) === strtolower($this->aiTo)) return true;
+
+        $fromCode = $this->iataCode($this->aiFrom);
+        return $fromCode !== '' && $fromCode === $this->iataCode($this->aiTo);
     }
 
     public function regeneratePackage(): void
@@ -500,6 +895,19 @@ class Llm extends Component
         return $this->redirect(route('trips.dashboard', $trip), navigate: true);
     }
 
+    // Converts a matched money token ("20,000", "30000", "20k") to a plain
+    // integer peso amount — one place for the "k means thousand" rule so
+    // every budget-parsing branch (single value, range, direct-answer
+    // fallback) agrees on how to read it instead of each reimplementing it.
+    private function parseMoneyToken(string $token): int
+    {
+        $token = trim($token);
+        if (preg_match('/^(\d+(?:,\d{3})*)\s*[kK]$/', $token, $m)) {
+            return (int) str_replace(',', '', $m[1]) * 1000;
+        }
+        return (int) str_replace(',', '', $token);
+    }
+
     private function cleanCityName(string $name): string
     {
         $name = trim($name);
@@ -533,88 +941,106 @@ class Llm extends Component
             $mon1  = $monthMap[strtolower($m[1])];
             $mon2  = $monthMap[strtolower($m[3])];
             $year  = !empty($m[5]) ? (int)$m[5] : (int)date('Y');
-            $ts1   = mktime(0,0,0,$mon1,(int)$m[2],$year);
-            $ts2   = mktime(0,0,0,$mon2,(int)$m[4],$year);
-            $this->aiDateFrom = date('M j', $ts1);
-            $this->aiDateTo   = date('M j, Y', $ts2);
-            $this->aiDays     = (int)ceil(abs($ts2-$ts1)/86400)+1;
-            $withoutDate      = str_replace($m[0], '', $raw);
+            $d1    = (int)$m[2]; $d2 = (int)$m[4];
+            // checkdate() rejects anything mktime() would otherwise silently
+            // roll over into a different day/month/year (e.g. a typo day of
+            // 32) — treat a match that fails this as "no date found" rather
+            // than accepting a wrong calendar date.
+            if (checkdate($mon1, $d1, $year) && checkdate($mon2, $d2, $year)) {
+                $ts1   = mktime(0,0,0,$mon1,$d1,$year);
+                $ts2   = mktime(0,0,0,$mon2,$d2,$year);
+                $this->aiDateFrom = date('M j', $ts1);
+                $this->aiDateTo   = date('M j, Y', $ts2);
+                $this->aiDays     = (int)ceil(abs($ts2-$ts1)/86400)+1;
+                $withoutDate      = str_replace($m[0], '', $raw);
+            }
 
         // Same-month: "August 3 to 10, 2026" | "Aug 3-10" | "Aug 3 - 10, 2026"
         } elseif (preg_match('/\b(' . $mp . ')\.?\s+(\d{1,2})\s*(?:[-–]|to)\s*(\d{1,2})(?:,?\s*(\d{4}))?\b/i', $raw, $m)) {
             $mon  = $monthMap[strtolower($m[1])];
             $year = !empty($m[4]) ? (int)$m[4] : (int)date('Y');
             $d1   = (int)$m[2]; $d2 = (int)$m[3];
-            $this->aiDateFrom = date('M j', mktime(0,0,0,$mon,$d1,$year));
-            $this->aiDateTo   = date('M j, Y', mktime(0,0,0,$mon,$d2,$year));
-            $this->aiDays     = abs($d2-$d1)+1;
-            $withoutDate      = str_replace($m[0], '', $raw);
+            if (checkdate($mon, $d1, $year) && checkdate($mon, $d2, $year)) {
+                $this->aiDateFrom = date('M j', mktime(0,0,0,$mon,$d1,$year));
+                $this->aiDateTo   = date('M j, Y', mktime(0,0,0,$mon,$d2,$year));
+                $this->aiDays     = abs($d2-$d1)+1;
+                $withoutDate      = str_replace($m[0], '', $raw);
+            }
 
         // Single date: "August 3, 2026" — treat as start, add aiDays
         } elseif (preg_match('/\b(' . $mp . ')\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?\b/i', $raw, $m)) {
             $mon  = $monthMap[strtolower($m[1])];
             $year = !empty($m[3]) ? (int)$m[3] : (int)date('Y');
-            $ts1  = mktime(0,0,0,$mon,(int)$m[2],$year);
-            $this->aiDateFrom = date('M j', $ts1);
-            $this->aiDateTo   = date('M j, Y', $ts1 + 5*86400);
-            $this->aiDays     = 6;
-            $withoutDate      = str_replace($m[0], '', $raw);
+            $day  = (int)$m[2];
+            if (checkdate($mon, $day, $year)) {
+                $ts1  = mktime(0,0,0,$mon,$day,$year);
+                $this->aiDateFrom = date('M j', $ts1);
+                $this->aiDateTo   = date('M j, Y', $ts1 + 5*86400);
+                $this->aiDays     = 6;
+                $withoutDate      = str_replace($m[0], '', $raw);
+            }
 
         // Numeric range: "7/28/2026 to 7/30/2026" | "07/28/2026-07/30/2026"
         } elseif (preg_match('/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*(?:to|[-–])\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/', $raw, $m)) {
             $y1  = strlen($m[3]) === 2 ? (int)('20'.$m[3]) : (int)$m[3];
             $y2  = strlen($m[6]) === 2 ? (int)('20'.$m[6]) : (int)$m[6];
-            $ts1 = mktime(0,0,0,(int)$m[1],(int)$m[2],$y1);
-            $ts2 = mktime(0,0,0,(int)$m[4],(int)$m[5],$y2);
-            $this->aiDateFrom = date('M j', $ts1);
-            $this->aiDateTo   = date('M j, Y', $ts2);
-            $this->aiDays     = (int)ceil(abs($ts2-$ts1)/86400)+1;
-            $withoutDate      = str_replace($m[0], '', $raw);
+            $mo1 = (int)$m[1]; $da1 = (int)$m[2];
+            $mo2 = (int)$m[4]; $da2 = (int)$m[5];
+            if (checkdate($mo1, $da1, $y1) && checkdate($mo2, $da2, $y2)) {
+                $ts1 = mktime(0,0,0,$mo1,$da1,$y1);
+                $ts2 = mktime(0,0,0,$mo2,$da2,$y2);
+                $this->aiDateFrom = date('M j', $ts1);
+                $this->aiDateTo   = date('M j, Y', $ts2);
+                $this->aiDays     = (int)ceil(abs($ts2-$ts1)/86400)+1;
+                $withoutDate      = str_replace($m[0], '', $raw);
+            }
 
         // Numeric single: "7/28/2026"
         } elseif (preg_match('/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/', $raw, $m)) {
             $y   = strlen($m[3]) === 2 ? (int)('20'.$m[3]) : (int)$m[3];
-            $ts1 = mktime(0,0,0,(int)$m[1],(int)$m[2],$y);
-            $this->aiDateFrom = date('M j', $ts1);
-            $this->aiDateTo   = date('M j, Y', $ts1 + 5*86400);
-            $this->aiDays     = 6;
-            $withoutDate      = str_replace($m[0], '', $raw);
+            $mo  = (int)$m[1]; $da = (int)$m[2];
+            if (checkdate($mo, $da, $y)) {
+                $ts1 = mktime(0,0,0,$mo,$da,$y);
+                $this->aiDateFrom = date('M j', $ts1);
+                $this->aiDateTo   = date('M j, Y', $ts1 + 5*86400);
+                $this->aiDays     = 6;
+                $withoutDate      = str_replace($m[0], '', $raw);
+            }
 
         }
-        // else: no date found in this message — leave whatever was already
-        // known from an earlier turn untouched, so we can ask for it instead
-        // of silently guessing.
+        // else: no date found in this message (or what looked like a date
+        // failed calendar validation) — leave whatever was already known
+        // from an earlier turn untouched, so we can ask for it instead of
+        // silently guessing or accepting an impossible date.
 
         // ── Step 2: budget — work on date-free copy ───────────────────────
-        // "large number" = 4+ digits OR comma-grouped thousands (e.g. 30,000)
-        $big = '(?:\d{1,3}(?:,\d{3})+|\d{4,})';
+        // "large number" = 4+ digits, comma-grouped thousands (e.g. 30,000),
+        // or a "k"-shorthand amount (e.g. 20k, 20,000k though the latter's
+        // unrealistic — the comma-group form already covers it).
+        $big = '(?:\d{1,3}(?:,\d{3})+|\d{4,}|\d+\s*[kK]\b)';
 
-        // Range: "30,000 to 35,000" | "₱30,000-₱35,000" | "30000-35000"
+        // Range: "30,000 to 35,000" | "₱30,000-₱35,000" | "30000-35000" | "20k to 30k"
         if (preg_match('/[₱P]?\s*(' . $big . ')\s*(?:[-–]|to)\s*[₱P]?\s*(' . $big . ')/ui', $withoutDate, $m)) {
-            $a = (int)str_replace(',','',$m[1]);
-            $b = (int)str_replace(',','',$m[2]);
+            $a = $this->parseMoneyToken($m[1]);
+            $b = $this->parseMoneyToken($m[2]);
             $this->aiBudgetMin = min($a,$b);
             $this->aiBudgetMax = max($a,$b);
 
-        // Keyword: "budget is/of 30,000" | "budget: 30000"
+        // Keyword: "budget is/of 30,000" | "budget: 30000" | "budget is 20k"
         } elseif (preg_match('/budget\s*(?:is|of|:)?\s*[₱P]?\s*(' . $big . ')/ui', $withoutDate, $m)) {
-            $v = (int)str_replace(',','',$m[1]);
-            $this->aiBudgetMin = $this->aiBudgetMax = $v;
+            $this->aiBudgetMin = $this->aiBudgetMax = $this->parseMoneyToken($m[1]);
 
         // Peso sign: ₱30,000
         } elseif (preg_match('/[₱]\s*(' . $big . ')/u', $withoutDate, $m)) {
-            $v = (int)str_replace(',','',$m[1]);
-            $this->aiBudgetMin = $this->aiBudgetMax = $v;
+            $this->aiBudgetMin = $this->aiBudgetMax = $this->parseMoneyToken($m[1]);
 
         // Trailing keyword: "30,000 pesos" | "30000 php"
         } elseif (preg_match('/(' . $big . ')\s*(?:pesos?|php)\b/ui', $withoutDate, $m)) {
-            $v = (int)str_replace(',','',$m[1]);
-            $this->aiBudgetMin = $this->aiBudgetMax = $v;
+            $this->aiBudgetMin = $this->aiBudgetMax = $this->parseMoneyToken($m[1]);
 
         // Bare large standalone number
         } elseif (preg_match('/\b(' . $big . ')\b/', $withoutDate, $m)) {
-            $v = (int)str_replace(',','',$m[1]);
-            $this->aiBudgetMin = $this->aiBudgetMax = $v;
+            $this->aiBudgetMin = $this->aiBudgetMax = $this->parseMoneyToken($m[1]);
 
         }
         // else: no budget found in this message — leave prior turns' value
@@ -625,12 +1051,24 @@ class Llm extends Component
         $months = 'january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec';
         $city   = '(?!(?:' . $months . ')\b)[A-Z][a-z]+(?: [A-Z][a-z]+){0,2}';
 
-        $hasFrom = preg_match('/\bfrom\s+(' . $city . ')\b/u', $withoutDate, $mf);
+        // "...to Cebu or Boracay" / "from Manila or Cebu" — the traveler is
+        // visibly still deciding between two options for that slot. Matching
+        // just the first one and moving on would silently commit to a place
+        // they never actually chose, so each slot's normal pattern below is
+        // suppressed when this fires for it, and a clarifying question is
+        // asked instead (checked in automateTrip() right after parsing).
+        $ambiguousTo = preg_match(
+            '/\b(?:travel(?:l?ing)?\s+(?:to|in)|go(?:ing)?\s+(?:to|in)|visit(?:ing)?|fly(?:ing)?\s+to|heading\s+to|stay(?:ing)?\s+(?:in|at)|to|in|at)\s+(' . $city . ')\s+or\s+(' . $city . ')\b/u',
+            $withoutDate
+        );
+        $ambiguousFrom = preg_match('/\bfrom\s+(' . $city . ')\s+or\s+(' . $city . ')\b/u', $withoutDate);
+
         // No /i flag here — the capitalized-word CITY pattern is the whole
         // heuristic for "this looks like a proper noun, not a regular word",
         // and case-insensitivity would let it match lowercase filler words
         // like "travel" or "from" (e.g. "I want to travel from Manila...").
-        $hasTo   = preg_match('/\b(?:travel(?:l?ing)?\s+(?:to|in)|go(?:ing)?\s+(?:to|in)|visit(?:ing)?|fly(?:ing)?\s+to|heading\s+to|stay(?:ing)?\s+(?:in|at)|to|in|at)\s+(' . $city . ')\b/u', $withoutDate, $mt);
+        $hasFrom = !$ambiguousFrom && preg_match('/\bfrom\s+(' . $city . ')\b/u', $withoutDate, $mf);
+        $hasTo   = !$ambiguousTo && preg_match('/\b(?:travel(?:l?ing)?\s+(?:to|in)|go(?:ing)?\s+(?:to|in)|visit(?:ing)?|fly(?:ing)?\s+to|heading\s+to|stay(?:ing)?\s+(?:in|at)|to|in|at)\s+(' . $city . ')\b/u', $withoutDate, $mt);
 
         if ($hasFrom && $hasTo) {
             $this->aiFrom = trim($mf[1]);
@@ -639,17 +1077,49 @@ class Llm extends Component
             $this->aiFrom = trim($mf[1]);
             // Destination not mentioned this turn — leave it unset so we ask.
         } elseif ($hasTo) {
-            if ($this->aiFrom === '') $this->aiFrom = 'Manila'; // low-friction default origin
+            // Origin not mentioned this turn — leave it unset so we ask,
+            // instead of silently assuming Manila.
             $this->aiTo = trim($mt[1]);
-        } elseif (preg_match('/(' . $city . ')\s+to\s+(' . $city . ')/u', $withoutDate, $m)) {
+        } elseif (!$ambiguousFrom && !$ambiguousTo && preg_match('/(' . $city . ')\s+to\s+(' . $city . ')/u', $withoutDate, $m)) {
             $this->aiFrom = trim($m[1]);
             $this->aiTo   = trim($m[2]);
         }
         // else: no city mentioned this turn — leave whatever was already
         // known untouched instead of guessing Manila/Cebu.
 
+        if ($ambiguousTo || $ambiguousFrom) {
+            $this->ambiguityNotice = "Looks like you named more than one option there — could you tell me just the one you'd like to go with?";
+        }
+
         $this->aiFrom = $this->cleanCityName($this->aiFrom);
         $this->aiTo   = $this->cleanCityName($this->aiTo);
+
+        // ── Step 3b: case-insensitive fallback for KNOWN places only ──────
+        // The patterns above require a capitalized word to tell "this looks
+        // like a proper noun" from an ordinary word — casual typing often
+        // skips capitalization entirely ("i want to go to tokyo"). Only
+        // recover from that when the candidate resolves to an ACTUAL known
+        // place (the same plausibility gate applyDirectAnswerFallback()
+        // uses), so a lowercase non-place word after a trigger word never
+        // gets mistaken for a destination.
+        $anyCase = '[A-Za-z]+(?: [A-Za-z]+){0,2}';
+        if ($this->aiTo === '' && !$ambiguousTo
+            && preg_match('/\b(?:travel(?:l?ing)?\s+(?:to|in)|go(?:ing)?\s+(?:to|in)|visit(?:ing)?|fly(?:ing)?\s+to|heading\s+to|stay(?:ing)?\s+(?:in|at)|to|in|at)\s+(' . $anyCase . ')\b/iu', $withoutDate, $mtl)) {
+            // knownPlaceName(), not a raw assignment — the capture can grab
+            // an extra trailing word along with the real place ("tokyo now"),
+            // so resolve to just the matched place, not the whole capture.
+            $resolved = $this->knownPlaceName($this->cleanCityName($mtl[1]));
+            if ($resolved !== '') {
+                $this->aiTo = $resolved;
+            }
+        }
+        if ($this->aiFrom === '' && !$ambiguousFrom
+            && preg_match('/\bfrom\s+(' . $anyCase . ')\b/iu', $withoutDate, $mfl)) {
+            $resolved = $this->knownPlaceName($this->cleanCityName($mfl[1]));
+            if ($resolved !== '') {
+                $this->aiFrom = $resolved;
+            }
+        }
     }
 
     private function generateAiPackage(): void

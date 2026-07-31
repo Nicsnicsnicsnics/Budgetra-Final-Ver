@@ -53,6 +53,10 @@ return [
         'key' => env('GROQ_API_KEY', ''),
     ],
 
+    'openrouter' => [
+        'key' => env('OPENROUTER_API_KEY', ''),
+    ],
+
     'serpapi' => [
         'key' => env('SERPAPI_KEY', ''),
     ],

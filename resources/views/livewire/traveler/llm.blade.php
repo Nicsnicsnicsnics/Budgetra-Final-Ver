@@ -254,7 +254,7 @@
 
             <div class="llm-composer">
                 <style>#llm-ai-prompt::placeholder{color:#B7A99B;opacity:1;}</style>
-                <textarea id="llm-ai-prompt" wire:model.live="aiPrompt"
+                <textarea id="llm-ai-prompt" wire:model="aiPrompt"
                           placeholder="Describe your dream trip... destination, budget, travel dates, or interests."
                           rows="2"
                           x-data
@@ -281,7 +281,7 @@
 
             <div class="llm-composer" style="margin-top:auto;">
                 <style>#llm-ai-prompt::placeholder{color:#B7A99B;opacity:1;}</style>
-                <textarea id="llm-ai-prompt" wire:model.live="aiPrompt"
+                <textarea id="llm-ai-prompt" wire:model="aiPrompt"
                           placeholder="Type your reply…"
                           rows="1"
                           x-data
