@@ -1,58 +1,103 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
-
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="220" alt="Laravel">
 </p>
 
-## About Laravel
+<h1 align="center">🧭 Budgetra</h1>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+<p align="center">
+  <b>Plan a trip. See the real cost before you book it.</b><br>
+  A Laravel + Livewire travel-budgeting app for planning local and international trips against a real budget.
+</p>
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+<p align="center">
+  <img alt="Laravel" src="https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white">
+  <img alt="Livewire" src="https://img.shields.io/badge/Livewire-4-4E56A6?logo=livewire&logoColor=white">
+  <img alt="PHP" src="https://img.shields.io/badge/PHP-8.3%2B-777BB4?logo=php&logoColor=white">
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-Supabase-3ECF8E?logo=supabase&logoColor=white">
+</p>
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## ✈️ What it does
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Budgetra walks a traveler through planning a trip — flights, accommodation, food, attractions — against a budget, fills gaps with AI-suggested itineraries, and tracks real spending against the plan once the trip is saved.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| | |
+|---|---|
+| 🌏 **Local & international trips** | Choose a scope up front — pricing tiers, currency framing, and budget guidance adjust for domestic Philippine travel vs. flying abroad. |
+| 🧳 **Guided trip planner wizard** | Step through trip details → flights → accommodation → food & dining → attractions → AI itinerary → cost summary, with a running budget check at every step. |
+| 🗺️ **Multi-city trips** | Add a second destination leg with its own flights, stays, food, attractions, dates, and AI itinerary — kept in sync with leg 1's dates, then combined into one summary and PDF. |
+| 🤖 **AI-suggested itineraries** | Fills gaps in the plan with day-by-day activities, generated through a fallback chain of providers (Gemini → Groq → Cerebras → Mistral → OpenRouter) under a shared time budget so one slow provider never blocks the rest. |
+| 💰 **Saved Trips & Savings Goals** | Every trip gets tracked by status (draft / upcoming / active / past) with a matching savings goal and real spend vs. planned budget. |
+| 🧾 **Expense tracking** | Log expenses against a trip manually or via OCR receipt scanning. |
+| 📄 **PDF export** | Download a full trip summary — route, dates, selections, itinerary, cost breakdown — as a PDF. |
+| 👤 **Profile Builder** | Captures a traveler's interests and budget preferences, used to steer AI suggestions toward what they'd actually enjoy. |
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## 🏗️ Tech stack
 
-## Agentic Development
+- **Backend** — Laravel 13, PHP 8.3+
+- **Frontend** — Livewire 4 (server-driven components) + Alpine.js for client-side interactivity (dropdowns, calendars, live search)
+- **Database** — PostgreSQL, hosted on Supabase
+- **File storage** — Supabase Storage (S3-compatible)
+- **PDF export** — `barryvdh/laravel-dompdf`
+- **External APIs** — SerpApi / Serper (flights, hotels, restaurants, attractions), Gemini / Groq / Cerebras / Mistral / OpenRouter (AI itinerary generation), an OCR API (receipt scanning)
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## 📁 Project layout
 
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+app/Livewire/Traveler/     Livewire components — trip planning, saved trips, savings goals, expenses, itinerary, profile
+app/Models/                 Eloquent models (Trip, Itinerary, SavingsGoal, Expense, UserProfile, ...)
+app/Services/                External API integrations (AI providers, SerpApi/Serper, OCR, reports)
+resources/views/livewire/   Blade views paired with the Livewire components above
+resources/views/traveler/   Non-Livewire traveler-facing views (savings index, PDF report templates)
+routes/web.php               Application routes
+database/migrations/         Schema migrations
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## 🚀 Setup
 
-## Contributing
+```bash
+composer install
+npm install
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+cp .env.example .env
+php artisan key:generate
+```
 
-## Code of Conduct
+Configure `.env` with your database connection and API keys:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```env
+DB_CONNECTION=pgsql
+DB_HOST=...
+DB_DATABASE=...
+DB_USERNAME=...
+DB_PASSWORD=...
 
-## Security Vulnerabilities
+SERPAPI_KEY=...
+SERPER_KEY=...
+GEMINI_API_KEY=...
+GROQ_API_KEY=...
+CEREBRAS_API_KEY=...
+MISTRAL_API_KEY=...
+OPENROUTER_API_KEY=...
+OCR_API_KEY=...
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+SUPABASE_STORAGE_KEY=...
+SUPABASE_STORAGE_SECRET=...
+SUPABASE_STORAGE_BUCKET=...
+SUPABASE_STORAGE_ENDPOINT=...
+```
 
-## License
+Run migrations and start the app:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+php artisan migrate
+npm run build   # or `npm run dev` while developing
+php artisan serve
+```
+
+## 🧠 Good to know
+
+- Livewire components render as large single Blade files with `$step`-driven conditional sections rather than many small partials — see `resources/views/livewire/traveler/trip-planner-wizard.blade.php` for the wizard.
+- Local vs. international scope drives budget-tier pricing (`TripPlannerWizard::RATES`) — see `selectScope()` / `tripScope` in `app/Livewire/Traveler/TripPlannerWizard.php`.
+- AI provider calls are budgeted against a shared deadline per itinerary-generation request to stay under PHP's execution time limit — see `TripPlannerWizard::suggestItinerary()`.
