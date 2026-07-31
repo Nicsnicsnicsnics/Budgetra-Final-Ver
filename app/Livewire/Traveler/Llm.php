@@ -1,6 +1,7 @@
 <?php
 namespace App\Livewire\Traveler;
 
+use App\Models\AiConversationDraft;
 use App\Models\Trip;
 use App\Models\TripBudget;
 use App\Services\GeminiService;
@@ -60,6 +61,75 @@ class Llm extends Component
         return auth()->user()->userProfile?->interests ?? [];
     }
 
+    // Restores an in-progress conversation from the last visit — a page
+    // refresh, closing the tab, or navigating to another sidebar tab and
+    // back would otherwise lose everything, since this component isn't
+    // wrapped in Livewire's @persist the way the sidebar is. One draft per
+    // user (see the migration's unique constraint on user_id); nothing to
+    // restore for a first-time visit or once a trip's actually been saved
+    // (saveAiTrip() deletes the draft row at that point).
+    public function mount(): void
+    {
+        $draft = AiConversationDraft::where('user_id', auth()->id())->first();
+        if (!$draft) return;
+
+        $this->messages     = $draft->messages ?? [];
+        $this->aiFrom        = $draft->ai_from;
+        $this->aiTo          = $draft->ai_to;
+        $this->aiBudgetMin   = $draft->ai_budget_min;
+        $this->aiBudgetMax   = $draft->ai_budget_max;
+        $this->aiDateFrom    = $draft->ai_date_from;
+        $this->aiDateTo      = $draft->ai_date_to;
+        $this->aiDays        = $draft->ai_days;
+        $this->awaitingSlot  = $draft->awaiting_slot;
+        $this->missCount     = $draft->miss_count;
+        $this->aiStep        = $draft->ai_step;
+        $this->aiPackage     = $draft->ai_package ?? [];
+        $this->aiGenCount    = $draft->ai_gen_count;
+
+        // A draft saved mid-"loading" means the traveler left (or the
+        // connection dropped) after automateTrip() dispatched the
+        // generation event but before processAiTrip() ever ran — nothing
+        // on a fresh page load would otherwise re-fire that event, so
+        // without this the traveler would be stuck on the loading screen
+        // forever. Re-run it directly using the same already-resolved trip
+        // details; it's the same operation that got interrupted, not a
+        // guess.
+        if ($this->aiStep === 'loading') {
+            $this->processAiTrip();
+        }
+    }
+
+    // Livewire lifecycle hook — runs at the end of every request for this
+    // component (initial mount included), so the draft is always kept in
+    // sync without needing a save call sprinkled into every action that
+    // touches conversation state.
+    public function dehydrate(): void
+    {
+        // Nothing worth saving yet for a brand-new, untouched visit — skip
+        // creating an empty draft row just from loading the page.
+        if (empty($this->messages)) return;
+
+        AiConversationDraft::updateOrCreate(
+            ['user_id' => auth()->id()],
+            [
+                'messages'      => $this->messages,
+                'ai_from'       => $this->aiFrom,
+                'ai_to'         => $this->aiTo,
+                'ai_budget_min' => $this->aiBudgetMin,
+                'ai_budget_max' => $this->aiBudgetMax,
+                'ai_date_from'  => $this->aiDateFrom,
+                'ai_date_to'    => $this->aiDateTo,
+                'ai_days'       => $this->aiDays,
+                'awaiting_slot' => $this->awaitingSlot,
+                'miss_count'    => $this->missCount,
+                'ai_step'       => $this->aiStep,
+                'ai_package'    => $this->aiPackage,
+                'ai_gen_count'  => $this->aiGenCount,
+            ]
+        );
+    }
+
     public function automateTrip(): void
     {
         $userText = trim($this->aiPrompt);
@@ -100,6 +170,44 @@ class Llm extends Component
         }
 
         $this->applyDirectAnswerFallback($userText);
+
+        // The traveler doesn't always have a destination in mind — regex and
+        // the direct-answer fallback above only ever try to EXTRACT a place
+        // the traveler names; neither handles "I don't know, can you
+        // recommend one?". Only reached when nothing above already resolved
+        // a destination, so a message that both asks for a recommendation
+        // AND names a place ("not sure, maybe Cebu?") still keeps the named
+        // place instead of overriding it with a suggestion.
+        if ($this->aiTo === '' && $this->isRecommendationRequest($userText)) {
+            $suggestion = $this->suggestDestination();
+            if ($suggestion !== '') {
+                $this->aiTo = $suggestion;
+                $this->aiPrompt = '';
+                $nextMissing = $this->missingSlotKey();
+                $reply = "No worries! Based on your interests, how about {$suggestion}?";
+
+                if ($nextMissing !== '') {
+                    $this->missCount    = 0;
+                    $this->awaitingSlot = $nextMissing;
+                    $reply .= ' ' . $this->questionFor($nextMissing, 0);
+                    $this->messages[] = ['role' => 'assistant', 'text' => $reply];
+                    $this->dispatch('message-added');
+                    return;
+                }
+
+                $this->missCount    = 0;
+                $this->awaitingSlot = '';
+                $this->messages[] = ['role' => 'assistant', 'text' => $reply . " Let's put together your trip there!"];
+                $this->dispatch('message-added');
+                $this->aiGenCount = 0;
+                $this->aiStep = 'loading';
+                $this->dispatch('ai-process-trip');
+                return;
+            }
+            // Suggestion generation failed (AI unavailable) — fall through
+            // to the normal flow below, which will just re-ask for the
+            // destination as it always has. No worse than before.
+        }
 
         // Regex only understands a fixed set of phrasings — anything it
         // couldn't figure out gets a smarter (but slower, costs an API
@@ -189,6 +297,66 @@ class Llm extends Component
     ];
 
     private const GREETING_REPLY = "Hello! 😊 How can I help you with your travel plans today?";
+
+    // Phrases that mean "I don't have a destination in mind, you pick one"
+    // rather than an attempt to name a place — checked as substrings (not
+    // exact-match like GREETINGS/NON_ANSWER_FILLERS) since these naturally
+    // show up inside a longer sentence ("I don't really know where to go").
+    private const RECOMMEND_TRIGGERS = [
+        'recommend', 'suggest', 'you decide', 'you choose', 'surprise me',
+        'anywhere', 'no idea', "don't know where", 'dont know where',
+        'not sure where', 'not sure', 'pick for me', 'up to you',
+        'whatever you think', 'idk', "i don't know", 'dunno',
+    ];
+
+    private function isRecommendationRequest(string $text): bool
+    {
+        $normalized = strtolower(trim($text, " \t\n\r\0\x0B.!?,"));
+        foreach (self::RECOMMEND_TRIGGERS as $trigger) {
+            if (str_contains($normalized, $trigger)) return true;
+        }
+        return false;
+    }
+
+    // Asks the AI for ONE specific, real destination matching the
+    // traveler's saved interests. Same fallback chain and the same
+    // knownPlaceName() plausibility gate used everywhere else in this file —
+    // a recommendation is exactly as untrustworthy as any other AI output
+    // until it's checked against an actual known place (see [[the "Code"
+    // bug]] this session was built around avoiding).
+    private function suggestDestination(): string
+    {
+        $interests = $this->profileInterests;
+        $interestText = !empty($interests)
+            ? implode(', ', $interests)
+            : 'general sightseeing, popular beaches, and well-rounded trips';
+
+        $prompt = <<<PROMPT
+        You are a Philippine travel assistant. A traveler doesn't know where to go and wants a recommendation.
+
+        Traveler's interests: {$interestText}
+
+        Suggest exactly ONE real, specific travel destination (a city or island, not a country) that best matches these interests. It can be in the Philippines or an international destination.
+
+        Return JSON only, no markdown:
+        {"destination": "city name"}
+        PROMPT;
+
+        try {
+            $raw = (new GeminiService())->generate($prompt);
+            if (!$raw) { $raw = (new GroqService())->generate($prompt); }
+            if (!$raw) { $raw = (new OpenRouterService())->generate($prompt); }
+            if (!$raw) return '';
+
+            $raw = trim(preg_replace('/```json\s*|```\s*/i', '', $raw));
+            $data = json_decode($raw, true);
+            if (!is_array($data) || empty($data['destination'])) return '';
+        } catch (\Throwable) {
+            return '';
+        }
+
+        return $this->knownPlaceName($this->cleanCityName($data['destination']));
+    }
 
     private function isGreetingOnly(string $text): bool
     {
@@ -455,27 +623,73 @@ PROMPT;
         return $summary;
     }
 
+    // Called by the loading screen's 3-second frontend timer (a fallback
+    // meant to nudge the UI forward if something delays the normal
+    // transition) — guarded so it can never do that BEFORE the package
+    // actually exists. processAiTrip() itself already sets aiStep to
+    // 'results' the moment it finishes; without this guard, a slow AI/
+    // SerpAPI chain (which can legitimately now take minutes, not seconds,
+    // since the execution-time fixes above) would let this fire first and
+    // flip to a "results" step with no data — a blank page, since neither
+    // the loading nor the results view's @if condition would match.
     public function showResults(): void
     {
-        $this->aiStep = 'results';
+        if (!empty($this->aiPackage)) {
+            $this->aiStep = 'results';
+        }
     }
 
     #[On('ai-process-trip')]
     public function processAiTrip(): void
     {
-        // Layer 1: Gemini — parse natural language + full package
-        $package = (new GeminiService())->planTrip($this->conversationSummary());
+        // Worst case, this one method can chain through: Layer 1's 3 AI
+        // providers (Gemini 18s + Groq up to ~38s with its retry-on-429 +
+        // OpenRouter up to ~38s with its own retry ≈ 94s), THEN Layer 2's 4
+        // sequential SerpAPI searches (each up to ~61s with its own
+        // retry(2) ≈ 244s), THEN Layer 2's own Gemini/Groq/OpenRouter
+        // enrichment pass (≈ 94s again) — around 430s total. Comfortably
+        // past PHP's default 30s max_execution_time, which is a hard fatal
+        // error (not a catchable exception), so no try/catch can protect
+        // against it the way the ones below do for individual provider
+        // failures. Extend the budget for this one action to cover the full
+        // chain, not just the first layer.
+        set_time_limit(450);
+
+        // Layer 1: Gemini — parse natural language + full package.
+        // A network-level failure (timeout, DNS, connection refused) throws
+        // a ConnectionException rather than just returning an unsuccessful
+        // response — unlike an HTTP error status, that's never caught by a
+        // "did the call come back with a package?" check alone, so each
+        // provider attempt is wrapped here the same way extractWithAi() and
+        // buildSerpApiPackage()'s enrichment step already are: any failure,
+        // of any kind, just means "try the next provider" instead of
+        // crashing the whole request.
+        $summary = $this->conversationSummary();
+        $package = null;
+        try {
+            $package = (new GeminiService())->planTrip($summary);
+        } catch (\Throwable) {
+            // fall through to Groq
+        }
 
         // Layer 1.5: Groq — same job, tried only when Gemini didn't come back
         // with a usable package (e.g. quota exhausted, key issue, timeout).
         if (!$package || empty($package['to'])) {
-            $package = (new GroqService())->planTrip($this->conversationSummary());
+            try {
+                $package = (new GroqService())->planTrip($summary);
+            } catch (\Throwable) {
+                $package = null;
+            }
         }
 
         // Layer 1.7: OpenRouter — third AI provider, tried only if both of
         // the above came up empty (both down, both out of quota, etc.).
         if (!$package || empty($package['to'])) {
-            $package = (new OpenRouterService())->planTrip($this->conversationSummary());
+            try {
+                $package = (new OpenRouterService())->planTrip($summary);
+            } catch (\Throwable) {
+                $package = null;
+            }
         }
 
         if ($package && !empty($package['to'])) {
@@ -801,7 +1015,10 @@ PROMPT;
         // and "japan" are their own entries above), or filler words before
         // it from a natural sentence reply ("Actually I want Cebu"). Scanning
         // every window catches both instead of only ever trimming the end.
-        $words = preg_split('/[\s,]+/', $key, -1, PREG_SPLIT_NO_EMPTY);
+        // Split on sentence punctuation too, not just whitespace/commas — a
+        // trailing "?" or "!" ("maybe Cebu?") would otherwise stay glued to
+        // the word and never match the map's plain "cebu" key.
+        $words = preg_split('/[\s,!?.;:]+/', $key, -1, PREG_SPLIT_NO_EMPTY);
         $count = count($words);
         for ($len = $count - 1; $len >= 1; $len--) {
             for ($start = 0; $start + $len <= $count; $start++) {
@@ -855,6 +1072,37 @@ PROMPT;
         $this->generateAiPackage();
     }
 
+    // Lets the traveler swap the AI's auto-picked flight/hotel/food/
+    // attraction for a specific one of their own choosing, instead of
+    // being stuck with whatever the package generated. Hands off to the
+    // manual TripPlannerWizard (the existing Select Flight → Accommodation
+    // → Food → Attractions flow) with this trip's route/budget/dates
+    // pre-filled via query params, landing straight on flight selection —
+    // the wizard then proceeds through its own normal steps from there.
+    // Only ever engaged from this explicit action, so every other way of
+    // reaching the wizard (bare /trips, /trips/plan) is unaffected.
+    public function editWithWizard(): mixed
+    {
+        // Same "Aug 3" / "Aug 10, 2026" → Y-m-d conversion buildSerpApiPackage()
+        // already does above, reused here for the same reason: the wizard's
+        // date fields expect Y-m-d, not this display format.
+        $year = date('Y');
+        if ($this->aiDateTo && preg_match('/(\d{4})$/', $this->aiDateTo, $ym)) {
+            $year = $ym[1];
+        }
+        $start = $this->aiDateFrom ? date('Y-m-d', strtotime($this->aiDateFrom . ', ' . $year)) : '';
+        $end   = $this->aiDateTo   ? date('Y-m-d', strtotime($this->aiDateTo)) : '';
+
+        return $this->redirect(route('trips.plan', array_filter([
+            'from'       => $this->aiFrom,
+            'to'         => $this->aiTo,
+            'budget_min' => $this->aiBudgetMin ?: null,
+            'budget_max' => $this->aiBudgetMax ?: null,
+            'start'      => $start ?: null,
+            'end'        => $end ?: null,
+        ])), navigate: true);
+    }
+
     public function saveAiTrip(): mixed
     {
         if (empty($this->aiPackage)) return null;
@@ -891,6 +1139,17 @@ PROMPT;
                 'actual_spent'   => 0,
             ]);
         }
+
+        // The conversation's resolved into a real Trip now — clear the
+        // draft so the next visit to the AI Planner starts a fresh
+        // conversation instead of resuming this now-finished one. Also
+        // clear $this->messages: dehydrate() runs at the end of THIS same
+        // request right after this method returns, and its "don't save an
+        // empty conversation" guard checks that exact property — without
+        // clearing it here, dehydrate() would immediately recreate the row
+        // we just deleted.
+        AiConversationDraft::where('user_id', auth()->id())->delete();
+        $this->messages = [];
 
         return $this->redirect(route('trips.dashboard', $trip), navigate: true);
     }

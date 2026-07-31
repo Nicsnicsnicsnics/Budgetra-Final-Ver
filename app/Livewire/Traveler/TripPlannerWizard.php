@@ -181,6 +181,34 @@ class TripPlannerWizard extends Component
         $isPlanRoute = request()->routeIs('trips.plan');
         $this->showList  = !$isPlanRoute && $hasTrips;
         $this->showEmpty = !$isPlanRoute && !$hasTrips;
+
+        // Optional deep-link from the AI Trip Planner's "Edit" action, which
+        // wants the traveler to land straight on flight selection with their
+        // route/budget/dates already filled in instead of re-entering
+        // everything. Only engages when BOTH "from" and "to" query params
+        // are present — every existing way of reaching this page (bare
+        // /trips, /trips/plan, any bookmark) has neither, so this leaves
+        // that behavior completely untouched.
+        if (request()->filled('from') && request()->filled('to')) {
+            $this->planningMode    = 'manual';
+            $this->manualFrom      = (string) request()->query('from');
+            $this->manualTo        = (string) request()->query('to');
+            $budgetMin             = (string) request()->query('budget_min', '');
+            $budgetMax             = (string) request()->query('budget_max', '');
+            $this->manualBudgetMin = ($budgetMax !== '' && $budgetMax !== $budgetMin)
+                ? "{$budgetMin} - {$budgetMax}"
+                : $budgetMin;
+
+            $start = (string) request()->query('start', '');
+            $end   = (string) request()->query('end', '');
+            if ($start !== '') $this->startDate = $start;
+            if ($end   !== '') $this->endDate   = $end;
+            if ($start !== '' && $end !== '') $this->flightTripType = 'round_trip';
+
+            $this->showList  = false;
+            $this->showEmpty = false;
+            $this->proceedFromTripDetails();
+        }
     }
 
     public function startNewTrip(): mixed

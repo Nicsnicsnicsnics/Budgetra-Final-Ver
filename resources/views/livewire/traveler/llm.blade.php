@@ -37,10 +37,18 @@
     </div>
 
     {{-- Heading --}}
-    <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0 0 20px;display:flex;align-items:center;gap:10px;">
-        <span style="width:32px;height:32px;background:#F5F0EB;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✦</span>
-        Your trip package for {{ $aiTo }}
-    </h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;">
+        <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0;display:flex;align-items:center;gap:10px;">
+            <span style="width:32px;height:32px;background:#F5F0EB;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✦</span>
+            Your trip package for {{ $aiTo }}
+        </h2>
+        <button wire:click="editWithWizard" wire:loading.attr="disabled" wire:target="editWithWizard"
+                style="background:#fff;border:1.5px solid var(--border);color:#934B19;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;"
+                onmouseenter="this.style.background='#F5F0EB'"
+                onmouseleave="this.style.background='#fff'">
+            <i class="fa-solid fa-pen"></i> Edit
+        </button>
+    </div>
 
     {{-- Package cards --}}
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:32px;">
