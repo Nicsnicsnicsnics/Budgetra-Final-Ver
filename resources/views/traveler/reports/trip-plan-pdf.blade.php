@@ -21,11 +21,17 @@
 @endphp
 <div class="header">
     <h1>Trip Summary &amp; Cost Estimation</h1>
-    <p>{{ $from }} to {{ $dest }} &bull; {{ \Carbon\Carbon::parse($startDate)->format('M j, Y') }} - {{ \Carbon\Carbon::parse($endDate)->format('M j, Y') }}</p>
+    @if($isMultiCity)
+        <p><strong>Trip 1:</strong> {{ $from }} to {{ $dest }} &bull; {{ \Carbon\Carbon::parse($startDate)->format('M j, Y') }} - {{ \Carbon\Carbon::parse($endDate)->format('M j, Y') }}</p>
+        <p><strong>Trip 2:</strong> {{ $dest }} to {{ $leg2Dest }} &bull; {{ $leg2StartDate ? \Carbon\Carbon::parse($leg2StartDate)->format('M j, Y') : '—' }} - {{ $leg2EndDate ? \Carbon\Carbon::parse($leg2EndDate)->format('M j, Y') : '—' }}</p>
+    @else
+        <p>{{ $from }} to {{ $dest }} &bull; {{ \Carbon\Carbon::parse($startDate)->format('M j, Y') }} - {{ \Carbon\Carbon::parse($endDate)->format('M j, Y') }}</p>
+    @endif
     <p>Generated: {{ now()->format('F j, Y') }}</p>
 </div>
 
 <h3>Selection Summary</h3>
+@if($isMultiCity)<p><strong>Leg 1 &mdash; {{ $dest }}</strong></p>@endif
 <table>
     <thead><tr><th>Category</th><th>Selection</th><th>Cost</th></tr></thead>
     <tbody>
@@ -38,6 +44,29 @@
     @empty
         <tr><td colspan="3">No selections made.</td></tr>
     @endforelse
+    </tbody>
+</table>
+
+@if($isMultiCity)
+<p><strong>Leg 2 &mdash; {{ $leg2Dest }}</strong></p>
+<table>
+    <thead><tr><th>Category</th><th>Selection</th><th>Cost</th></tr></thead>
+    <tbody>
+    @forelse($picksLeg2 as $pk)
+        <tr>
+            <td>{{ $pk['label'] }}</td>
+            <td>{{ $pk['val'] }}</td>
+            <td>{{ $pk['cost'] ? $peso($pk['cost']) : 'Free' }}</td>
+        </tr>
+    @empty
+        <tr><td colspan="3">No selections made.</td></tr>
+    @endforelse
+    </tbody>
+</table>
+@endif
+
+<table>
+    <tbody>
     <tr>
         <td>Emergency Fund</td>
         <td>Reserved safety budget</td>
@@ -47,6 +76,7 @@
 </table>
 
 <h3>Itinerary</h3>
+@if($isMultiCity)<p><strong>Leg 1 &mdash; {{ $dest }}</strong></p>@endif
 @if(!empty($picks))
 <div class="day-label">Day 1 &mdash; Arrival</div>
 <table>
@@ -70,6 +100,33 @@
     </tbody>
 </table>
 @endforeach
+
+@if($isMultiCity)
+<p><strong>Leg 2 &mdash; {{ $leg2Dest }}</strong></p>
+@if(!empty($picksLeg2))
+<div class="day-label">Day 1 &mdash; Arrival</div>
+<table>
+    <tbody>
+    @foreach($picksLeg2 as $pk)
+        <tr><td>{{ $pk['label'] }} &middot; {{ $pk['val'] }}</td><td>{{ $pk['cost'] ? $peso($pk['cost']) : 'Free' }}</td></tr>
+    @endforeach
+    </tbody>
+</table>
+@endif
+@foreach($aiDaysLeg2 as $i => $day)
+<div class="day-label">Day {{ $i + 2 }} &mdash; {{ $day['label'] ?? '' }}</div>
+<table>
+    <tbody>
+    @foreach($day['activities'] ?? [] as $act)
+        <tr>
+            <td>{{ $act['time'] ?? '' }} &middot; {{ $act['title'] ?? '' }}</td>
+            <td>{{ ($act['cost'] ?? 0) ? $peso((float)$act['cost']) : 'Free' }}</td>
+        </tr>
+    @endforeach
+    </tbody>
+</table>
+@endforeach
+@endif
 
 <h3>Cost Breakdown</h3>
 <table>

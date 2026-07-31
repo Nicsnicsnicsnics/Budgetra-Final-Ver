@@ -19,16 +19,25 @@ class MistralService
         if (!$this->key) return null;
 
         for ($attempt = 0; $attempt < 2; $attempt++) {
-            $response = Http::timeout($timeout)
-                ->withToken($this->key)
-                ->post($this->endpoint, [
-                    'model'       => $this->model,
-                    'temperature' => 0.7,
-                    'max_tokens'  => 2048,
-                    'messages'    => [
-                        ['role' => 'user', 'content' => $prompt],
-                    ],
-                ]);
+            try {
+                $response = Http::timeout($timeout)
+                    ->connectTimeout(min(10, $timeout))
+                    ->withToken($this->key)
+                    ->post($this->endpoint, [
+                        'model'       => $this->model,
+                        'temperature' => 0.7,
+                        'max_tokens'  => 2048,
+                        'messages'    => [
+                            ['role' => 'user', 'content' => $prompt],
+                        ],
+                    ]);
+            } catch (\Illuminate\Http\Client\ConnectionException) {
+                // Transient network blip (connection reset/timeout) rather
+                // than a real rejection — worth one retry instead of giving
+                // up and falling through to a lower-quality provider.
+                if ($attempt === 0) continue;
+                return null;
+            }
 
             if ($response->successful()) {
                 return data_get($response->json(), 'choices.0.message.content');

@@ -35,17 +35,27 @@
         <div style="position:absolute;bottom:14px;left:18px;right:18px;">
             <div style="font-size:19px;font-weight:700;color:#fff;margin-bottom:6px;line-height:1.3;">{{ $dest }}</div>
             @if($trip)
+            @php
+                $leg2From = $trip->is_multi_city && $trip->leg2_destination ? $toCode : null;
+                $leg2To   = $trip->is_multi_city && $trip->leg2_destination ? ($trip->leg2_destination_code ?? '') : null;
+                $leg2Sd   = $trip->is_multi_city && $trip->leg2_destination ? $trip->leg2_start_date?->format('M j') : null;
+                $leg2Ed   = $trip->is_multi_city && $trip->leg2_destination ? $trip->leg2_end_date?->format('M j, Y') : null;
+            @endphp
             <div style="display:flex;flex-direction:column;gap:4px;">
                 @if($fromCode)
-                <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.9);">
-                    <i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>
-                    <span>{{ $fromCode }}{{ $toCode ? ' to '.$toCode : '' }}</span>
+                <div style="display:flex;align-items:center;gap:14px;font-size:13px;color:rgba(255,255,255,0.9);flex-wrap:wrap;">
+                    <span style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>{{ $fromCode }}{{ $toCode ? ' to '.$toCode : '' }}</span>
+                    @if($leg2From && $leg2To)
+                    <span style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>{{ $leg2From }} to {{ $leg2To }}</span>
+                    @endif
                 </div>
                 @endif
                 @if($dateFrom)
-                <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.9);">
-                    <i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>
-                    <span>{{ $dateFrom }} – {{ $dateTo }}</span>
+                <div style="display:flex;align-items:center;gap:14px;font-size:13px;color:rgba(255,255,255,0.9);flex-wrap:wrap;">
+                    <span style="display:flex;align-items:center;gap:6px;"><i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>{{ $dateFrom }} – {{ $dateTo }}</span>
+                    @if($leg2Sd && $leg2Ed)
+                    <span style="display:flex;align-items:center;gap:6px;"><i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>{{ $leg2Sd }} – {{ $leg2Ed }}</span>
+                    @endif
                 </div>
                 @endif
             </div>

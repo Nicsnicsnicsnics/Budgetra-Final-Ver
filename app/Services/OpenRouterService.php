@@ -20,6 +20,7 @@ class OpenRouterService
 
         for ($attempt = 0; $attempt < 2; $attempt++) {
             $response = Http::timeout($timeout)
+                ->connectTimeout(min(10, $timeout))
                 ->withToken($this->key)
                 ->withHeaders([
                     'HTTP-Referer' => config('app.url'),

@@ -124,16 +124,26 @@
                     <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:8px;">
                         {{ $dest }}
                     </div>
+                    @php
+                        $leg2From = $trip->is_multi_city && $trip->leg2_destination ? $toCode : null;
+                        $leg2To   = $trip->is_multi_city && $trip->leg2_destination ? ($trip->leg2_destination_code ?? '') : null;
+                        $leg2Sd   = $trip->is_multi_city && $trip->leg2_destination ? $trip->leg2_start_date?->format('M j') : null;
+                        $leg2Ed   = $trip->is_multi_city && $trip->leg2_destination ? $trip->leg2_end_date?->format('M j, Y') : null;
+                    @endphp
                     <div style="display:flex;flex-direction:column;gap:5px;">
                         @if($fromCode && $toCode)
-                        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,0.9);">
-                            <i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>
-                            <span>{{ $fromCode }} to {{ $toCode }}</span>
+                        <div style="display:flex;align-items:center;gap:14px;font-size:12px;color:rgba(255,255,255,0.9);flex-wrap:wrap;">
+                            <span style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>{{ $fromCode }} to {{ $toCode }}</span>
+                            @if($leg2From && $leg2To)
+                            <span style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>{{ $leg2From }} to {{ $leg2To }}</span>
+                            @endif
                         </div>
                         @endif
-                        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,0.9);">
-                            <i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>
-                            <span>{{ $dateFrom }} - {{ $dateTo }}</span>
+                        <div style="display:flex;align-items:center;gap:14px;font-size:12px;color:rgba(255,255,255,0.9);flex-wrap:wrap;">
+                            <span style="display:flex;align-items:center;gap:6px;"><i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>{{ $dateFrom }} - {{ $dateTo }}</span>
+                            @if($leg2Sd && $leg2Ed)
+                            <span style="display:flex;align-items:center;gap:6px;"><i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>{{ $leg2Sd }} - {{ $leg2Ed }}</span>
+                            @endif
                         </div>
                     </div>
                 </div>

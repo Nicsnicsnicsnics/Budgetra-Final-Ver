@@ -20,6 +20,7 @@ class CerebrasService
 
         for ($attempt = 0; $attempt < 2; $attempt++) {
             $response = Http::timeout($timeout)
+                ->connectTimeout(min(10, $timeout))
                 ->withToken($this->key)
                 ->post($this->endpoint, [
                     'model'       => $this->model,

@@ -245,6 +245,67 @@ $allCities = array_merge(
         </div>
 
     </div>
+
+    {{-- Missing required fields modal --}}
+    @if ($showTripDetailsModal)
+    @php
+        $missingFieldMeta = [
+            'From'                     => ['icon' => 'fa-plane-departure', 'color' => '#F1A53D'],
+            'To'                       => ['icon' => 'fa-plane-arrival',   'color' => '#F1A53D'],
+            'Preferred Budget Range'   => ['icon' => 'fa-money-bill-wave', 'color' => '#22A06B'],
+            'Start Date'               => ['icon' => 'fa-calendar-days',  'color' => '#934B19'],
+            'End Date'                 => ['icon' => 'fa-calendar-days',  'color' => '#934B19'],
+        ];
+        $fieldMeta = function (string $field) use ($missingFieldMeta) {
+            foreach ($missingFieldMeta as $prefix => $meta) {
+                if (str_starts_with($field, $prefix)) return $meta;
+            }
+            return ['icon' => 'fa-circle-exclamation', 'color' => '#934B19'];
+        };
+    @endphp
+    <div x-data="{ show: false }" x-init="requestAnimationFrame(() => show = true)"
+         style="position:fixed;inset:0;background:rgba(26,10,0,0.55);backdrop-filter:blur(2px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div x-show="show" x-transition.scale.95
+             style="background:#fff;border-radius:24px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(26,10,0,0.35);overflow:hidden;">
+
+            {{-- Header --}}
+            <div style="position:relative;padding:36px 28px 28px;text-align:center;background:linear-gradient(160deg,#FFF6EE 0%,#FDEDE3 100%);overflow:hidden;">
+                <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(241,165,61,0.12);"></div>
+                <div style="position:absolute;bottom:-40px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(147,75,25,0.08);"></div>
+                <div style="position:relative;width:64px;height:64px;border-radius:50%;background:#fff;box-shadow:0 8px 20px rgba(220,38,38,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size:26px;color:#DC2626;"></i>
+                </div>
+                <div style="position:relative;font-size:19px;font-weight:800;color:#1A0A00;letter-spacing:-.01em;">Missing Trip Details</div>
+                <div style="position:relative;font-size:13px;color:#8A7A6E;margin-top:4px;">A few things need your attention</div>
+            </div>
+
+            {{-- Field list --}}
+            <div style="padding:20px 20px 4px;">
+                <div style="font-size:11px;font-weight:700;color:#9B8EA0;text-transform:uppercase;letter-spacing:.06em;margin:0 6px 10px;">Please fill up the following</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    @foreach ($missingTripFields as $field)
+                    @php $meta = $fieldMeta($field); @endphp
+                    <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:#FBF8F5;border:1px solid #F0E8DF;border-radius:14px;">
+                        <div style="width:34px;height:34px;border-radius:10px;background:{{ $meta['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fa-solid {{ $meta['icon'] }}" style="font-size:14px;color:{{ $meta['color'] }};"></i>
+                        </div>
+                        <span style="font-size:13.5px;font-weight:600;color:#1A0A00;">{{ $field }}</span>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Action --}}
+            <div style="padding:22px 20px 24px;">
+                <button type="button" wire:click="$set('showTripDetailsModal', false)"
+                        style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#A85A20,#6A3500);color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 16px rgba(106,53,0,0.3);transition:transform .12s ease;"
+                        onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform='translateY(0)'">
+                    Got It
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 
 @script
@@ -499,7 +560,7 @@ $allCities2 = array_merge(
         <div>
             <button wire:click="$set('step', 1)"
                     style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
-                <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Planner
+                <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Trip Details
             </button>
             <h1 style="font-size:26px;font-weight:800;color:var(--dark);margin:0 0 6px;">Select Flight</h1>
             <p style="font-size:14px;color:var(--muted);margin:0;">
@@ -511,8 +572,8 @@ $allCities2 = array_merge(
             </p>
         </div>
         {{-- Route + Date badge(s) --}}
-        <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;">
-            <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;display:inline-flex;align-items:stretch;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
+        <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;flex-shrink:0;">
+            <div style="display:inline-flex;align-items:stretch;">
                 <div style="padding:12px 20px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;">
                     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;">Route @if($mcSearched && $mcTo)(Leg 1)@endif</div>
                     <div style="font-size:15px;font-weight:800;color:var(--dark);display:flex;align-items:center;gap:6px;">
@@ -525,8 +586,8 @@ $allCities2 = array_merge(
                     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;">Date</div>
                     <div style="font-size:14px;font-weight:700;color:var(--dark);white-space:nowrap;">
                         @if($startDate)
-                            {{ \Carbon\Carbon::parse($startDate)->format('M j, Y') }}
-                            @if($endDate) – {{ \Carbon\Carbon::parse($endDate)->format('M j, Y') }}@endif
+                            {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($startDate) }}
+                            @if($endDate) – {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($endDate) }}@endif
                         @else —
                         @endif
                     </div>
@@ -534,7 +595,7 @@ $allCities2 = array_merge(
             </div>
 
             @if($mcSearched && $mcTo)
-            <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;display:inline-flex;align-items:stretch;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
+            <div style="border-top:1px solid var(--border);display:inline-flex;align-items:stretch;width:100%;">
                 <div style="padding:12px 20px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;">
                     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;">Route (Leg 2)</div>
                     <div style="font-size:15px;font-weight:800;color:var(--dark);display:flex;align-items:center;gap:6px;">
@@ -547,8 +608,8 @@ $allCities2 = array_merge(
                     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;">Date</div>
                     <div style="font-size:14px;font-weight:700;color:var(--dark);white-space:nowrap;">
                         @if($mcStartDate)
-                            {{ \Carbon\Carbon::parse($mcStartDate)->format('M j, Y') }}
-                            @if($mcEndDate) – {{ \Carbon\Carbon::parse($mcEndDate)->format('M j, Y') }}@endif
+                            {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($mcStartDate) }}
+                            @if($mcEndDate) – {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($mcEndDate) }}@endif
                         @else —
                         @endif
                     </div>
@@ -617,7 +678,7 @@ $allCities2 = array_merge(
                     <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
                     <span x-show="!(startLabel2||'{{ $startDate }}')" style="font-size:14px;color:#C4B8AC;flex:1;">Select date</span>
                     <span x-show="startLabel2||'{{ $startDate }}'" style="font-size:14px;font-weight:600;color:var(--dark);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
-                          x-text="startLabel2||'{{ $startDate ? \Carbon\Carbon::parse($startDate)->format("M j, Y") : "" }}'"></span>
+                          x-text="startLabel2||'{{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($startDate) }}'"></span>
                     <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
                 </div>
                 <div class="mini-cal" x-show="activeCal2==='start'" @click.outside="activeCal2=''" x-cloak>
@@ -643,7 +704,7 @@ $allCities2 = array_merge(
                     <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
                     <span x-show="!(endLabel2||'{{ $endDate }}')" style="font-size:14px;color:#C4B8AC;flex:1;">Select date</span>
                     <span x-show="endLabel2||'{{ $endDate }}'" style="font-size:14px;font-weight:600;color:var(--dark);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
-                          x-text="endLabel2||'{{ $endDate ? \Carbon\Carbon::parse($endDate)->format("M j, Y") : "" }}'"></span>
+                          x-text="endLabel2||'{{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($endDate) }}'"></span>
                     <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
                 </div>
                 <div class="mini-cal" x-show="activeCal2==='end'" @click.outside="activeCal2=''" x-cloak style="right:0;left:auto;">
@@ -1023,6 +1084,13 @@ window.pytFlight = function() {
             else if (which==='end') {
                 this.endVal2=val; this.endLabel2=label; $wire.set('endDate',val);
                 if (this.startVal2 && this.startVal2 > val) { this.startVal2=''; this.startLabel2=''; $wire.set('startDate',''); }
+                // Leg 2 (multi-city) can't start before leg 1 now ends —
+                // pushing leg 1's end date later can leave an already-picked
+                // leg-2 start (and therefore end) date stranded before it.
+                if (this.mcStartVal && this.mcStartVal < val) {
+                    this.mcStartVal=''; this.mcStartLabel=''; $wire.set('mcStartDate','');
+                    this.mcEndVal='';   this.mcEndLabel='';   $wire.set('mcEndDate','');
+                }
             }
             else if (which==='mc-start') {
                 this.mcStartVal=val; this.mcStartLabel=label; $wire.set('mcStartDate',val);
@@ -1056,17 +1124,19 @@ window.pytFlight = function() {
             const todayStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
             // Keep the range coherent: the start calendar can't go past the
             // chosen end date, and the end calendar can't go before the
-            // chosen start date.
-            let bound = null, boundIsMin = false;
-            if      (which==='start')    { bound=this.endVal2   || null; }
-            else if (which==='end')      { bound=this.startVal2 || null; boundIsMin=true; }
-            else if (which==='mc-start') { bound=this.mcEndVal  || null; }
-            else if (which==='mc-end')   { bound=this.mcStartVal|| null; boundIsMin=true; }
+            // chosen start date. Leg 2 (multi-city) additionally can't start
+            // before leg 1 ends — its own start/end relationship stacks on
+            // top of that floor.
+            let minBound = null, maxBound = null;
+            if      (which==='start')    { maxBound = this.endVal2 || null; }
+            else if (which==='end')      { minBound = this.startVal2 || null; }
+            else if (which==='mc-start') { minBound = this.endVal2 || null; maxBound = this.mcEndVal || null; }
+            else if (which==='mc-end')   { minBound = this.mcStartVal || this.endVal2 || null; }
             const cells=[];
             for(let i=0;i<first;i++) cells.push({d:null,key:'e'+i,past:false});
             for(let d=1;d<=days;d++) {
                 const ds=this.fmt2(y,m,d);
-                const past = ds<todayStr || (bound && (boundIsMin ? ds<bound : ds>bound));
+                const past = ds<todayStr || (minBound && ds<minBound) || (maxBound && ds>maxBound);
                 cells.push({d,key:'d'+d,past});
             }
             return cells;
@@ -1133,7 +1203,7 @@ window.sortVenues = function(dir) {
         <div>
             <button wire:click="backToFlights"
                     style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
-                <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Planner
+                <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Flights
             </button>
             <h1 style="font-size:26px;font-weight:800;color:var(--dark);margin:0 0 6px;">Select Accommodation</h1>
             <p style="font-size:14px;color:var(--muted);margin:0;">Showing the best stays within 15 km of {{ $mcHotelStep ? $mcTo : $manualTo }}.</p>
@@ -1149,9 +1219,9 @@ window.sortVenues = function(dir) {
                 @php $accPillSd = $mcHotelStep && $mcStartDate ? $mcStartDate : $startDate; $accPillEd = $mcHotelStep && $mcEndDate ? $mcEndDate : $endDate; @endphp
                 <div style="font-size:14px;font-weight:700;color:var(--dark);white-space:nowrap;">
                     @if($accPillSd && $accPillEd)
-                        {{ \Carbon\Carbon::parse($accPillSd)->format('M j, Y') }} – {{ \Carbon\Carbon::parse($accPillEd)->format('M j, Y') }}
+                        {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($accPillSd) }} – {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($accPillEd) }}
                     @elseif($accPillSd)
-                        {{ \Carbon\Carbon::parse($accPillSd)->format('M j, Y') }}
+                        {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($accPillSd) }}
                     @else —
                     @endif
                 </div>
@@ -1187,14 +1257,14 @@ window.sortVenues = function(dir) {
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
-                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accSd ? \Carbon\Carbon::parse($accSd)->format('M j, Y') : '—' }}</span>
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accSd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($accSd) : '—' }}</span>
                 </div>
             </div>
             <div style="flex:1;min-width:0;padding:16px 20px;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
-                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accEd ? \Carbon\Carbon::parse($accEd)->format('M j, Y') : '—' }}</span>
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accEd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($accEd) : '—' }}</span>
                 </div>
             </div>
         </div>
@@ -1286,9 +1356,6 @@ window.sortVenues = function(dir) {
                 <div class="acc-body">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap;">
                         <div style="font-size:16px;font-weight:700;color:var(--dark);">{{ $hotel['name'] }}</div>
-                        @if(!empty($hotel['typeLabel']))
-                        <span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:#F5EDE7;color:#934B19;">{{ $hotel['typeLabel'] }}</span>
-                        @endif
                     </div>
                     @if(!empty($hotel['dist']))
                     <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-bottom:2px;">
@@ -1360,7 +1427,7 @@ window.sortVenues = function(dir) {
         <div>
             <button wire:click="$set('step', 3)"
                     style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
-                <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Planner
+                <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Accommodations
             </button>
             <h1 style="font-size:26px;font-weight:800;color:var(--dark);margin:0 0 6px;">Select Food &amp; Dining</h1>
             <p style="font-size:14px;color:var(--muted);margin:0;">Showing the best dining options within 15 km of {{ $mcVenueStep ? $mcTo : ($manualTo ?: $mcTo) }}.</p>
@@ -1376,9 +1443,9 @@ window.sortVenues = function(dir) {
                 @php $vPillSd = $mcVenueStep && $mcStartDate ? $mcStartDate : $startDate; $vPillEd = $mcVenueStep && $mcEndDate ? $mcEndDate : $endDate; @endphp
                 <div style="font-size:14px;font-weight:700;color:var(--dark);white-space:nowrap;">
                     @if($vPillSd && $vPillEd)
-                        {{ \Carbon\Carbon::parse($vPillSd)->format('M j, Y') }} – {{ \Carbon\Carbon::parse($vPillEd)->format('M j, Y') }}
+                        {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($vPillSd) }} – {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($vPillEd) }}
                     @elseif($vPillSd)
-                        {{ \Carbon\Carbon::parse($vPillSd)->format('M j, Y') }}
+                        {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($vPillSd) }}
                     @else —
                     @endif
                 </div>
@@ -1398,15 +1465,21 @@ window.sortVenues = function(dir) {
                 </div>
             </div>
             {{-- Category --}}
-            <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
+            <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);position:relative;" x-data="{ catOpen:false }">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Category</div>
-                <div style="display:flex;align-items:center;gap:8px;">
+                <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="catOpen=!catOpen">
                     <i class="fa-solid fa-utensils" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                    <select wire:model="venueCategory" style="border:none;background:transparent;font-size:14px;font-weight:600;color:var(--dark);outline:none;cursor:pointer;width:100%;">
-                        @foreach(['All Cuisines','Filipino','Asian','International','Seafood','BBQ','Fast Food','Cafe','Bakery'] as $cat)
-                        <option value="{{ $cat }}">{{ $cat }}</option>
-                        @endforeach
-                    </select>
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);flex:1;">{{ $venueCategory }}</span>
+                    <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
+                </div>
+                <div x-show="catOpen" @click.outside="catOpen=false" x-cloak
+                     style="position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:200;min-width:180px;overflow:hidden;">
+                    @foreach(['All Cuisines','Filipino','Asian','International','Seafood','BBQ','Fast Food','Cafe','Bakery'] as $cat)
+                    <button type="button" wire:click="$set('venueCategory', '{{ $cat }}')" @click="catOpen=false"
+                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;cursor:pointer;{{ $venueCategory === $cat ? 'color:#934B19;font-weight:700;background:#FDF8F4;' : '' }}">
+                        {{ $cat }}
+                    </button>
+                    @endforeach
                 </div>
             </div>
             {{-- Travel dates --}}
@@ -1415,14 +1488,14 @@ window.sortVenues = function(dir) {
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueSd ? \Carbon\Carbon::parse($venueSd)->format('M j, Y') : '—' }}</span>
+                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueSd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($venueSd) : '—' }}</span>
                 </div>
             </div>
             <div style="flex:1;min-width:0;padding:16px 20px;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueEd ? \Carbon\Carbon::parse($venueEd)->format('M j, Y') : '—' }}</span>
+                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueEd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($venueEd) : '—' }}</span>
                 </div>
             </div>
         </div>
@@ -1618,9 +1691,9 @@ window.sortVenues = function(dir) {
                 @php $attrSd = $mcAttractionStep && $mcStartDate ? $mcStartDate : $startDate; $attrEd = $mcAttractionStep && $mcEndDate ? $mcEndDate : $endDate; @endphp
                 <div style="font-size:14px;font-weight:700;color:var(--dark);white-space:nowrap;">
                     @if($attrSd && $attrEd)
-                        {{ \Carbon\Carbon::parse($attrSd)->format('M j, Y') }} – {{ \Carbon\Carbon::parse($attrEd)->format('M j, Y') }}
+                        {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($attrSd) }} – {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($attrEd) }}
                     @elseif($attrSd)
-                        {{ \Carbon\Carbon::parse($attrSd)->format('M j, Y') }}
+                        {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($attrSd) }}
                     @else —
                     @endif
                 </div>
@@ -1638,29 +1711,35 @@ window.sortVenues = function(dir) {
                     <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $attrDest }}</span>
                 </div>
             </div>
-            <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
+            <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);position:relative;" x-data="{ typeOpen:false }">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Type</div>
-                <div style="display:flex;align-items:center;gap:8px;">
+                <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="typeOpen=!typeOpen">
                     <i class="fa-solid fa-binoculars" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                    <select wire:model="attractionType" style="border:none;background:transparent;font-size:14px;font-weight:600;color:var(--dark);outline:none;cursor:pointer;width:100%;">
-                        @foreach(['All Attractions','Religious','Historical','Nature','Theme Park','Beach','Museum','Shopping'] as $t)
-                        <option value="{{ $t }}">{{ $t }}</option>
-                        @endforeach
-                    </select>
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);flex:1;">{{ $attractionType }}</span>
+                    <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
+                </div>
+                <div x-show="typeOpen" @click.outside="typeOpen=false" x-cloak
+                     style="position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:200;min-width:180px;overflow:hidden;">
+                    @foreach(['All Attractions','Religious','Historical','Nature','Theme Park','Beach','Museum','Shopping'] as $t)
+                    <button type="button" wire:click="$set('attractionType', '{{ $t }}')" @click="typeOpen=false"
+                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;cursor:pointer;{{ $attractionType === $t ? 'color:#934B19;font-weight:700;background:#FDF8F4;' : '' }}">
+                        {{ $t }}
+                    </button>
+                    @endforeach
                 </div>
             </div>
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $attrSd ? \Carbon\Carbon::parse($attrSd)->format('M j, Y') : '—' }}</span>
+                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $attrSd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($attrSd) : '—' }}</span>
                 </div>
             </div>
             <div style="flex:1;min-width:0;padding:16px 20px;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
-                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $attrEd ? \Carbon\Carbon::parse($attrEd)->format('M j, Y') : '—' }}</span>
+                    <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $attrEd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($attrEd) : '—' }}</span>
                 </div>
             </div>
         </div>
@@ -1858,12 +1937,16 @@ window.sortAttractions = function(dir) {
     $allTags      = array_unique(array_merge($interests, $subInterests));
 
     $dest = $manualTo ?: $mcTo ?: 'Unknown';
-    $route = $flightTripType === 'multi_city' && $mcTo
+    $isMultiCity = $flightTripType === 'multi_city' && $mcTo;
+    $route = $isMultiCity
         ? trim($manualFrom) . ' to ' . trim($manualTo) . ' · ' . trim($mcTo)
         : trim($manualFrom) . ' to ' . trim($manualTo);
 
     $sd = $startDate ? \Carbon\Carbon::parse($startDate)->format('F j, Y') : '—';
     $ed = $endDate   ? \Carbon\Carbon::parse($endDate)->format('F j, Y')   : '—';
+
+    $mcSd = $mcStartDate ? \Carbon\Carbon::parse($mcStartDate)->format('F j, Y') : '—';
+    $mcEd = $mcEndDate   ? \Carbon\Carbon::parse($mcEndDate)->format('F j, Y')   : '—';
 
     $budMaxRaw = (int) preg_replace('/[^\d]/', '', $manualBudgetMax ?: $manualBudgetMin);
     $budMaxRaw = $budMaxRaw ?: 0;
@@ -1889,6 +1972,39 @@ window.sortAttractions = function(dir) {
             <span style="font-size:16px;font-weight:800;color:var(--dark);">Generate Itinerary</span>
         </div>
 
+        @if ($isMultiCity)
+        {{-- Trip 1 --}}
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:22px;">
+            <div style="width:100px;flex-shrink:0;display:flex;align-items:center;gap:6px;">
+                <i class="fa-solid fa-location-dot" style="color:var(--muted);font-size:11px;"></i>
+                <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Trip 1</span>
+            </div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;box-sizing:border-box;">
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ trim($manualFrom) }} to {{ trim($manualTo) }}</span>
+                </div>
+                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;box-sizing:border-box;">
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $sd }} – {{ $ed }}</span>
+                </div>
+            </div>
+        </div>
+
+        {{-- Trip 2 --}}
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:22px;">
+            <div style="width:100px;flex-shrink:0;display:flex;align-items:center;gap:6px;">
+                <i class="fa-solid fa-location-dot" style="color:var(--muted);font-size:11px;"></i>
+                <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Trip 2</span>
+            </div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;box-sizing:border-box;">
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ trim($manualTo) }} to {{ trim($mcTo) }}</span>
+                </div>
+                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;box-sizing:border-box;">
+                    <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $mcSd }} – {{ $mcEd }}</span>
+                </div>
+            </div>
+        </div>
+        @else
         {{-- Destination --}}
         <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:22px;">
             <div style="width:100px;flex-shrink:0;display:flex;align-items:center;gap:6px;">
@@ -1896,9 +2012,8 @@ window.sortAttractions = function(dir) {
                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Destination</span>
             </div>
             <div style="flex:1;min-width:0;">
-                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box;">
+                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;box-sizing:border-box;">
                     <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $route }}</span>
-                    <i class="fa-solid fa-chevron-down" style="color:var(--muted);font-size:11px;flex-shrink:0;"></i>
                 </div>
             </div>
         </div>
@@ -1910,12 +2025,12 @@ window.sortAttractions = function(dir) {
                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Travel Dates</span>
             </div>
             <div style="flex:1;min-width:0;">
-                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box;">
+                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;box-sizing:border-box;">
                     <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $sd }} – {{ $ed }}</span>
-                    <i class="fa-regular fa-clock" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
                 </div>
             </div>
         </div>
+        @endif
 
         {{-- Budget Range --}}
         <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:22px;">
@@ -1924,9 +2039,8 @@ window.sortAttractions = function(dir) {
                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Budget Range</span>
             </div>
             <div style="flex:1;min-width:0;">
-                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box;">
+                <div style="background:#F8F5F2;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;box-sizing:border-box;">
                     <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $budMin }} – {{ $budMax }}</span>
-                    <i class="fa-solid fa-coins" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
                 </div>
             </div>
         </div>
@@ -1977,8 +2091,10 @@ window.sortAttractions = function(dir) {
     $route8  = trim($manualFrom) . ' to ' . trim($manualTo);
     if ($flightTripType === 'multi_city' && $mcTo) $route8 .= ' · ' . trim($mcTo);
 
-    $sd8 = $startDate ? \Carbon\Carbon::parse($startDate)->format('M j, Y') : '—';
-    $ed8 = $endDate   ? \Carbon\Carbon::parse($endDate)->format('M j, Y')   : '—';
+    $isLeg2Now = $flightTripType === 'multi_city' && $mcTo && $itineraryLeg === 2;
+    $sd8 = ($isLeg2Now ? $mcStartDate : $startDate) ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($isLeg2Now ? $mcStartDate : $startDate) : '—';
+    $ed8 = ($isLeg2Now ? $mcEndDate   : $endDate)   ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($isLeg2Now ? $mcEndDate   : $endDate)   : '—';
+    $dest8Label = $isLeg2Now ? trim($mcTo) : trim($manualTo);
 
     $budMax8      = (int) preg_replace('/[^\d]/', '', $manualBudgetMax ?: $manualBudgetMin);
     $profileMin8  = (int) ($profile8?->daily_budget ?? 0);
@@ -1987,27 +2103,30 @@ window.sortAttractions = function(dir) {
 
     // Selections as activity-card entries (icon, type, title, sub, time, cost, isFree)
     // For round-trip flights, split cost evenly: half on arrival, half on departure
+    // For a multi-city trip, only the leg currently being shown contributes
+    // its own selections — leg 1's picks shouldn't appear while reviewing
+    // leg 2's options, and vice versa.
     $selCards = [];
-    if ($selectedFlight) {
+    if ($selectedFlight && !$isLeg2Now) {
         $flightIsRT   = strtolower($selectedFlight['type'] ?? '') === 'round trip';
         $flightCost8  = (float)($selectedFlight['price'] ?? 0);
         $flightArrCost = $flightIsRT ? round($flightCost8 / 2) : $flightCost8;
         $flightDepCost = $flightIsRT ? ($flightCost8 - $flightArrCost) : 0;
         $selCards[] = ['icon'=>'fa-plane','type'=>'Flight','title'=>($selectedFlight['airline']??'Flight').' '.($selectedFlight['number']??''),'sub'=>($selectedFlight['dep_id']??'').' → '.($selectedFlight['arr_id']??''),'time'=>$selectedFlight['depart']??'','cost'=>$flightArrCost,'isFree'=>false];
     } else { $flightIsRT = false; $flightDepCost = 0; }
-    if ($selectedMcFlight) {
+    if ($selectedMcFlight && $isLeg2Now) {
         $mcFlightIsRT  = strtolower($selectedMcFlight['type'] ?? '') === 'round trip';
         $mcFlightCost8 = (float)($selectedMcFlight['price'] ?? 0);
         $mcFlightArrCost = $mcFlightIsRT ? round($mcFlightCost8 / 2) : $mcFlightCost8;
         $mcFlightDepCost = $mcFlightIsRT ? ($mcFlightCost8 - $mcFlightArrCost) : 0;
-        $selCards[] = ['icon'=>'fa-plane','type'=>'Flight (Leg 2)','title'=>($selectedMcFlight['airline']??'Flight').' '.($selectedMcFlight['number']??''),'sub'=>($selectedMcFlight['dep_id']??'').' → '.($selectedMcFlight['arr_id']??''),'time'=>$selectedMcFlight['depart']??'','cost'=>$mcFlightArrCost,'isFree'=>false];
+        $selCards[] = ['icon'=>'fa-plane','type'=>'Flight','title'=>($selectedMcFlight['airline']??'Flight').' '.($selectedMcFlight['number']??''),'sub'=>($selectedMcFlight['dep_id']??'').' → '.($selectedMcFlight['arr_id']??''),'time'=>$selectedMcFlight['depart']??'','cost'=>$mcFlightArrCost,'isFree'=>false];
     } else { $mcFlightIsRT = false; $mcFlightDepCost = 0; }
-    if ($selectedHotel)       $selCards[] = ['icon'=>'fa-bed',      'type'=>'Accommodation',        'title'=>$selectedHotel['name']??'Hotel',   'sub'=>($selectedHotel['stars']??3).'★ · '.($selectedHotel['nights']??1).' nights', 'time'=>'Check-in',  'cost'=>$selectedHotel['total']??0,    'isFree'=>false];
-    if ($selectedMcHotel)     $selCards[] = ['icon'=>'fa-bed',      'type'=>'Accommodation (Leg 2)','title'=>$selectedMcHotel['name']??'Hotel', 'sub'=>($selectedMcHotel['stars']??3).'★ · '.($selectedMcHotel['nights']??1).' nights','time'=>'Check-in','cost'=>$selectedMcHotel['total']??0,  'isFree'=>false];
-    if ($selectedVenue)       $selCards[] = ['icon'=>'fa-utensils', 'type'=>'Food & Dining',        'title'=>$selectedVenue['name']??'Restaurant',   'sub'=>$selectedVenue['cuisine']??'',   'time'=>'Dinner',    'cost'=>($selectedVenue['priceMin']??0).($selectedVenue['priceMax']??0 ? '–'.($selectedVenue['priceMax']??0) : ''), 'isFree'=>false];
-    if ($selectedMcVenue)     $selCards[] = ['icon'=>'fa-utensils', 'type'=>'Food & Dining (Leg 2)','title'=>$selectedMcVenue['name']??'Restaurant', 'sub'=>$selectedMcVenue['cuisine']??'', 'time'=>'Dinner',    'cost'=>($selectedMcVenue['priceMin']??0).($selectedMcVenue['priceMax']??0 ? '–'.($selectedMcVenue['priceMax']??0) : ''), 'isFree'=>false];
-    if ($selectedAttraction)  $selCards[] = ['icon'=>'fa-camera',   'type'=>'Attraction',           'title'=>$selectedAttraction['name']??'Attraction',   'sub'=>$selectedAttraction['type']??'',   'time'=>'Activity', 'cost'=>$selectedAttraction['price']??0,   'isFree'=>$selectedAttraction['isFree']??false];
-    if ($selectedMcAttraction)$selCards[] = ['icon'=>'fa-camera',   'type'=>'Attraction (Leg 2)',   'title'=>$selectedMcAttraction['name']??'Attraction', 'sub'=>$selectedMcAttraction['type']??'', 'time'=>'Activity', 'cost'=>$selectedMcAttraction['price']??0, 'isFree'=>$selectedMcAttraction['isFree']??false];
+    if ($selectedHotel && !$isLeg2Now)         $selCards[] = ['icon'=>'fa-bed',      'type'=>'Accommodation',        'title'=>$selectedHotel['name']??'Hotel',   'sub'=>($selectedHotel['stars']??3).'★ · '.($selectedHotel['nights']??1).' nights', 'time'=>'Check-in',  'cost'=>$selectedHotel['total']??0,    'isFree'=>false];
+    if ($selectedMcHotel && $isLeg2Now)        $selCards[] = ['icon'=>'fa-bed',      'type'=>'Accommodation','title'=>$selectedMcHotel['name']??'Hotel', 'sub'=>($selectedMcHotel['stars']??3).'★ · '.($selectedMcHotel['nights']??1).' nights','time'=>'Check-in','cost'=>$selectedMcHotel['total']??0,  'isFree'=>false];
+    if ($selectedVenue && !$isLeg2Now)         $selCards[] = ['icon'=>'fa-utensils', 'type'=>'Food & Dining',        'title'=>$selectedVenue['name']??'Restaurant',   'sub'=>$selectedVenue['cuisine']??'',   'time'=>'Dinner',    'cost'=>($selectedVenue['priceMin']??0).($selectedVenue['priceMax']??0 ? '–'.($selectedVenue['priceMax']??0) : ''), 'isFree'=>false];
+    if ($selectedMcVenue && $isLeg2Now)        $selCards[] = ['icon'=>'fa-utensils', 'type'=>'Food & Dining','title'=>$selectedMcVenue['name']??'Restaurant', 'sub'=>$selectedMcVenue['cuisine']??'', 'time'=>'Dinner',    'cost'=>($selectedMcVenue['priceMin']??0).($selectedMcVenue['priceMax']??0 ? '–'.($selectedMcVenue['priceMax']??0) : ''), 'isFree'=>false];
+    if ($selectedAttraction && !$isLeg2Now)    $selCards[] = ['icon'=>'fa-camera',   'type'=>'Attraction',           'title'=>$selectedAttraction['name']??'Attraction',   'sub'=>$selectedAttraction['type']??'',   'time'=>'Activity', 'cost'=>$selectedAttraction['price']??0,   'isFree'=>$selectedAttraction['isFree']??false];
+    if ($selectedMcAttraction && $isLeg2Now)   $selCards[] = ['icon'=>'fa-camera',   'type'=>'Attraction','title'=>$selectedMcAttraction['name']??'Attraction', 'sub'=>$selectedMcAttraction['type']??'', 'time'=>'Activity', 'cost'=>$selectedMcAttraction['price']??0, 'isFree'=>$selectedMcAttraction['isFree']??false];
 
     $totalCost8 = 0;
     foreach ($selCards as $c) {
@@ -2071,7 +2190,7 @@ window.sortAttractions = function(dir) {
 .itin8-tag i{font-size:9px;color:#817470;}
 .itin8-left{flex:1;min-width:0;}
 .itin8-right{flex-shrink:0;width:340px;}
-.itin8-cost-card{background:#fff;border:1px solid #d3c3be;border-radius:10px;padding:12px 16px;box-shadow:0 2px 8px rgba(45,27,20,0.08);text-align:right;width:100%;box-sizing:border-box;}
+.itin8-cost-card{background:#fff;border:1px solid #d3c3be;border-radius:12px;overflow:hidden;padding:12px 16px;box-shadow:0 2px 8px rgba(45,27,20,0.08);text-align:right;width:100%;box-sizing:border-box;}
 .itin8-cost-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#4f4441;margin-bottom:6px;line-height:16px;}
 .itin8-budget-status{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:16px;padding:2px 10px;border-radius:99px;margin-bottom:6px;}
 .itin8-budget-status.under{background:#FEF3C7;color:#b07e00;}
@@ -2124,14 +2243,23 @@ window.sortAttractions = function(dir) {
     <div class="itin8-topbar">
         {{-- Left: date + tags + description --}}
         <div class="itin8-left">
+            @if($flightTripType === 'multi_city' && $mcTo && $itineraryLeg === 2)
+            <button wire:click="backToLeg1Itinerary"
+                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
+                <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Suggested Itineraries
+            </button>
+            @endif
             <div class="itin8-meta">
+                @if($flightTripType === 'multi_city' && $mcTo)
+                <div class="itin8-tag" style="background:#F5F0EB;color:#934B19;font-weight:700;padding:3px 10px;border-radius:20px;">Leg {{ $itineraryLeg }} of 2</div>
+                @endif
                 <div class="itin8-tag"><i class="fa-regular fa-calendar"></i> {{ $sd8 }} - {{ $ed8 }}</div>
                 @if(count($allTags8))
                 <div class="itin8-tag"><i class="fa-solid fa-utensils"></i> {{ implode(', ', $allTags8) }}</div>
                 @endif
             </div>
             <p class="itin8-desc">
-                A perfectly balanced trip exploring <strong style="color:var(--dark);">{{ trim($manualTo ?: $mcTo) }}</strong> built from your selections and AI-suggested activities.
+                A perfectly balanced trip exploring <strong style="color:var(--dark);">{{ $dest8Label }}</strong> built from your selections and AI-suggested activities.
             </p>
         </div>
 
@@ -2150,13 +2278,19 @@ window.sortAttractions = function(dir) {
                 </div>
                 <div class="itin8-cost-val">₱{{ number_format($totalCost8) }}</div>
                 <div class="itin8-actions" style="justify-content:flex-end;margin-top:12px;">
-                    <button class="itin8-btn-ghost" wire:click="generateItinerary" wire:loading.attr="disabled" wire:target="generateItinerary">
-                        <span wire:loading.remove wire:target="generateItinerary" style="white-space:nowrap;"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Generate Other Options</span>
-                        <span wire:loading wire:target="generateItinerary" style="white-space:nowrap;"><i class="fa-solid fa-spinner fa-spin"></i> Generating…</span>
+                    <button class="itin8-btn-ghost" wire:click="regenerateItineraryOptions" wire:loading.attr="disabled" wire:target="regenerateItineraryOptions">
+                        <span wire:loading.remove wire:target="regenerateItineraryOptions" style="white-space:nowrap;"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Generate Other Options</span>
+                        <span wire:loading wire:target="regenerateItineraryOptions" style="white-space:nowrap;"><i class="fa-solid fa-spinner fa-spin"></i></span>
                     </button>
-                    <button class="itin8-btn-save" wire:click="goToSummary" wire:loading.attr="disabled" wire:target="goToSummary">
-                        <span wire:loading.remove wire:target="goToSummary" style="white-space:nowrap;">Save Itinerary <i class="fa-solid fa-floppy-disk" style="font-size:11px;"></i></span>
-                        <span wire:loading wire:target="goToSummary"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                    <button class="itin8-btn-save" wire:click="continueItinerary" wire:loading.attr="disabled" wire:target="continueItinerary">
+                        <span wire:loading.remove wire:target="continueItinerary" style="white-space:nowrap;">
+                            @if($flightTripType === 'multi_city' && $mcTo && $itineraryLeg === 1)
+                                Continue to Leg 2 <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>
+                            @else
+                                Save Itinerary <i class="fa-solid fa-floppy-disk" style="font-size:11px;"></i>
+                            @endif
+                        </span>
+                        <span wire:loading wire:target="continueItinerary"><i class="fa-solid fa-spinner fa-spin"></i></span>
                     </button>
                 </div>
             </div>
@@ -2187,7 +2321,7 @@ window.sortAttractions = function(dir) {
         </div>
         <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:#1A0A00;">Couldn't generate itinerary suggestions</h3>
         <p style="color:#9B8EA0;font-size:13px;max-width:320px;line-height:1.6;margin:0 0 18px;">Our AI providers are temporarily unavailable or rate-limited. Please try again in a moment.</p>
-        <button wire:click="generateItinerary" wire:loading.attr="disabled" wire:target="generateItinerary"
+        <button wire:click="regenerateItineraryOptions" wire:loading.attr="disabled" wire:target="regenerateItineraryOptions"
                 style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:11px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
             <i class="fa-solid fa-rotate" style="font-size:11px;"></i> Try Again
         </button>
@@ -2322,7 +2456,7 @@ window.sortAttractions = function(dir) {
         @php
             $dayNum  = $dayItem['day'] ?? ($loop->iteration);
             $dayLabel= $dayItem['label'] ?? ('Day ' . $dayNum);
-            $dayDate = $startDate ? \Carbon\Carbon::parse($startDate)->addDays($dayNum - 1)->format('M j') : '';
+            $dayDate = $startDate ? str_replace('Sep ', 'Sept ', \Carbon\Carbon::parse($startDate)->addDays($dayNum - 1)->format('M j')) : '';
         @endphp
         <div class="itin8-day-col">
             <div class="itin8-day-header">
@@ -2387,34 +2521,82 @@ window.sortAttractions = function(dir) {
     $s9sdow  = $startDate ? \Carbon\Carbon::parse($startDate)->format('l') : '';
     $s9edow  = $endDate   ? \Carbon\Carbon::parse($endDate)->format('l')   : '';
 
-    // Cost breakdown from selections
-    $s9flight = ($selectedFlight['price'] ?? 0) + ($selectedMcFlight['price'] ?? 0);
-    $s9hotel  = ($selectedHotel['total']  ?? 0) + ($selectedMcHotel['total']  ?? 0);
-    $s9venue  = (($selectedVenue['priceMax'] ?? $selectedVenue['priceMin'] ?? 0)) + (($selectedMcVenue['priceMax'] ?? $selectedMcVenue['priceMin'] ?? 0));
-    $s9attr   = ($selectedAttraction['isFree']   ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $selectedAttraction['price']   ?? '0'))
-              + ($selectedMcAttraction['isFree'] ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $selectedMcAttraction['price'] ?? '0'));
+    $s9isMultiCity = $flightTripType === 'multi_city' && $mcTo;
 
-    // AI activity costs, bucketed by category so an AI-suggested hotel/food/
-    // attraction lands in that category's total instead of all non-transport
-    // AI activities getting dumped into Attractions.
-    $s9aiTotals = $this->categorizeAiCost($aiItinerary['days'] ?? []);
-    $s9ai       = array_sum($s9aiTotals);
-    $s9flight  += $s9aiTotals['transport'];
-    $s9hotel   += $s9aiTotals['accommodation'];
-    $s9venue   += $s9aiTotals['food'];
-    $s9attr    += $s9aiTotals['attraction'];
+    // AI-suggested days are generated one leg at a time — $aiItineraryLeg1
+    // holds leg 1's days (stashed once leg 2's options were generated) and
+    // $aiItinerary holds leg 2's, for a multi-city trip. For a single-city
+    // trip $aiItinerary is the only itinerary.
+    $s9leg1AiDays = $s9isMultiCity ? ($aiItineraryLeg1['days'] ?? []) : ($aiItinerary['days'] ?? []);
+    $s9leg2AiDays = $s9isMultiCity ? ($aiItinerary['days'] ?? []) : [];
+    $s9aiDays     = array_merge($s9leg1AiDays, $s9leg2AiDays);
+    $s9leg1AiTotals = $this->categorizeAiCost($s9leg1AiDays);
+    $s9leg2AiTotals = $this->categorizeAiCost($s9leg2AiDays);
+    $s9aiTotals = ['accommodation'=>0.0,'food'=>0.0,'transport'=>0.0,'attraction'=>0.0];
+    foreach ($s9aiTotals as $k => $v) $s9aiTotals[$k] = $s9leg1AiTotals[$k] + $s9leg2AiTotals[$k];
+    $s9ai = array_sum($s9aiTotals);
+
+    // Cost breakdown from selections — computed per leg, then combined,
+    // so each leg's own picks (and its own AI-suggested activities) are
+    // never mixed with the other leg's when shown separately below.
+    //
+    // Base costs (the traveler's own booking, no AI activities added) are
+    // used for each Selection Summary line item, so a restaurant/attraction
+    // pick shows only its own price. AI totals are added in separately
+    // (below) only for the Cost Breakdown category totals on the right,
+    // where lumping in AI-suggested activities of the same category is
+    // exactly the point.
+    $s9flightBase1 = (float) ($selectedFlight['price']   ?? 0);
+    $s9flightBase2 = (float) ($selectedMcFlight['price'] ?? 0);
+    $s9hotelBase1  = (float) ($selectedHotel['total']    ?? 0);
+    $s9hotelBase2  = (float) ($selectedMcHotel['total']  ?? 0);
+    $s9venueBase1  = (float) ($selectedVenue['priceMax']   ?? $selectedVenue['priceMin']   ?? 0);
+    $s9venueBase2  = (float) ($selectedMcVenue['priceMax'] ?? $selectedMcVenue['priceMin'] ?? 0);
+    $s9attrBase1   = $selectedAttraction['isFree']   ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $selectedAttraction['price']   ?? '0');
+    $s9attrBase2   = $selectedMcAttraction['isFree'] ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $selectedMcAttraction['price'] ?? '0');
+
+    $s9flight1 = $s9flightBase1 + $s9leg1AiTotals['transport'];
+    $s9flight2 = $s9flightBase2 + $s9leg2AiTotals['transport'];
+    $s9hotel1  = $s9hotelBase1  + $s9leg1AiTotals['accommodation'];
+    $s9hotel2  = $s9hotelBase2  + $s9leg2AiTotals['accommodation'];
+    $s9venue1  = $s9venueBase1  + $s9leg1AiTotals['food'];
+    $s9venue2  = $s9venueBase2  + $s9leg2AiTotals['food'];
+    $s9attr1   = $s9attrBase1   + $s9leg1AiTotals['attraction'];
+    $s9attr2   = $s9attrBase2   + $s9leg2AiTotals['attraction'];
+
+    $s9flight = $s9flight1 + $s9flight2;
+    $s9hotel  = $s9hotel1  + $s9hotel2;
+    $s9venue  = $s9venue1  + $s9venue2;
+    $s9attr   = $s9attr1   + $s9attr2;
 
     $s9emergency = (float) $emergency;
     $s9budget    = (int) preg_replace('/[^\d]/', '', $manualBudgetMax ?: $manualBudgetMin);
     $s9total     = $s9flight + $s9hotel + $s9venue + $s9attr + $s9emergency;
     $s9over      = $s9budget > 0 && $s9total > $s9budget;
 
-    // Selections for summary list
+    // Selections for summary list — leg 1 always; leg 2 only for multi-city.
+    // Costs here are each pick's own price only (see $s9*Base* above).
     $s9picks = [];
-    if ($selectedFlight)      $s9picks[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''),  'cost'=>$s9flight, 'editStep'=>2];
-    if ($selectedHotel)       $s9picks[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotel,  'editStep'=>3];
-    if ($selectedVenue)       $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining',  'val'=>$selectedVenue['name']??'Restaurant',                                 'cost'=>$s9venue,  'editStep'=>4];
-    if ($selectedAttraction)  $s9picks[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedAttraction['name']??'Attraction',                            'cost'=>$s9attr,   'editStep'=>5];
+    if ($selectedFlight)      $s9picks[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''),  'cost'=>$s9flightBase1, 'editStep'=>2];
+    if ($selectedHotel)       $s9picks[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotelBase1,  'editStep'=>3];
+    if ($selectedVenue)       $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining',  'val'=>$selectedVenue['name']??'Restaurant',                                 'cost'=>$s9venueBase1,  'editStep'=>4];
+    if ($selectedAttraction)  $s9picks[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedAttraction['name']??'Attraction',                            'cost'=>$s9attrBase1,   'editStep'=>5];
+
+    $s9picksLeg2 = [];
+    if ($s9isMultiCity) {
+        if ($selectedMcFlight)     $s9picksLeg2[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedMcFlight['airline']??'').' '.($selectedMcFlight['number']??''), 'cost'=>$s9flightBase2, 'editStep'=>2];
+        if ($selectedMcHotel)      $s9picksLeg2[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedMcHotel['name']??'Hotel',                                         'cost'=>$s9hotelBase2,  'editStep'=>3];
+        if ($selectedMcVenue)      $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining',  'val'=>$selectedMcVenue['name']??'Restaurant',                                    'cost'=>$s9venueBase2,  'editStep'=>4];
+        if ($selectedMcAttraction) $s9picksLeg2[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedMcAttraction['name']??'Attraction',                               'cost'=>$s9attrBase2,   'editStep'=>5];
+    }
+
+    $s9leg1Dest = trim($manualTo ?: 'Unknown');
+    $s9leg2Dest = trim($mcTo ?: '');
+    $s9leg2Sd    = $mcStartDate ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($mcStartDate, 'M j') : '—';
+    $s9leg2Ed    = $mcEndDate   ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($mcEndDate)          : '—';
+    $s9leg2Sdow  = $mcStartDate ? \Carbon\Carbon::parse($mcStartDate)->format('l') : '';
+    $s9leg2Edow  = $mcEndDate   ? \Carbon\Carbon::parse($mcEndDate)->format('l')   : '';
+    $s9leg2Days  = ($mcStartDate && $mcEndDate) ? max(1,(int)round((strtotime($mcEndDate)-strtotime($mcStartDate))/86400)) : 1;
 @endphp
 
 <div style="max-width:1200px;margin:0 auto;padding:20px 0;">
@@ -2422,16 +2604,16 @@ window.sortAttractions = function(dir) {
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
         <button wire:click="$set('step', 8)" style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;">
-            <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Planner
+            <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Suggested Itineraries
         </button>
         <div style="display:flex;gap:8px;">
             <button wire:click="downloadPdf" wire:loading.attr="disabled" wire:target="downloadPdf"
-                    style="padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:12px;font-weight:700;color:var(--dark);cursor:pointer;display:inline-flex;align-items:center;gap:7px;">
+                    style="min-width:150px;padding:8px 18px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:12px;font-weight:700;color:var(--dark);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;">
                 <span wire:loading.remove wire:target="downloadPdf"><i class="fa-solid fa-download" style="font-size:10px;"></i> Download PDF</span>
                 <span wire:loading wire:target="downloadPdf"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
             <button wire:click="saveItinerary" wire:loading.attr="disabled"
-                    style="padding:8px 18px;border:none;border-radius:8px;background:#934B19;color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;">
+                    style="min-width:150px;padding:8px 18px;border:none;border-radius:8px;background:#934B19;color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;">
                 <span wire:loading.remove wire:target="saveItinerary">Confirm Trip <i class="fa-solid fa-check" style="font-size:10px;"></i></span>
                 <span wire:loading wire:target="saveItinerary"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
@@ -2446,29 +2628,60 @@ window.sortAttractions = function(dir) {
         <div>
             {{-- Route & dates card --}}
             <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:24px 26px;margin-bottom:14px;">
-                <div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;">
+                @if($s9isMultiCity)
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:12px;">Trip 1</div>
+                @endif
+                <div style="display:flex;align-items:flex-start;gap:22px;flex-wrap:wrap;">
                     <div>
                         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">FROM</div>
                         <div style="font-size:21px;font-weight:800;color:#934B19;">{{ $s9from }}</div>
                         <div style="font-size:11px;color:var(--muted);">{{ $selectedFlight['dep_id'] ?? 'MNL' }}</div>
                     </div>
-                    <div style="flex:1;text-align:center;min-width:120px;">
-                        <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">{{ $s9days }}-Day Journey</div>
-                        <div style="border-top:2px dashed #D1C5B8;position:relative;">
-                            <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #D1C5B8;display:inline-block;"></span>
+                    <div style="flex:1;min-width:120px;margin-top:26px;display:flex;flex-direction:column;align-items:center;">
+                        <div style="font-size:11px;color:var(--muted);margin-bottom:5px;text-align:center;">{{ $s9days }}-Day Journey</div>
+                        <div style="border-top:2px dashed #D1C5B8;position:relative;width:100%;">
+                            <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #D1C5B8;display:inline-block;box-sizing:border-box;"></span>
                         </div>
                     </div>
                     <div>
                         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">TO</div>
-                        <div style="font-size:21px;font-weight:800;color:#934B19;">{{ $s9dest }}</div>
+                        <div style="font-size:21px;font-weight:800;color:#934B19;">{{ $s9leg1Dest }}</div>
                         <div style="font-size:11px;color:var(--muted);">{{ $selectedFlight['arr_id'] ?? '' }}</div>
                     </div>
                     <div style="border-left:1.5px solid var(--border);padding-left:22px;">
                         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:4px;">DATES</div>
-                        <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ \Carbon\Carbon::parse($startDate)->format('M j') }} - {{ \Carbon\Carbon::parse($endDate)->format('M j, Y') }}</div>
+                        <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($startDate, 'M j') }} - {{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($endDate) }}</div>
                         <div style="font-size:11px;color:var(--muted);">{{ $s9sdow }} - {{ $s9edow }}</div>
                     </div>
                 </div>
+
+                @if($s9isMultiCity)
+                <div style="border-top:1.5px solid var(--border);margin:20px 0;"></div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:12px;">Trip 2</div>
+                <div style="display:flex;align-items:flex-start;gap:22px;flex-wrap:wrap;">
+                    <div>
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">FROM</div>
+                        <div style="font-size:21px;font-weight:800;color:#934B19;">{{ $s9leg1Dest }}</div>
+                        <div style="font-size:11px;color:var(--muted);">{{ $selectedMcFlight['dep_id'] ?? '' }}</div>
+                    </div>
+                    <div style="flex:1;min-width:120px;margin-top:26px;display:flex;flex-direction:column;align-items:center;">
+                        <div style="font-size:11px;color:var(--muted);margin-bottom:5px;text-align:center;">{{ $s9leg2Days }}-Day Journey</div>
+                        <div style="border-top:2px dashed #D1C5B8;position:relative;width:100%;">
+                            <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #D1C5B8;display:inline-block;box-sizing:border-box;"></span>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">TO</div>
+                        <div style="font-size:21px;font-weight:800;color:#934B19;">{{ $s9leg2Dest }}</div>
+                        <div style="font-size:11px;color:var(--muted);">{{ $selectedMcFlight['arr_id'] ?? '' }}</div>
+                    </div>
+                    <div style="border-left:1.5px solid var(--border);padding-left:22px;">
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:4px;">DATES</div>
+                        <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $s9leg2Sd }} - {{ $s9leg2Ed }}</div>
+                        <div style="font-size:11px;color:var(--muted);">{{ $s9leg2Sdow }} - {{ $s9leg2Edow }}</div>
+                    </div>
+                </div>
+                @endif
             </div>
 
             {{-- Itinerary collapsible --}}
@@ -2481,6 +2694,9 @@ window.sortAttractions = function(dir) {
                     <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
                 </button>
                 <div x-show="open" x-transition style="border-top:1px solid var(--border);padding:18px 22px;">
+                    @if($s9isMultiCity)
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:10px;">Leg 1 — {{ $s9leg1Dest }}</div>
+                    @endif
                     @if(!empty($s9picks))
                     <div style="margin-bottom:10px;">
                         <div style="font-size:10px;font-weight:700;color:#934B19;margin-bottom:5px;">Day 1 — Arrival</div>
@@ -2492,8 +2708,8 @@ window.sortAttractions = function(dir) {
                         @endforeach
                     </div>
                     @endif
-                    @if($aiItinerary && !empty($aiItinerary['days']))
-                        @foreach($aiItinerary['days'] as $i => $d9)
+                    @if(!empty($s9leg1AiDays))
+                        @foreach($s9leg1AiDays as $i => $d9)
                         <div style="margin-bottom:10px;">
                             <div style="font-size:10px;font-weight:700;color:#934B19;margin-bottom:5px;">Day {{ $i+2 }} — {{ $d9['label'] ?? '' }}</div>
                             @foreach($d9['activities'] ?? [] as $a9)
@@ -2505,7 +2721,37 @@ window.sortAttractions = function(dir) {
                         </div>
                         @endforeach
                     @endif
-                    @if(empty($s9picks) && (!$aiItinerary || empty($aiItinerary['days'])))
+
+                    @if($s9isMultiCity)
+                    <div style="border-top:1px solid var(--border);margin:14px 0;"></div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:10px;">Leg 2 — {{ $s9leg2Dest }}</div>
+                    @if(!empty($s9picksLeg2))
+                    <div style="margin-bottom:10px;">
+                        <div style="font-size:10px;font-weight:700;color:#934B19;margin-bottom:5px;">Day 1 — Arrival</div>
+                        @foreach($s9picksLeg2 as $pk9)
+                        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid #F5F0EB;">
+                            <span>{{ $pk9['label'] }} · {{ $pk9['val'] }}</span>
+                            <span style="color:var(--muted);font-weight:600;">{{ $pk9['cost'] ? '₱'.number_format($pk9['cost']) : 'Free' }}</span>
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
+                    @if(!empty($s9leg2AiDays))
+                        @foreach($s9leg2AiDays as $i => $d9)
+                        <div style="margin-bottom:10px;">
+                            <div style="font-size:10px;font-weight:700;color:#934B19;margin-bottom:5px;">Day {{ $i+2 }} — {{ $d9['label'] ?? '' }}</div>
+                            @foreach($d9['activities'] ?? [] as $a9)
+                            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid #F5F0EB;">
+                                <span>{{ $a9['time'] ?? '' }} · {{ $a9['title'] ?? '' }}</span>
+                                <span style="color:var(--muted);font-weight:600;">{{ $a9['cost'] ? '₱'.number_format($a9['cost']) : 'Free' }}</span>
+                            </div>
+                            @endforeach
+                        </div>
+                        @endforeach
+                    @endif
+                    @endif
+
+                    @if(empty($s9picks) && empty($s9aiDays))
                         <p style="color:var(--muted);font-size:12px;margin:0;">No itinerary generated yet.</p>
                     @endif
                 </div>
@@ -2521,6 +2767,9 @@ window.sortAttractions = function(dir) {
                     <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
                 </button>
                 <div x-show="open" x-transition style="border-top:1px solid var(--border);padding:18px 22px;">
+                    @if($s9isMultiCity)
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:8px;">Leg 1 — {{ $s9leg1Dest }}</div>
+                    @endif
                     @foreach($s9picks as $pk)
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EB;">
                         <div style="display:flex;align-items:center;gap:8px;">
@@ -2538,6 +2787,28 @@ window.sortAttractions = function(dir) {
                         </div>
                     </div>
                     @endforeach
+
+                    @if($s9isMultiCity)
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin:14px 0 8px;">Leg 2 — {{ $s9leg2Dest }}</div>
+                    @foreach($s9picksLeg2 as $pk)
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EB;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:28px;height:28px;border-radius:7px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:#934B19;"></i>
+                            </div>
+                            <div>
+                                <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">{{ $pk['label'] }}</div>
+                                <div style="font-size:12px;font-weight:600;color:var(--dark);">{{ $pk['val'] }}</div>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <button wire:click="editFromSummary({{ $pk['editStep'] }})" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:#934B19;background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
+                            <div style="font-size:12px;font-weight:700;color:#1A0A00;">{{ $pk['cost'] ? '₱'.number_format($pk['cost']) : 'Free' }}</div>
+                        </div>
+                    </div>
+                    @endforeach
+                    @endif
+
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <div style="width:28px;height:28px;border-radius:7px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -2566,7 +2837,7 @@ window.sortAttractions = function(dir) {
                     ['Transportation', $s9flight],
                     ['Accommodation',  $s9hotel],
                     ['Food & Dining',  $s9venue],
-                    ['Attractions',    $s9attr + $s9ai],
+                    ['Attractions',    $s9attr],
                 ];
             @endphp
             @foreach($s9rows as [$lbl,$amt])

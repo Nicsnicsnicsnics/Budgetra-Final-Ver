@@ -12,15 +12,19 @@ class Trip extends Model
         'user_id', 'destination', 'trip_name', 'start_date', 'end_date',
         'num_travelers', 'budget_limit', 'travel_type', 'status', 'notes',
         'cover_image', 'total_cost', 'summary_data', 'origin', 'origin_code', 'destination_code',
+        'is_multi_city', 'leg2_destination', 'leg2_destination_code', 'leg2_start_date', 'leg2_end_date',
     ];
 
     protected function casts(): array
     {
         return [
-            'start_date'    => 'date',
-            'end_date'      => 'date',
-            'budget_limit'  => 'decimal:2',
-            'summary_data'  => 'array',
+            'start_date'      => 'date',
+            'end_date'        => 'date',
+            'leg2_start_date' => 'date',
+            'leg2_end_date'   => 'date',
+            'budget_limit'    => 'decimal:2',
+            'summary_data'    => 'array',
+            'is_multi_city'   => 'boolean',
         ];
     }
 

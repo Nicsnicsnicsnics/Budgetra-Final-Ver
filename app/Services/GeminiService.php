@@ -16,7 +16,7 @@ class GeminiService
 
     public function generate(string $prompt, int $timeout = 18): ?string
     {
-        $response = Http::timeout($timeout)->post("{$this->endpoint}?key={$this->key}", [
+        $response = Http::timeout($timeout)->connectTimeout(min(10, $timeout))->post("{$this->endpoint}?key={$this->key}", [
             'contents' => [
                 ['parts' => [['text' => $prompt]]],
             ],
