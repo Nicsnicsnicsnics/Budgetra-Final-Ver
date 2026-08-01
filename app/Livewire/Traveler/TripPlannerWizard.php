@@ -701,7 +701,19 @@ class TripPlannerWizard extends Component
 
     public function skipAccommodation(): void
     {
-        $this->selectedHotel   = null;
+        $this->selectedHotel = null;
+
+        // Skipping leg 1's accommodation on a multi-city trip should still
+        // offer leg 2's accommodation, not jump straight past both legs —
+        // same transition selectAccommodation() makes when a hotel IS picked.
+        if (!$this->mcHotelStep && $this->flightTripType === 'multi_city' && $this->mcTo) {
+            $this->mcHotelStep    = true;
+            $this->mcHotelResults = [];
+            $this->mcHotelLoading = true;
+            $this->searchMcHotels();
+            return;
+        }
+
         $this->selectedMcHotel = null;
         $this->mcHotelStep     = false;
         $this->step = 4;
@@ -813,7 +825,18 @@ class TripPlannerWizard extends Component
 
     public function skipVenue(): void
     {
-        $this->selectedVenue   = null;
+        $this->selectedVenue = null;
+
+        // Same reasoning as skipAccommodation() above — skipping leg 1's
+        // food & dining shouldn't skip leg 2's too.
+        if (!$this->mcVenueStep && $this->flightTripType === 'multi_city' && $this->mcTo) {
+            $this->mcVenueStep    = true;
+            $this->mcVenueResults = [];
+            $this->mcVenueLoading = true;
+            $this->searchMcVenues();
+            return;
+        }
+
         $this->selectedMcVenue = null;
         $this->mcVenueStep     = false;
         $this->step = 5;
@@ -939,7 +962,18 @@ class TripPlannerWizard extends Component
 
     public function skipAttraction(): void
     {
-        $this->selectedAttraction   = null;
+        $this->selectedAttraction = null;
+
+        // Same reasoning as skipAccommodation() above — skipping leg 1's
+        // attractions shouldn't skip leg 2's too.
+        if (!$this->mcAttractionStep && $this->flightTripType === 'multi_city' && $this->mcTo) {
+            $this->mcAttractionStep    = true;
+            $this->mcAttractionResults = [];
+            $this->mcAttractionLoading = true;
+            $this->searchMcAttractions();
+            return;
+        }
+
         $this->selectedMcAttraction = null;
         $this->mcAttractionStep     = false;
         $this->step = 6;
@@ -1710,6 +1744,19 @@ class TripPlannerWizard extends Component
             'leg2_start_date'       => $isMultiCitySaved ? ($this->mcStartDate ?: null) : null,
             'leg2_end_date'         => $isMultiCitySaved ? ($this->mcEndDate   ?: null) : null,
         ]);
+
+        // autosaveDraft() silently saved a placeholder Trip (status=draft)
+        // as soon as Trip Details was filled in, tracked via $draftTripId.
+        // Now that the traveler has finished the whole flow and a real
+        // trip has been saved, that draft is a leftover duplicate — remove
+        // it instead of leaving it to linger in the Draft Trips group.
+        if ($this->draftTripId && $this->draftTripId !== $trip->id) {
+            Trip::where('id', $this->draftTripId)
+                ->where('user_id', auth()->id())
+                ->where('status', 'draft')
+                ->delete();
+            $this->draftTripId = null;
+        }
 
         // Spread traveler selections across travel dates
         $day1Date  = \Carbon\Carbon::parse($tripStart);
