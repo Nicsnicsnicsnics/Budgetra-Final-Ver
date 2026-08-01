@@ -217,14 +217,15 @@
         .llm-fade-up{animation:llmFadeUp .5s ease both;}
         .llm-back-link{display:inline-flex;align-items:center;gap:6px;color:#934B19;font-size:13px;font-weight:600;text-decoration:none;}
         .llm-greeting{font-size:clamp(24px,3.2vw,32px);font-weight:600;color:var(--dark);margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;letter-spacing:-.01em;}
-        .llm-interest-pill{display:inline-block;background:#F5F0EB;color:#934B19;border-radius:999px;padding:5px 14px;font-size:12px;font-weight:700;}
-        .llm-interest-edit{color:#934B19;font-size:12px;font-weight:700;text-decoration:none;}
+        .llm-interest-pill{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #F0DCC5;color:#934B19;border-radius:999px;padding:6px 15px;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(147,75,25,0.06);transition:border-color .18s,box-shadow .18s,transform .18s;}
+        .llm-interest-pill:hover{border-color:#934B19;box-shadow:0 4px 12px rgba(147,75,25,0.12);transform:translateY(-1px);}
+        .llm-interest-edit{color:#934B19;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
         .llm-interest-edit:hover{text-decoration:underline;}
-        .llm-composer{width:100%;max-width:600px;background:#fff;border:1.5px solid var(--border);border-radius:22px;box-shadow:0 4px 24px rgba(0,0,0,.06);padding:18px 20px;transition:box-shadow .2s ease,border-color .2s ease;}
-        .llm-composer:focus-within{border-color:#934B19;box-shadow:0 8px 32px rgba(147,75,25,.12);}
+        .llm-composer{width:100%;max-width:600px;background:#fff;border:1.5px solid var(--border);border-radius:24px;box-shadow:0 8px 32px rgba(45,27,20,.07);padding:20px 22px;transition:box-shadow .2s ease,border-color .2s ease;}
+        .llm-composer:focus-within{border-color:#934B19;box-shadow:0 12px 40px rgba(147,75,25,.14);}
         .llm-composer textarea{width:100%;border:none;outline:none;resize:none;font-family:inherit;font-size:15px;color:var(--dark);background:transparent;line-height:1.5;max-height:120px;}
-        .llm-composer-footer{display:flex;align-items:center;justify-content:flex-end;margin-top:10px;}
-        .llm-send-btn{width:36px;height:36px;border-radius:50%;background:#934B19;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s ease,background .15s ease;}
+        .llm-composer-footer{display:flex;align-items:center;justify-content:flex-end;margin-top:12px;}
+        .llm-send-btn{width:40px;height:40px;border-radius:50%;background:#934B19;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 16px rgba(147,75,25,0.28);transition:transform .15s ease,background .15s ease;}
         .llm-send-btn:hover{background:#6A3500;transform:scale(1.08);}
         .llm-send-btn:active{transform:scale(.92);}
         .llm-thread{width:100%;max-width:600px;margin:0 auto;flex:1;overflow-y:auto;padding:80px 4px 16px;display:flex;flex-direction:column;gap:12px;}
@@ -244,14 +245,14 @@
             <p style="font-size:14px;color:var(--muted);margin:0 0 20px;">Plan your trip with TARA</p>
 
             @if (!empty($this->profileInterests))
-                <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin-bottom:24px;">
+                <div style="display:flex;flex-wrap:wrap;gap:9px;justify-content:center;align-items:center;margin-bottom:28px;">
                     @foreach (array_slice($this->profileInterests, 0, 4) as $interest)
-                        <span class="llm-interest-pill">{{ $interest }}</span>
+                        <span class="llm-interest-pill"><i class="fa-solid fa-tag" style="font-size:9px;"></i>{{ $interest }}</span>
                     @endforeach
-                    <a href="{{ route('profile.setup', ['step' => 4, 'return' => 'trips.plan.ai']) }}" wire:navigate class="llm-interest-edit">Edit</a>
+                    <a href="{{ route('profile.setup', ['step' => 4, 'return' => 'trips.plan.ai']) }}" wire:navigate class="llm-interest-edit"><i class="fa-regular fa-pen-to-square" style="font-size:11px;"></i>Edit</a>
                 </div>
             @else
-                <div style="margin-bottom:24px;">
+                <div style="margin-bottom:28px;">
                     <a href="{{ route('profile.setup', ['step' => 4, 'return' => 'trips.plan.ai']) }}" wire:navigate class="llm-interest-edit">+ Add your travel interests</a>
                 </div>
             @endif
