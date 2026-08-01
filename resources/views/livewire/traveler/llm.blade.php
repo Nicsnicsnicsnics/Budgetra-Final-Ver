@@ -140,12 +140,12 @@
         <span wire:loading.remove wire:target="regeneratePackage"><i class="fa-solid fa-rotate"></i> Regenerate</span>
         <span wire:loading wire:target="regeneratePackage"><i class="fa-solid fa-spinner fa-spin"></i> Regenerating…</span>
     </button>
-    <button wire:click="saveAiTrip" wire:loading.attr="disabled" wire:target="saveAiTrip"
+    <button wire:click="proceedToWizardItinerary" wire:loading.attr="disabled" wire:target="proceedToWizardItinerary"
             style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:11px 28px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;"
             onmouseenter="this.style.background='#7A3C12'"
             onmouseleave="this.style.background='#934B19'">
-        <span wire:loading.remove wire:target="saveAiTrip">Next</span>
-        <span wire:loading wire:target="saveAiTrip"><i class="fa-solid fa-spinner fa-spin"></i> Saving…</span>
+        <span wire:loading.remove wire:target="proceedToWizardItinerary">Next</span>
+        <span wire:loading wire:target="proceedToWizardItinerary"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</span>
     </button>
 </div>
 @endif

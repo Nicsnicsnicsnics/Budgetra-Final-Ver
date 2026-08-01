@@ -2,10 +2,10 @@
 namespace App\Livewire\Traveler;
 
 use App\Models\AiConversationDraft;
-use App\Models\Trip;
-use App\Models\TripBudget;
+use App\Services\CerebrasService;
 use App\Services\GeminiService;
 use App\Services\GroqService;
+use App\Services\MistralService;
 use App\Services\OpenRouterService;
 use App\Services\SerpApiService;
 use Livewire\Attributes\Layout;
@@ -67,7 +67,7 @@ class Llm extends Component
     // wrapped in Livewire's @persist the way the sidebar is. One draft per
     // user (see the migration's unique constraint on user_id); nothing to
     // restore for a first-time visit or once a trip's actually been saved
-    // (saveAiTrip() deletes the draft row at that point).
+    // (proceedToWizardItinerary() deletes the draft row once handed off).
     public function mount(): void
     {
         $draft = AiConversationDraft::where('user_id', auth()->id())->first();
@@ -326,6 +326,12 @@ class Llm extends Component
     // bug]] this session was built around avoiding).
     private function suggestDestination(): string
     {
+        // Gemini → Groq → OpenRouter, each up to 18s (see generate()'s
+        // default) — a fatal "Maximum execution time exceeded" isn't
+        // catchable, so this needs its own bump past PHP's default 30s
+        // the same way processAiTrip() already does for its own chain.
+        set_time_limit(90);
+
         $interests = $this->profileInterests;
         $interestText = !empty($interests)
             ? implode(', ', $interests)
@@ -436,6 +442,14 @@ class Llm extends Component
     // it just falls through to asking again normally.
     private function extractWithAi(string $userText): string
     {
+        // Same reasoning as suggestDestination() above: Gemini → Groq →
+        // OpenRouter, each up to 18s, called synchronously from
+        // automateTrip() on every chat message while any slot is still
+        // missing — without this bump, a slow provider or two pushes the
+        // total past PHP's default 30s and fatals with an uncatchable
+        // "Maximum execution time exceeded" instead of a clean fallback.
+        set_time_limit(90);
+
         $known = sprintf(
             "- Origin: %s\n- Destination: %s\n- Budget: %s\n- Travel dates: %s",
             $this->aiFrom !== '' ? $this->aiFrom : 'unknown',
@@ -697,8 +711,20 @@ PROMPT;
             $this->aiTo        = $this->cleanCityName($package['to']        ?? $this->aiTo);
             $this->aiBudgetMin = (int)($package['budget_min'] ?? $this->aiBudgetMin);
             $this->aiBudgetMax = (int)($package['budget_max'] ?? $this->aiBudgetMax ?: $this->aiBudgetMin);
-            $this->aiDateFrom  = $package['date_from'] ?? $this->aiDateFrom;
-            $this->aiDateTo    = $package['date_to']   ?? $this->aiDateTo;
+            // Same sanity check extractWithAi() already applies before
+            // accepting an AI-supplied date: the model can return a non-date
+            // placeholder ("TBD", "Flexible") when the conversation never
+            // actually pinned down real dates, and strtotime() on that
+            // silently returns false rather than throwing — every later
+            // date('Y-m-d', false) then casts to 0 and produces "1970-01-01"
+            // with no error to catch. Reject anything that doesn't parse
+            // instead of storing it.
+            if (!empty($package['date_from']) && strtotime($package['date_from']) !== false) {
+                $this->aiDateFrom = $package['date_from'];
+            }
+            if (!empty($package['date_to']) && strtotime($package['date_to']) !== false) {
+                $this->aiDateTo = $package['date_to'];
+            }
             $this->aiDays      = (int)($package['days'] ?? $this->aiDays);
 
             $transportCost     = (int)($package['transport']['cost']     ?? 0);
@@ -712,8 +738,7 @@ PROMPT;
             // can't be trusted to actually add up. buildSerpApiPackage()
             // below already does its own sum for exactly this reason; this
             // path previously didn't, and a wrong self-reported total would
-            // sail straight into saveAiTrip() as a real, misleading budget
-            // record.
+            // sail straight into a real, misleading budget total.
             $budget = $this->aiBudgetMax ?: $this->aiBudgetMin ?: 30000;
             $total  = $transportCost + $accommodationCost + $foodCost + $attractionsCost;
 
@@ -1072,6 +1097,98 @@ PROMPT;
         $this->generateAiPackage();
     }
 
+    // Moves from the package-review results screen straight into
+    // TripPlannerWizard's own Step 6 (Emergency Fund) → Step 7 (Generate
+    // Itinerary) → save flow, instead of maintaining a second, parallel
+    // implementation of those same screens here — same idea as
+    // editWithWizard() below, just landing further in since the AI
+    // package already stands in for everything steps 2-5 would otherwise
+    // have collected manually. The wizard reads these back out of the
+    // session in its own mount() (one-time, via session()->pull()) and
+    // synthesizes selectedFlight/selectedHotel/selectedVenue/
+    // selectedAttraction from them before jumping straight to step 6.
+    public function proceedToWizardItinerary(): mixed
+    {
+        if (empty($this->aiPackage)) return null;
+        $pkg = $this->aiPackage;
+
+        $year = date('Y');
+        if ($this->aiDateTo && preg_match('/(\d{4})$/', $this->aiDateTo, $ym)) {
+            $year = $ym[1];
+        }
+        // strtotime() returns false (not an exception) for anything it can't
+        // parse — date('Y-m-d', false) then silently casts to 0 and produces
+        // "1970-01-01" instead of erroring, so every result is checked
+        // before use rather than trusted blindly.
+        $startTs = $this->aiDateFrom ? strtotime($this->aiDateFrom . ', ' . $year) : false;
+        $endTs   = $this->aiDateTo   ? strtotime($this->aiDateTo) : false;
+        $start   = $startTs !== false ? date('Y-m-d', $startTs) : now()->toDateString();
+        $end     = $endTs   !== false ? date('Y-m-d', $endTs)   : now()->addDays(max(1, $this->aiDays))->toDateString();
+        $nights  = max(1, (int) \Carbon\Carbon::parse($start)->diffInDays(\Carbon\Carbon::parse($end)));
+
+        $transport      = $pkg['transport'] ?? [];
+        $transportDetail = $transport['detail'] ?? '';
+        $selectedFlight = [
+            'airline' => $transportDetail !== '' ? $transportDetail : 'Flight',
+            'number'  => null,
+            'price'   => (int) ($transport['cost'] ?? 0),
+            'dep_id'  => $transport['from_code'] ?? $this->resolveCode($this->aiFrom),
+            'arr_id'  => $transport['to_code']   ?? $this->resolveCode($this->aiTo),
+            'type'    => stripos($transportDetail, 'one way') !== false ? 'One Way' : 'Round Trip',
+            'depart'  => $start,
+        ];
+
+        $accommodation = $pkg['accommodation'] ?? [];
+        $selectedHotel = !empty($accommodation['name']) ? [
+            'name'   => $accommodation['name'],
+            'total'  => (int) ($accommodation['cost'] ?? 0),
+            'nights' => $nights,
+            'image'  => null,
+        ] : null;
+
+        $food = $pkg['food'] ?? [];
+        $selectedVenue = !empty($food['name']) ? [
+            'name'     => $food['name'],
+            'priceMax' => (int) ($food['cost'] ?? 0),
+            'priceMin' => (int) ($food['cost'] ?? 0),
+            'cuisine'  => null,
+        ] : null;
+
+        // The wizard only carries a single selected attraction while the AI
+        // package can suggest several — combined into one entry (names
+        // joined, cost summed) so every pick still counts toward the total
+        // instead of silently dropping all but the first.
+        $attrItems = $pkg['attractions']['items'] ?? [];
+        $attrCost  = (int) ($pkg['attractions']['cost'] ?? 0);
+        $selectedAttraction = !empty($attrItems) ? [
+            'name'   => implode(' & ', array_column($attrItems, 0)),
+            'price'  => (string) $attrCost,
+            'isFree' => $attrCost === 0,
+            'image'  => null,
+        ] : null;
+
+        session(['wizard_ai_handoff' => [
+            'from'       => $this->aiFrom,
+            'to'         => $this->aiTo,
+            'budget_min' => $this->aiBudgetMin,
+            'budget_max' => $this->aiBudgetMax,
+            'start'      => $start,
+            'end'        => $end,
+            'flight'     => $selectedFlight,
+            'hotel'      => $selectedHotel,
+            'venue'      => $selectedVenue,
+            'attraction' => $selectedAttraction,
+        ]]);
+
+        // Same reasoning as saveAiTrip() previously had: the conversation's
+        // being handed off to become a real trip via the wizard now, so
+        // clear the draft instead of leaving a stale one to restore later.
+        AiConversationDraft::where('user_id', auth()->id())->delete();
+        $this->messages = [];
+
+        return $this->redirect(route('trips.plan'), navigate: true);
+    }
+
     // Lets the traveler swap the AI's auto-picked flight/hotel/food/
     // attraction for a specific one of their own choosing, instead of
     // being stuck with whatever the package generated. Hands off to the
@@ -1101,57 +1218,6 @@ PROMPT;
             'start'      => $start ?: null,
             'end'        => $end ?: null,
         ])), navigate: true);
-    }
-
-    public function saveAiTrip(): mixed
-    {
-        if (empty($this->aiPackage)) return null;
-
-        $pkg = $this->aiPackage;
-
-        // Parse dates from display format back to Y-m-d
-        $startDate = $this->aiDateFrom ? date('Y-m-d', strtotime($this->aiDateFrom . ' ' . date('Y'))) : now()->toDateString();
-        $endDate   = $this->aiDateTo   ? date('Y-m-d', strtotime($this->aiDateTo))                     : now()->addDays($this->aiDays)->toDateString();
-
-        $trip = Trip::create([
-            'user_id'      => auth()->id(),
-            'destination'  => $this->aiTo,
-            'start_date'   => $startDate,
-            'end_date'     => $endDate,
-            'num_travelers'=> 1,
-            'budget_limit' => $pkg['budget'] ?? $this->aiBudgetMax,
-            'travel_type'  => 'Solo',
-            'notes'        => 'Generated by AI Planner from: ' . $this->conversationSummary(),
-        ]);
-
-        // Save budget categories
-        $categories = [
-            'Transportation' => $pkg['transport']['cost']     ?? 0,
-            'Accommodation'  => $pkg['accommodation']['cost'] ?? 0,
-            'Food'           => $pkg['food']['cost']          ?? 0,
-            'Tourist Attractions' => $pkg['attractions']['cost'] ?? 0,
-        ];
-        foreach ($categories as $cat => $amount) {
-            TripBudget::create([
-                'trip_id'        => $trip->id,
-                'category'       => $cat,
-                'estimated_cost' => $amount,
-                'actual_spent'   => 0,
-            ]);
-        }
-
-        // The conversation's resolved into a real Trip now — clear the
-        // draft so the next visit to the AI Planner starts a fresh
-        // conversation instead of resuming this now-finished one. Also
-        // clear $this->messages: dehydrate() runs at the end of THIS same
-        // request right after this method returns, and its "don't save an
-        // empty conversation" guard checks that exact property — without
-        // clearing it here, dehydrate() would immediately recreate the row
-        // we just deleted.
-        AiConversationDraft::where('user_id', auth()->id())->delete();
-        $this->messages = [];
-
-        return $this->redirect(route('trips.dashboard', $trip), navigate: true);
     }
 
     // Converts a matched money token ("20,000", "30000", "20k") to a plain

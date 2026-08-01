@@ -182,6 +182,50 @@ class TripPlannerWizard extends Component
         $this->showList  = !$isPlanRoute && $hasTrips;
         $this->showEmpty = !$isPlanRoute && !$hasTrips;
 
+        // Higher-priority deep-link from the AI Trip Planner's "Next" action:
+        // the AI package already stands in for everything steps 2-5 would
+        // otherwise have collected manually, so this lands straight on Step
+        // 6 (Emergency Fund) with selectedFlight/Hotel/Venue/Attraction
+        // synthesized from that package, as if the traveler had picked each
+        // one by hand. One-time use (pull, not get) so refreshing this page
+        // afterward behaves like any other normal wizard session instead of
+        // replaying the same handoff forever. Checked before the "Edit"
+        // handoff below since both can't apply to the same request.
+        if (session()->has('wizard_ai_handoff')) {
+            $handoff = session()->pull('wizard_ai_handoff');
+
+            $this->planningMode    = 'manual';
+            $this->manualFrom      = (string) ($handoff['from'] ?? '');
+            $this->manualTo        = (string) ($handoff['to'] ?? '');
+            $this->manualBudgetMin = (string) ($handoff['budget_min'] ?? '');
+            $this->manualBudgetMax = (string) ($handoff['budget_max'] ?? $handoff['budget_min'] ?? '');
+            $this->startDate       = (string) ($handoff['start'] ?? '');
+            $this->endDate         = (string) ($handoff['end'] ?? '');
+
+            $this->selectedFlight     = $handoff['flight']     ?? null;
+            $this->selectedHotel      = $handoff['hotel']      ?? null;
+            $this->selectedVenue      = $handoff['venue']      ?? null;
+            $this->selectedAttraction = $handoff['attraction'] ?? null;
+            $this->flightTripType     = strtolower($this->selectedFlight['type'] ?? '') === 'one way' ? 'one_way' : 'round_trip';
+
+            // Same international/local auto-detect selectAttraction() runs
+            // right before its own transition to Step 6 — kept in sync so
+            // the destinations() computed property behaves the same
+            // regardless of which path got the traveler here.
+            $intlKeywords = ['singapore','bangkok','phuket','bali','kuala lumpur','hong kong','tokyo','osaka','seoul','taipei','dubai','london','paris','new york','sydney','rome','barcelona','amsterdam','maldives','vietnam','hanoi','ho chi minh','jakarta','yangon','colombo','kathmandu','delhi','mumbai','beijing','shanghai','auckland'];
+            $toLower = strtolower($this->manualTo);
+            $isIntl  = false;
+            foreach ($intlKeywords as $kw) {
+                if (str_contains($toLower, $kw)) { $isIntl = true; break; }
+            }
+            $this->tripScope = $isIntl ? 'international' : 'local';
+
+            $this->showList  = false;
+            $this->showEmpty = false;
+            $this->step = 6;
+            return;
+        }
+
         // Optional deep-link from the AI Trip Planner's "Edit" action, which
         // wants the traveler to land straight on flight selection with their
         // route/budget/dates already filled in instead of re-entering
@@ -517,6 +561,10 @@ class TripPlannerWizard extends Component
 
         // Multi-city: search leg 2 flights before going to accommodation
         if ($this->flightTripType === 'multi_city' && $this->mcTo && $this->mcStartDate) {
+            // Same reasoning as searchManualFlights()'s bump above: a real
+            // SerpAPI call with its own retry, made synchronously here
+            // rather than through an already-covered method.
+            set_time_limit(120);
             $this->mcFlightStep    = true;
             $this->mcFlightResults = [];
             $this->mcFlightLoading = true;
@@ -1245,6 +1293,15 @@ class TripPlannerWizard extends Component
 
     private function runItineraryGeneration(string $dest, string $tripStart, string $tripEnd): void
     {
+        // Up to 3 options below, each capped at its own ~32s slice of a
+        // ~100s overall deadline (see $overallDeadline further down) — a
+        // fatal "Maximum execution time exceeded" isn't catchable, so this
+        // needs its own bump past PHP's default 30s the same way
+        // processAiTrip() (in Llm.php) already does for its own AI chain.
+        // Shared by generateItinerary(), generateItineraryLeg2(), and
+        // regenerateItineraryOptions() — all three funnel through here.
+        set_time_limit(150);
+
         $this->aiLoading          = true;
         $this->aiItinerary        = null;
         $this->aiItineraryOptions = [];
