@@ -54,6 +54,88 @@ class ExpenseCrudTest extends TestCase
         $this->assertDatabaseMissing('expenses', ['id' => $expense->id]);
     }
 
+    public function test_index_ignores_a_malformed_date_filter_instead_of_crashing(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create(['user_id' => $user->id]);
+        Expense::create(['trip_id' => $trip->id, 'user_id' => $user->id, 'amount' => 100, 'category' => 'Food', 'expense_date' => '2026-08-01']);
+
+        $this->actingAs($user)
+            ->get('/expenses?' . http_build_query(['trip_id' => $trip->id, 'date_from' => 'notarealdate', 'date_to' => 'alsobad']))
+            ->assertStatus(200);
+    }
+
+    public function test_index_defaults_to_first_trip_with_multiple_trips_and_no_trip_id(): void
+    {
+        $user  = User::factory()->create();
+        $trip1 = Trip::factory()->create(['user_id' => $user->id]);
+        $trip2 = Trip::factory()->create(['user_id' => $user->id]);
+        Expense::create(['trip_id' => $trip1->id, 'user_id' => $user->id, 'amount' => 100, 'category' => 'Food', 'expense_date' => '2026-08-01']);
+        Expense::create(['trip_id' => $trip2->id, 'user_id' => $user->id, 'amount' => 200, 'category' => 'Food', 'expense_date' => '2026-08-01']);
+
+        $response = $this->actingAs($user)->get('/expenses');
+
+        $shown = $response->viewData('expenses');
+        $this->assertEquals(1, $shown->total());
+        $this->assertEquals($trip1->id, $shown->first()->trip_id);
+    }
+
+    public function test_updating_expense_amount_resyncs_budget(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create(['user_id' => $user->id]);
+        TripBudget::create(['trip_id' => $trip->id, 'category' => 'Food', 'estimated_cost' => 10000, 'actual_spent' => 0]);
+        $expense = Expense::create([
+            'trip_id' => $trip->id, 'user_id' => $user->id,
+            'amount' => 500, 'category' => 'Food', 'expense_date' => '2026-08-01',
+        ]);
+        \App\Observers\ExpenseObserver::syncBudgetForExpense($expense);
+
+        $this->actingAs($user)->put("/expenses/{$expense->id}", [
+            'trip_id' => $trip->id, 'amount' => 5000, 'category' => 'Food', 'expense_date' => '2026-08-01',
+        ]);
+
+        $this->assertDatabaseHas('trip_budgets', ['trip_id' => $trip->id, 'category' => 'Food', 'actual_spent' => 5000]);
+    }
+
+    public function test_updating_expense_category_moves_budget_between_categories(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create(['user_id' => $user->id]);
+        TripBudget::create(['trip_id' => $trip->id, 'category' => 'Food',     'estimated_cost' => 10000, 'actual_spent' => 0]);
+        TripBudget::create(['trip_id' => $trip->id, 'category' => 'Shopping', 'estimated_cost' => 10000, 'actual_spent' => 0]);
+        $expense = Expense::create([
+            'trip_id' => $trip->id, 'user_id' => $user->id,
+            'amount' => 1200, 'category' => 'Food', 'expense_date' => '2026-08-01',
+        ]);
+        \App\Observers\ExpenseObserver::syncBudgetForExpense($expense);
+
+        $this->actingAs($user)->put("/expenses/{$expense->id}", [
+            'trip_id' => $trip->id, 'amount' => 1200, 'category' => 'Shopping', 'expense_date' => '2026-08-01',
+        ]);
+
+        $this->assertDatabaseHas('trip_budgets', ['trip_id' => $trip->id, 'category' => 'Food',     'actual_spent' => 0]);
+        $this->assertDatabaseHas('trip_budgets', ['trip_id' => $trip->id, 'category' => 'Shopping', 'actual_spent' => 1200]);
+    }
+
+    public function test_user_cannot_reassign_expense_to_another_users_trip(): void
+    {
+        $attacker     = User::factory()->create();
+        $victim       = User::factory()->create();
+        $attackerTrip = Trip::factory()->create(['user_id' => $attacker->id]);
+        $victimTrip   = Trip::factory()->create(['user_id' => $victim->id]);
+        $expense = Expense::create([
+            'trip_id' => $attackerTrip->id, 'user_id' => $attacker->id,
+            'amount' => 100, 'category' => 'Food', 'expense_date' => '2026-08-01',
+        ]);
+
+        $this->actingAs($attacker)->put("/expenses/{$expense->id}", [
+            'trip_id' => $victimTrip->id, 'amount' => 100, 'category' => 'Food', 'expense_date' => '2026-08-01',
+        ])->assertStatus(403);
+
+        $this->assertDatabaseHas('expenses', ['id' => $expense->id, 'trip_id' => $attackerTrip->id]);
+    }
+
     public function test_user_cannot_delete_another_users_expense(): void
     {
         $user  = User::factory()->create();

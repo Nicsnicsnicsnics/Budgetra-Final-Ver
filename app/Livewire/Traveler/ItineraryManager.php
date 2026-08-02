@@ -241,7 +241,15 @@ class ItineraryManager extends Component
     {
         $this->selectedDate = $date;
 
-        $hasItems = Itinerary::where('trip_id', $this->selectedTripId)
+        // selectedTripId is a public property, settable directly by the
+        // client (not just through selectTrip()'s ownership check) — every
+        // query below goes through the ownership-verified selectedTrip
+        // accessor instead of trusting it raw, the same reasoning as
+        // getEventsProperty()/getDayItemsProperty() further down.
+        $trip = $this->selectedTrip;
+        if (!$trip) return;
+
+        $hasItems = Itinerary::where('trip_id', $trip->id)
             ->whereDate('start_datetime', $date)
             ->exists();
 
@@ -262,20 +270,26 @@ class ItineraryManager extends Component
 
     public function deleteItem(int $itemId): void
     {
+        // Same reasoning as selectDay() above — selectedTripId can be
+        // tampered directly, so re-verify ownership via selectedTrip
+        // before this query is allowed to touch anything.
+        $trip = $this->selectedTrip;
+        if (!$trip) return;
+
         Itinerary::where('id', $itemId)
-            ->where('trip_id', $this->selectedTripId)
+            ->where('trip_id', $trip->id)
             ->delete();
 
         // If no items left, close day modal
-        if (!Itinerary::where('trip_id', $this->selectedTripId)
+        if (!Itinerary::where('trip_id', $trip->id)
                 ->whereDate('start_datetime', $this->selectedDate)
                 ->exists()) {
             $this->showDayModal = false;
         }
 
         $this->dispatch('trip-changed',
-            start:  $this->selectedTrip->start_date->toDateString(),
-            end:    $this->selectedTrip->end_date->clone()->addDay()->toDateString(),
+            start:  $trip->start_date->toDateString(),
+            end:    $trip->end_date->clone()->addDay()->toDateString(),
             events: $this->getEventsProperty(),
         );
     }
@@ -371,7 +385,12 @@ class ItineraryManager extends Component
 
     public function getEventsProperty(): array
     {
-        if (!$this->selectedTripId) return [];
+        // selectedTripId is a public property a client can set directly
+        // (not only via selectTrip()'s ownership check), and this accessor
+        // is evaluated on every render — reading through selectedTrip
+        // instead re-verifies ownership every time, closing that off.
+        $trip = $this->selectedTrip;
+        if (!$trip) return [];
 
         $colorMap = [
             'Flight'         => ['bg' => '#EFF6FF', 'border' => '#1D4ED8', 'text' => '#1D4ED8', 'icon' => 'plane'],
@@ -380,7 +399,7 @@ class ItineraryManager extends Component
             'Activity'       => ['bg' => '#F5EDE7', 'border' => '#8B3A10', 'text' => '#8B3A10', 'icon' => 'camera'],
         ];
 
-        return Itinerary::where('trip_id', $this->selectedTripId)
+        return Itinerary::where('trip_id', $trip->id)
             ->orderBy('start_datetime')
             ->get()
             ->map(function ($i) use ($colorMap) {
@@ -400,8 +419,17 @@ class ItineraryManager extends Component
 
     public function getDayItemsProperty(): \Illuminate\Database\Eloquent\Collection
     {
-        if (!$this->selectedTripId || !$this->selectedDate) return collect();
-        return Itinerary::where('trip_id', $this->selectedTripId)
+        // Same reasoning as getEventsProperty() above — this is what the
+        // day-detail modal renders directly, so it's the exact accessor a
+        // tampered selectedTripId would otherwise use to read another
+        // traveler's itinerary items.
+        $trip = $this->selectedTrip;
+        // collect() returns Support\Collection, not the Eloquent\Collection
+        // this method declares — pre-existing mismatch that PHP's return
+        // type enforcement never actually caught before, since this path
+        // was rarely reached with a legitimately empty selection.
+        if (!$trip || !$this->selectedDate) return new \Illuminate\Database\Eloquent\Collection();
+        return Itinerary::where('trip_id', $trip->id)
             ->whereDate('start_datetime', $this->selectedDate)
             ->orderBy('start_datetime')
             ->get();
@@ -494,8 +522,13 @@ class ItineraryManager extends Component
 
     public function getInitialPinsProperty(): array
     {
-        if (!$this->selectedTripId) return [];
-        return Moment::where('trip_id', $this->selectedTripId)
+        // Same reasoning as getEventsProperty()/getDayItemsProperty() above
+        // — this feeds the trip map's pins (place names, descriptions,
+        // photos), so it's exactly what a tampered selectedTripId would
+        // otherwise expose from another traveler's trip.
+        $trip = $this->selectedTrip;
+        if (!$trip) return [];
+        return Moment::where('trip_id', $trip->id)
             ->orderBy('visited_date')
             ->get()
             ->map(fn (Moment $m) => $this->momentService->pinToArray($m))

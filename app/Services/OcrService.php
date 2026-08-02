@@ -27,14 +27,32 @@ class OcrService
         $imageContent = Storage::disk('public')->get($path);
         $base64       = 'data:' . $file->getMimeType() . ';base64,' . base64_encode($imageContent);
 
-        $response = Http::asForm()->post(config('services.ocr.endpoint'), [
-            'apikey'            => $apiKey,
-            'base64Image'       => $base64,
-            'isOverlayRequired' => 'false',
-            'detectOrientation' => 'true',
-            'scale'             => 'true',
-            'OCREngine'         => '2',
-        ]);
+        // No timeout means this can hang on a slow/unresponsive OCR endpoint
+        // until PHP's own execution-time limit kills the request with an
+        // uncatchable fatal error — same failure mode fixed elsewhere this
+        // session for chained AI-provider calls, just for a single external
+        // call here. A bounded timeout throws a (catchable) ConnectionException
+        // instead once it's exceeded, which the try/catch below turns into
+        // the same graceful "OCR failed" result already used for other
+        // failure cases, rather than an unhandled 500.
+        try {
+            $response = Http::asForm()->timeout(25)->post(config('services.ocr.endpoint'), [
+                'apikey'            => $apiKey,
+                'base64Image'       => $base64,
+                'isOverlayRequired' => 'false',
+                'detectOrientation' => 'true',
+                'scale'             => 'true',
+                'OCREngine'         => '2',
+            ]);
+        } catch (\Throwable $e) {
+            OcrLog::create([
+                'user_id'       => $userId,
+                'filename'      => $filename,
+                'status'        => 'failed',
+                'error_message' => 'OCR request failed: ' . $e->getMessage(),
+            ]);
+            return ['amount' => null, 'date' => null, 'description' => null, 'confidence' => 0];
+        }
 
         if (!$response->successful() || ($response->json('OCRExitCode') ?? 0) < 1) {
             OcrLog::create([

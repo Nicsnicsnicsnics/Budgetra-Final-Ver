@@ -22,6 +22,27 @@ class ExpenseObserver
         $this->adjustActualSpent($expense->trip_id, $expense->category, -$expense->amount);
     }
 
+    // ExpenseController::update() has no budget-sync logic of its own —
+    // unlike store() (which calls syncBudgetForExpense() explicitly) and
+    // delete() (handled by deleted() above), an edited amount/category/trip
+    // would otherwise never be reflected in TripBudget.actual_spent, leaving
+    // it permanently wrong after any edit. Reverse whatever the expense used
+    // to count toward, then reapply it under its current values — this
+    // covers an amount correction, a category change, and moving the
+    // expense to a different trip, all with the same two calls.
+    public function updated(Expense $expense): void
+    {
+        if (!$expense->wasChanged(['trip_id', 'category', 'amount'])) return;
+
+        $this->adjustActualSpent(
+            (int) $expense->getOriginal('trip_id'),
+            $expense->getOriginal('category'),
+            -(float) $expense->getOriginal('amount')
+        );
+
+        self::syncBudgetForExpense($expense);
+    }
+
     public function created(Expense $expense): void
     {
         $trip = Trip::find($expense->trip_id);
