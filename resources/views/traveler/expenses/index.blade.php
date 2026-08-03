@@ -26,9 +26,39 @@
     }
     .txn-action-btn:hover { transform: translateY(-1px); border-color: var(--primary); color: var(--primary); }
     .txn-action-danger:hover { border-color: var(--danger); color: var(--danger); }
+    .txn-icon-photo { padding: 0; overflow: hidden; }
+    .txn-icon-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
     @media (max-width: 560px) {
         .txn-meta { flex-wrap: wrap; }
         .txn-desc { white-space: normal; }
+    }
+
+    /* ── Date group labels ────────────────────────────────── */
+    .txn-date-label {
+        font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+        color: var(--muted); padding: 14px 16px 6px;
+    }
+    .txn-date-label:first-child { padding-top: 16px; }
+
+    /* ── Category filter pills ───────────────────────────────── */
+    .expense-cat-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cat-pill {
+        display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+        border-radius: 999px; border: 1.5px solid var(--border); background: #fff;
+        color: var(--text); font-size: 12px; font-weight: 600; text-decoration: none;
+        transition: transform .12s ease, border-color .15s ease, background .15s ease;
+    }
+    .cat-pill:hover { transform: translateY(-1px); border-color: var(--primary); }
+    .cat-pill.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+
+    /* ── Keyboard focus (WCAG 2.4.7) — every new interactive element
+       gets a visible ring, since none of these existed before. ──── */
+    .cat-pill:focus-visible,
+    .txn-action-btn:focus-visible,
+    .txn-icon-photo:focus-visible,
+    .expense-fab:focus-visible,
+    .expense-dest-link:focus-visible {
+        outline: 2px solid var(--primary); outline-offset: 2px;
     }
 
     /* ── Floating Add Expense button ──────────────────────── */
@@ -142,17 +172,25 @@
 
     {{-- Filters --}}
     <div class="card mb-16"><div class="card-body" style="padding:16px 20px;">
+        <div class="expense-cat-pills mb-12">
+            @php
+                $pillBase = array_merge($filterParams, ['trip_id' => $selectedTripId]);
+                unset($pillBase['category']);
+            @endphp
+            <a href="{{ route('expenses.index') }}?{{ http_build_query($pillBase) }}"
+               class="cat-pill {{ !request('category') ? 'active' : '' }}">All</a>
+            @foreach ($categories as $cat)
+            @php $c = $categoryColors[$cat]; @endphp
+            <a href="{{ route('expenses.index') }}?{{ http_build_query(array_merge($pillBase, ['category' => $cat])) }}"
+               class="cat-pill {{ request('category') === $cat ? 'active' : '' }}"
+               style="{{ request('category') === $cat ? "background:{$c}22;color:{$c};border-color:{$c}66;" : '' }}">
+                <i class="fa-solid {{ $categoryIcons[$cat] }}"></i> {{ $cat }}
+            </a>
+            @endforeach
+        </div>
         <form method="GET" action="{{ route('expenses.index') }}" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
             <input type="hidden" name="trip_id" value="{{ $selectedTripId }}">
-            <div style="flex:1;min-width:150px;">
-                <label class="form-label">Category</label>
-                <select name="category" class="form-control expense-filter-select" onchange="this.form.submit()">
-                    <option value="">All Categories</option>
-                    @foreach ($categories as $cat)
-                    <option value="{{ $cat }}" {{ request('category') === $cat ? 'selected' : '' }}>{{ $cat }}</option>
-                    @endforeach
-                </select>
-            </div>
+            <input type="hidden" name="category" value="{{ request('category') }}">
             <div style="flex:1;min-width:150px;">
                 <label class="form-label">From</label>
                 <input type="date" name="date_from" class="form-control expense-filter-select" value="{{ request('date_from') }}" onchange="this.form.submit()">
@@ -184,20 +222,32 @@
             </div>
         </div>
         @else
+        @php
+            $groupedExpenses = $expenses->getCollection()->groupBy(function ($e) {
+                if ($e->expense_date->isToday())     return 'Today';
+                if ($e->expense_date->isYesterday()) return 'Yesterday';
+                return $e->expense_date->format('F j, Y');
+            });
+        @endphp
         <div>
-            @foreach ($expenses as $expense)
+            @foreach ($groupedExpenses as $groupLabel => $group)
+            <div class="txn-date-label">{{ $groupLabel }}</div>
+            @foreach ($group as $expense)
             @php $color = $categoryColors[$expense->category] ?? '#6B7280'; @endphp
             <div class="txn-card">
+                @if ($expense->receipt_path)
+                <a href="{{ Storage::url($expense->receipt_path) }}" target="_blank" rel="noopener" class="txn-icon txn-icon-photo" title="View receipt">
+                    <img src="{{ Storage::url($expense->receipt_path) }}" alt="Receipt for {{ $expense->description ?? $expense->category }}" loading="lazy">
+                </a>
+                @else
                 <div class="txn-icon" style="background:{{ $color }}22;color:{{ $color }};">
                     <i class="fa-solid {{ $categoryIcons[$expense->category] ?? 'fa-circle' }}"></i>
                 </div>
+                @endif
                 <div class="txn-main">
                     <div class="txn-desc">{{ $expense->description ?? $expense->category }}</div>
                     <div class="txn-meta">
                         <span>{{ $expense->category }}</span> · <span>{{ $expense->expense_date->format('M j, Y') }}</span>
-                        @if ($expense->receipt_path)
-                        <span title="Receipt attached"><i class="fa-solid fa-paperclip" style="color:var(--success);"></i></span>
-                        @endif
                     </div>
                 </div>
                 <div class="txn-amount">₱{{ number_format($expense->amount, 0) }}</div>
@@ -214,6 +264,7 @@
                     </button>
                 </div>
             </div>
+            @endforeach
             @endforeach
         </div>
         @if ($expenses->hasPages())

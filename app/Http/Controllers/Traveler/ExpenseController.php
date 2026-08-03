@@ -58,7 +58,7 @@ class ExpenseController extends Controller
             'category'     => 'required|in:' . implode(',', self::CATEGORIES),
             'description'  => 'nullable|string|max:500',
             'expense_date' => 'required|date',
-            'receipt'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'receipt'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
         ]);
 
         abort_if(
@@ -125,7 +125,7 @@ class ExpenseController extends Controller
 
     public function ocr(Request $request, \App\Services\OcrService $ocrService)
     {
-        $request->validate(['receipt' => 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:5120']);
+        $request->validate(['receipt' => 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:10240']);
         $result = $ocrService->scan($request->file('receipt'), auth()->id());
         return response()->json($result);
     }

@@ -2142,15 +2142,11 @@ window.sortAttractions = function(dir) {
 
     // Selections as activity-card entries (icon, type, title, sub, time, cost, isFree)
     // For round-trip flights, split cost evenly: half on arrival, half on departure
-<<<<<<< HEAD
-    // Day 1 only ever holds flight + hotel (arrival-day events) — venues and
-    // attractions get their own day columns below, spread the same way they'll
-    // actually be saved.
-=======
     // For a multi-city trip, only the leg currently being shown contributes
     // its own selections — leg 1's picks shouldn't appear while reviewing
-    // leg 2's options, and vice versa.
->>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
+    // leg 2's options, and vice versa. Day 1 only ever holds flight + hotel
+    // (arrival-day events) — venues and attractions get their own day
+    // columns below, spread the same way they'll actually be saved.
     $selCards = [];
     if ($selectedFlight && !$isLeg2Now) {
         $flightIsRT   = strtolower($selectedFlight['type'] ?? '') === 'round trip';
@@ -2166,23 +2162,34 @@ window.sortAttractions = function(dir) {
         $mcFlightDepCost = $mcFlightIsRT ? ($mcFlightCost8 - $mcFlightArrCost) : 0;
         $selCards[] = ['icon'=>'fa-plane','type'=>'Flight','title'=>($selectedMcFlight['airline']??'Flight').' '.($selectedMcFlight['number']??''),'sub'=>($selectedMcFlight['dep_id']??'').' → '.($selectedMcFlight['arr_id']??''),'time'=>$selectedMcFlight['depart']??'','cost'=>$mcFlightArrCost,'isFree'=>false];
     } else { $mcFlightIsRT = false; $mcFlightDepCost = 0; }
-<<<<<<< HEAD
-    if ($selectedHotel)       $selCards[] = ['icon'=>'fa-bed',      'type'=>'Accommodation',        'title'=>$selectedHotel['name']??'Hotel',   'sub'=>($selectedHotel['stars']??3).'★ · '.($selectedHotel['nights']??1).' nights', 'time'=>'Check-in',  'cost'=>$selectedHotel['total']??0,    'isFree'=>false];
-    if ($selectedMcHotel)     $selCards[] = ['icon'=>'fa-bed',      'type'=>'Accommodation (Leg 2)','title'=>$selectedMcHotel['name']??'Hotel', 'sub'=>($selectedMcHotel['stars']??3).'★ · '.($selectedMcHotel['nights']??1).' nights','time'=>'Check-in','cost'=>$selectedMcHotel['total']??0,  'isFree'=>false];
-=======
-    if ($selectedHotel && !$isLeg2Now)         $selCards[] = ['icon'=>'fa-bed',      'type'=>'Accommodation',        'title'=>$selectedHotel['name']??'Hotel',   'sub'=>($selectedHotel['stars']??3).'★ · '.($selectedHotel['nights']??1).' nights', 'time'=>'Check-in',  'cost'=>$selectedHotel['total']??0,    'isFree'=>false];
-    if ($selectedMcHotel && $isLeg2Now)        $selCards[] = ['icon'=>'fa-bed',      'type'=>'Accommodation','title'=>$selectedMcHotel['name']??'Hotel', 'sub'=>($selectedMcHotel['stars']??3).'★ · '.($selectedMcHotel['nights']??1).' nights','time'=>'Check-in','cost'=>$selectedMcHotel['total']??0,  'isFree'=>false];
-    if ($selectedVenue && !$isLeg2Now)         $selCards[] = ['icon'=>'fa-utensils', 'type'=>'Food & Dining',        'title'=>$selectedVenue['name']??'Restaurant',   'sub'=>$selectedVenue['cuisine']??'',   'time'=>'Dinner',    'cost'=>($selectedVenue['priceMin']??0).($selectedVenue['priceMax']??0 ? '–'.($selectedVenue['priceMax']??0) : ''), 'isFree'=>false];
-    if ($selectedMcVenue && $isLeg2Now)        $selCards[] = ['icon'=>'fa-utensils', 'type'=>'Food & Dining','title'=>$selectedMcVenue['name']??'Restaurant', 'sub'=>$selectedMcVenue['cuisine']??'', 'time'=>'Dinner',    'cost'=>($selectedMcVenue['priceMin']??0).($selectedMcVenue['priceMax']??0 ? '–'.($selectedMcVenue['priceMax']??0) : ''), 'isFree'=>false];
-    if ($selectedAttraction && !$isLeg2Now)    $selCards[] = ['icon'=>'fa-camera',   'type'=>'Attraction',           'title'=>$selectedAttraction['name']??'Attraction',   'sub'=>$selectedAttraction['type']??'',   'time'=>'Activity', 'cost'=>$selectedAttraction['price']??0,   'isFree'=>$selectedAttraction['isFree']??false];
-    if ($selectedMcAttraction && $isLeg2Now)   $selCards[] = ['icon'=>'fa-camera',   'type'=>'Attraction','title'=>$selectedMcAttraction['name']??'Attraction', 'sub'=>$selectedMcAttraction['type']??'', 'time'=>'Activity', 'cost'=>$selectedMcAttraction['price']??0, 'isFree'=>$selectedMcAttraction['isFree']??false];
->>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
+    if ($selectedHotel && !$isLeg2Now)   $selCards[] = ['icon'=>'fa-bed', 'type'=>'Accommodation', 'title'=>$selectedHotel['name']??'Hotel',   'sub'=>($selectedHotel['stars']??3).'★ · '.($selectedHotel['nights']??1).' nights',   'time'=>'Check-in', 'cost'=>$selectedHotel['total']??0,   'isFree'=>false];
+    if ($selectedMcHotel && $isLeg2Now)  $selCards[] = ['icon'=>'fa-bed', 'type'=>'Accommodation', 'title'=>$selectedMcHotel['name']??'Hotel', 'sub'=>($selectedMcHotel['stars']??3).'★ · '.($selectedMcHotel['nights']??1).' nights', 'time'=>'Check-in', 'cost'=>$selectedMcHotel['total']??0, 'isFree'=>false];
+    // Venues/attractions deliberately aren't added to $selCards here — they
+    // get their own spread-across-days treatment below (matching how
+    // saveItinerary() actually schedules them), and their cost is already
+    // counted separately via selectedVenuesCost()/selectedAttractionsCost()
+    // below. Adding them here too would double-count $totalCost8.
+    //
+    // The comparison grid's "Your Selections" checklist needs them listed
+    // though (it filters out the day-by-day view's own venue/attraction
+    // days entirely) — so build a display-only copy just for that, never
+    // used for cost math.
+    $selCardsWithPicks = $selCards;
+    // Multi-select: several venues/attractions can be picked per leg now,
+    // so each gets its own line instead of a single if-check.
+    foreach (($isLeg2Now ? $selectedMcVenues : $selectedVenues) as $v) {
+        $selCardsWithPicks[] = ['title' => 'Lunch/Dinner at ' . ($v['name'] ?? 'Restaurant')];
+    }
+    foreach (($isLeg2Now ? $selectedMcAttractions : $selectedAttractions) as $a) {
+        $selCardsWithPicks[] = ['title' => 'Visit ' . ($a['name'] ?? 'Attraction')];
+    }
 
     $totalCost8 = 0;
     foreach ($selCards as $c) {
         if (!$c['isFree'] && is_numeric($c['cost'])) $totalCost8 += (float) $c['cost'];
     }
     $totalCost8 += $this->selectedVenuesCost() + $this->selectedAttractionsCost();
+    foreach ($customActivities as $ca) { $totalCost8 += (float) ($ca['cost'] ?? 0); }
     // Add AI activity costs
     if ($aiItinerary && !empty($aiItinerary['days'])) {
         foreach ($aiItinerary['days'] as $d) {
@@ -2200,93 +2207,90 @@ window.sortAttractions = function(dir) {
     foreach ($selCards as $sc) {
         $selActivities[] = ['time'=>$sc['time'],'title'=>$sc['title'],'description'=>$sc['sub'],'type'=>$sc['type'],'cost'=>$sc['cost'],'isFree'=>$sc['isFree'],'icon'=>$sc['icon'],'isUserPick'=>true];
     }
-<<<<<<< HEAD
-    $allDays = [['day'=>1,'label'=>'Arrival','activities'=>$selActivities,'isUserDay'=>true]];
-
-    // Day 2, 3, ... = the traveler's selected venues/attractions, spread across
-    // as many days as needed (same bucketing saveItinerary() uses to persist them).
+    // Mirrors saveItinerary()'s day-bucketing (3 attractions / 2 venues per
+    // day) so the preview matches what actually gets saved. Scoped to
+    // whichever leg is currently being viewed — selectionDayBuckets()
+    // combines both legs, which is only right for a single-city trip.
     $attrTimes8  = ['09:00', '11:30', '16:00'];
     $venueTimes8 = ['12:30', '19:00'];
-    $dayCursor   = 2;
-    foreach ($this->selectionDayBuckets() as $bucket) {
-        $dayActivities = [];
-        foreach ($bucket['attractions'] ?? [] as $slot => $attr) {
-            $dayActivities[] = ['time'=>$attrTimes8[$slot] ?? '16:00','title'=>'Visit '.($attr['name']??'Attraction'),'description'=>$attr['type']??'','type'=>'Attraction','cost'=>(int)preg_replace('/[^\d]/','',$attr['price']??'0'),'isFree'=>$attr['isFree']??false,'icon'=>'fa-camera','isUserPick'=>true];
+    $dayBucketsFor8 = function (array $attractions, array $venues): array {
+        $buckets = [];
+        foreach (array_chunk(array_values($attractions), 3) as $i => $chunk) {
+            $buckets[$i]['attractions'] = $chunk;
         }
-        foreach ($bucket['venues'] ?? [] as $slot => $venue) {
-            $label = $slot === 0 ? 'Lunch at ' : 'Dinner at ';
-            $dayActivities[] = ['time'=>$venueTimes8[$slot] ?? '20:30','title'=>$label.($venue['name']??'Restaurant'),'description'=>$venue['cuisine']??'','type'=>'Food & Dining','cost'=>(float)($venue['priceMax']??$venue['priceMin']??0),'isFree'=>false,'icon'=>'fa-utensils','isUserPick'=>true];
+        foreach (array_chunk(array_values($venues), 2) as $i => $chunk) {
+            $buckets[$i]['venues'] = $chunk;
         }
-        usort($dayActivities, fn ($a, $b) => strcmp($a['time'], $b['time']));
-        $allDays[] = ['day'=>$dayCursor,'label'=>'Explore & Dine','activities'=>$dayActivities,'isUserDay'=>true];
-        $dayCursor++;
-    }
-    $selectionDaysUsed8 = $dayCursor - 2; // how many "Explore" days we just added
+        ksort($buckets);
+        return $buckets;
+    };
+    $legAttractions8 = $isLeg2Now ? $selectedMcAttractions : $selectedAttractions;
+    $legVenues8      = $isLeg2Now ? $selectedMcVenues      : $selectedVenues;
 
-    // AI days start right after arrival + however many selection days we used;
-    // inject return-flight cost onto last day's departure activity
+    // Builds the Day-1-selections + Explore-days + AI-days list for a given
+    // itinerary array — used once per option now that every option renders
+    // its own full day-by-day list inline instead of only the selected one.
     $returnDepCost = $flightDepCost + ($mcFlightDepCost ?? 0);
-    if ($aiItinerary && !empty($aiItinerary['days'])) {
-        $aiDayList = $aiItinerary['days'];
-        $lastIdx   = count($aiDayList) - 1;
-        foreach ($aiDayList as $i => $aiDay) {
-            $aiDay['isUserDay'] = false;
-            $aiDay['day']       = $i + 2 + $selectionDaysUsed8;
-            // On the last AI day, add return cost to the "Head to Airport" activity
-            if ($i === $lastIdx && $returnDepCost > 0) {
-                foreach ($aiDay['activities'] as &$actItem) {
-                    if (stripos($actItem['title'] ?? '', 'airport') !== false || stripos($actItem['title'] ?? '', 'departure') !== false) {
-                        $actItem['cost'] = $returnDepCost;
-                        break;
-=======
-
-    // Builds the Day-1-selections + AI-days list for a given itinerary
-    // array — used once per option now that every option renders its own
-    // full day-by-day list inline instead of only the selected one.
-    $returnDepCost = $flightDepCost + ($mcFlightDepCost ?? 0);
-    $buildAllDays = function (?array $itin) use ($selActivities, $returnDepCost) {
+    $buildAllDays = function (?array $itin) use ($selActivities, $returnDepCost, $dayBucketsFor8, $legAttractions8, $legVenues8, $attrTimes8, $venueTimes8, $customActivities) {
         $days = [['day'=>1,'label'=>'Arrival','activities'=>$selActivities,'isUserDay'=>true]];
+
+        // Day 2, 3, ... = the traveler's selected venues/attractions for this
+        // leg, spread across as many days as needed.
+        $dayCursor = 2;
+        foreach ($dayBucketsFor8($legAttractions8, $legVenues8) as $bucket) {
+            $dayActivities = [];
+            foreach ($bucket['attractions'] ?? [] as $slot => $attr) {
+                $dayActivities[] = ['time'=>$attrTimes8[$slot] ?? '16:00','title'=>'Visit '.($attr['name']??'Attraction'),'description'=>$attr['type']??'','type'=>'Attraction','cost'=>(int)preg_replace('/[^\d]/','',$attr['price']??'0'),'isFree'=>$attr['isFree']??false,'icon'=>'fa-camera','isUserPick'=>true];
+            }
+            foreach ($bucket['venues'] ?? [] as $slot => $venue) {
+                $label = $slot === 0 ? 'Lunch at ' : 'Dinner at ';
+                $dayActivities[] = ['time'=>$venueTimes8[$slot] ?? '20:30','title'=>$label.($venue['name']??'Restaurant'),'description'=>$venue['cuisine']??'','type'=>'Food & Dining','cost'=>(float)($venue['priceMax']??$venue['priceMin']??0),'isFree'=>false,'icon'=>'fa-utensils','isUserPick'=>true];
+            }
+            usort($dayActivities, fn ($a, $b) => strcmp($a['time'], $b['time']));
+            $days[] = ['day'=>$dayCursor,'label'=>'Explore & Dine','activities'=>$dayActivities,'isUserDay'=>true];
+            $dayCursor++;
+        }
+        $selectionDaysUsed8 = $dayCursor - 2; // how many "Explore" days we just added
+
+        // AI days start right after arrival + however many selection days we
+        // used; inject return-flight cost onto last day's departure activity
         if ($itin && !empty($itin['days'])) {
             $aiDayList = $itin['days'];
             $lastIdx   = count($aiDayList) - 1;
             foreach ($aiDayList as $i => $aiDay) {
                 $aiDay['isUserDay'] = false;
-                $aiDay['day']       = $i + 2;
+                $aiDay['day']       = $i + 2 + $selectionDaysUsed8;
+                // On the last AI day, add return cost to the "Head to Airport" activity
                 if ($i === $lastIdx && $returnDepCost > 0) {
                     foreach ($aiDay['activities'] as &$actItem) {
                         if (stripos($actItem['title'] ?? '', 'airport') !== false || stripos($actItem['title'] ?? '', 'departure') !== false) {
                             $actItem['cost'] = $returnDepCost;
                             break;
                         }
->>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
                     }
                     unset($actItem);
                 }
                 $days[] = $aiDay;
             }
         }
-<<<<<<< HEAD
-    }
 
-    // Merge traveler-added custom activities onto whichever day they picked.
-    foreach ($customActivities as $ci => $ca) {
-        $dayIdx = null;
-        foreach ($allDays as $k => $d) {
-            if (($d['day'] ?? null) == $ca['day']) { $dayIdx = $k; break; }
+        // Merge traveler-added custom activities onto whichever day they picked.
+        foreach ($customActivities as $ci => $ca) {
+            $dayIdx = null;
+            foreach ($days as $k => $d) {
+                if (($d['day'] ?? null) == $ca['day']) { $dayIdx = $k; break; }
+            }
+            if ($dayIdx === null) continue; // picked a day that no longer exists — skip safely
+            $days[$dayIdx]['activities'][] = [
+                'time' => $ca['time'], 'title' => $ca['title'], 'description' => $ca['description'],
+                'type' => $ca['type'], 'cost' => $ca['cost'], 'isFree' => $ca['cost'] <= 0,
+                'isCustom' => true, 'customIndex' => $ci,
+            ];
         }
-        if ($dayIdx === null) continue; // picked a day that no longer exists — skip safely
-        $allDays[$dayIdx]['activities'][] = [
-            'time' => $ca['time'], 'title' => $ca['title'], 'description' => $ca['description'],
-            'type' => $ca['type'], 'cost' => $ca['cost'], 'isFree' => $ca['cost'] <= 0,
-            'isCustom' => true, 'customIndex' => $ci,
-        ];
-        $totalCost8 += (float) $ca['cost'];
-    }
-=======
+
         return $days;
     };
     $allDays = $buildAllDays($aiItinerary);
->>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
 @endphp
 
 <style>
@@ -2386,22 +2390,10 @@ window.sortAttractions = function(dir) {
                     @endif
                 </div>
                 <div class="itin8-cost-val">₱{{ number_format($totalCost8) }}</div>
-<<<<<<< HEAD
-            </div>
-            <div class="itin8-actions" style="justify-content:flex-end;margin-top:10px;">
-                <button class="itin8-btn-ghost" wire:click="backToAttractions" wire:loading.attr="disabled" wire:target="backToAttractions" title="Change your food & attraction picks">
-                    <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back
-                </button>
-                <button class="itin8-btn-ghost" wire:click="regenerateItinerary" wire:loading.attr="disabled" wire:target="regenerateItinerary">
-                    <span wire:loading.remove wire:target="regenerateItinerary"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Generate Other Options</span>
-                    <span wire:loading wire:target="regenerateItinerary"><i class="fa-solid fa-spinner fa-spin"></i> Generating…</span>
-                </button>
-                <button class="itin8-btn-save" wire:click="goToSummary" wire:loading.attr="disabled" wire:target="goToSummary">
-                    <span wire:loading.remove wire:target="goToSummary">Save Itinerary <i class="fa-solid fa-floppy-disk" style="font-size:11px;"></i></span>
-                    <span wire:loading wire:target="goToSummary"><i class="fa-solid fa-spinner fa-spin"></i></span>
-                </button>
-=======
                 <div class="itin8-actions" style="justify-content:flex-end;margin-top:12px;">
+                    <button class="itin8-btn-ghost" wire:click="backToAttractions" wire:loading.attr="disabled" wire:target="backToAttractions" title="Change your food & attraction picks">
+                        <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back
+                    </button>
                     <button class="itin8-btn-ghost" wire:click="regenerateItineraryOptions" wire:loading.attr="disabled" wire:target="regenerateItineraryOptions">
                         <span wire:loading.remove wire:target="regenerateItineraryOptions" style="white-space:nowrap;"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Generate Other Options</span>
                         <span wire:loading wire:target="regenerateItineraryOptions" style="white-space:nowrap;"><i class="fa-solid fa-spinner fa-spin"></i></span>
@@ -2417,7 +2409,6 @@ window.sortAttractions = function(dir) {
                         <span wire:loading wire:target="continueItinerary"><i class="fa-solid fa-spinner fa-spin"></i></span>
                     </button>
                 </div>
->>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
             </div>
         </div>
     </div>
@@ -2542,10 +2533,10 @@ window.sortAttractions = function(dir) {
             </button>
 
             {{-- Traveler's own selections — same across every option --}}
-            @if(!empty($selCards))
+            @if(!empty($selCardsWithPicks))
             <div style="font-size:11px;font-weight:700;color:#817470;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Your Selections</div>
             <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
-                @foreach($selCards as $sc8)
+                @foreach($selCardsWithPicks as $sc8)
                 <div style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#4f4441;line-height:1.4;">
                     <i class="fa-solid fa-check" style="color:#22C55E;font-size:10px;margin-top:3px;flex-shrink:0;"></i>
                     <span>{{ $sc8['title'] }}</span>
@@ -2599,26 +2590,6 @@ window.sortAttractions = function(dir) {
                 </div>
                 <div class="itin8-day-num">{{ $dayNum }}</div>
             </div>
-<<<<<<< HEAD
-            @foreach($dayItem['activities'] ?? [] as $act)
-            @php
-                $actType = $act['type'] ?? 'default';
-                $msInfo  = $typeToMs[$actType] ?? $typeToMs['default'];
-                $msIcon  = $msInfo['icon'];
-                $msColor = $msInfo['color'];
-                $actCost = $act['cost'] ?? null;
-                $actFree = $act['isFree'] ?? false;
-            @endphp
-            <div class="itin8-act-card" style="border-left-color:{{ $msColor }};position:relative;">
-                @if($act['isCustom'] ?? false)
-                <button wire:click="removeCustomActivity({{ $act['customIndex'] }})" title="Remove"
-                        style="position:absolute;top:8px;right:8px;background:none;border:none;color:#9B8EA0;cursor:pointer;font-size:12px;padding:2px;">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-                @endif
-                <div class="itin8-act-top">
-                    <div class="itin8-act-icon">
-=======
             <div class="itin8-timeline">
                 @foreach($dayItem['activities'] ?? [] as $act)
                 @php
@@ -2630,8 +2601,13 @@ window.sortAttractions = function(dir) {
                     $actFree = $act['isFree'] ?? false;
                 @endphp
                 <div class="itin8-act-card">
+                    @if($act['isCustom'] ?? false)
+                    <button wire:click="removeCustomActivity({{ $act['customIndex'] }})" title="Remove"
+                            style="position:absolute;top:8px;right:8px;background:none;border:none;color:#9B8EA0;cursor:pointer;font-size:12px;padding:2px;">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    @endif
                     <div class="itin8-act-icon" style="box-shadow:0 0 0 2px {{ $msColor }};">
->>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
                         <span class="material-symbols-outlined" style="color:{{ $msColor }};">{{ $msIcon }}</span>
                     </div>
                     <div class="itin8-act-top">
@@ -2657,7 +2633,6 @@ window.sortAttractions = function(dir) {
         </div>
         @endforeach
     </div>
-<<<<<<< HEAD
 
     {{-- Add Custom Activity button --}}
     <div style="display:flex;justify-content:center;padding-top:4px;">
@@ -2665,9 +2640,7 @@ window.sortAttractions = function(dir) {
             <span class="material-symbols-outlined" style="font-size:16px;">add</span> Add Custom Activity
         </button>
     </div>
-=======
     @endif
->>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
 
     {{-- Add Custom Activity modal --}}
     @if($showCustomActivityModal)
@@ -2749,15 +2722,12 @@ window.sortAttractions = function(dir) {
     $s9sdow  = $startDate ? \Carbon\Carbon::parse($startDate)->format('l') : '';
     $s9edow  = $endDate   ? \Carbon\Carbon::parse($endDate)->format('l')   : '';
 
-<<<<<<< HEAD
     // Cost breakdown from selections
     $s9flight = ($selectedFlight['price'] ?? 0) + ($selectedMcFlight['price'] ?? 0);
     $s9hotel  = ($selectedHotel['total']  ?? 0) + ($selectedMcHotel['total']  ?? 0);
     $s9venue  = $this->selectedVenuesCost();
     $s9attr   = $this->selectedAttractionsCost();
-=======
     $s9isMultiCity = $flightTripType === 'multi_city' && $mcTo;
->>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
 
     // AI-suggested days are generated one leg at a time — $aiItineraryLeg1
     // holds leg 1's days (stashed once leg 2's options were generated) and
@@ -2786,10 +2756,12 @@ window.sortAttractions = function(dir) {
     $s9flightBase2 = (float) ($selectedMcFlight['price'] ?? 0);
     $s9hotelBase1  = (float) ($selectedHotel['total']    ?? 0);
     $s9hotelBase2  = (float) ($selectedMcHotel['total']  ?? 0);
-    $s9venueBase1  = (float) ($selectedVenue['priceMax']   ?? $selectedVenue['priceMin']   ?? 0);
-    $s9venueBase2  = (float) ($selectedMcVenue['priceMax'] ?? $selectedMcVenue['priceMin'] ?? 0);
-    $s9attrBase1   = $selectedAttraction['isFree']   ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $selectedAttraction['price']   ?? '0');
-    $s9attrBase2   = $selectedMcAttraction['isFree'] ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $selectedMcAttraction['price'] ?? '0');
+    // Multi-select: a leg can hold several venues/attractions, so each
+    // leg's base cost is a sum, not one item's price.
+    $s9venueBase1  = (float) array_sum(array_map(fn($v) => $v['priceMax'] ?? $v['priceMin'] ?? 0, $selectedVenues));
+    $s9venueBase2  = (float) array_sum(array_map(fn($v) => $v['priceMax'] ?? $v['priceMin'] ?? 0, $selectedMcVenues));
+    $s9attrBase1   = array_sum(array_map(fn($a) => ($a['isFree'] ?? false) ? 0 : (int) preg_replace('/[^\d]/', '', $a['price'] ?? '0'), $selectedAttractions));
+    $s9attrBase2   = array_sum(array_map(fn($a) => ($a['isFree'] ?? false) ? 0 : (int) preg_replace('/[^\d]/', '', $a['price'] ?? '0'), $selectedMcAttractions));
 
     $s9flight1 = $s9flightBase1 + $s9leg1AiTotals['transport'];
     $s9flight2 = $s9flightBase2 + $s9leg2AiTotals['transport'];
@@ -2813,27 +2785,25 @@ window.sortAttractions = function(dir) {
     // Selections for summary list — leg 1 always; leg 2 only for multi-city.
     // Costs here are each pick's own price only (see $s9*Base* above).
     $s9picks = [];
-<<<<<<< HEAD
-    if ($selectedFlight)      $s9picks[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''),  'cost'=>$s9flight, 'editStep'=>2];
-    if ($selectedHotel)       $s9picks[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotel,  'editStep'=>3];
-    foreach ($this->selectedVenuesFlat() as $sv9) {
+    if ($selectedFlight) $s9picks[] = ['icon'=>'fa-plane', 'label'=>'Flight',        'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''), 'cost'=>$s9flightBase1, 'editStep'=>2];
+    if ($selectedHotel)  $s9picks[] = ['icon'=>'fa-bed',   'label'=>'Accommodation', 'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotelBase1,  'editStep'=>3];
+    foreach ($selectedVenues as $sv9) {
         $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>$sv9['name']??'Restaurant', 'cost'=>(float)($sv9['priceMax']??$sv9['priceMin']??0), 'editStep'=>4];
     }
-    foreach ($this->selectedAttractionsFlat() as $sa9) {
+    foreach ($selectedAttractions as $sa9) {
         $s9picks[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>$sa9['name']??'Attraction', 'cost'=>($sa9['isFree']??false)?0:(int)preg_replace('/[^\d]/','',$sa9['price']??'0'), 'editStep'=>5];
     }
-=======
-    if ($selectedFlight)      $s9picks[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''),  'cost'=>$s9flightBase1, 'editStep'=>2];
-    if ($selectedHotel)       $s9picks[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotelBase1,  'editStep'=>3];
-    if ($selectedVenue)       $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining',  'val'=>$selectedVenue['name']??'Restaurant',                                 'cost'=>$s9venueBase1,  'editStep'=>4];
-    if ($selectedAttraction)  $s9picks[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedAttraction['name']??'Attraction',                            'cost'=>$s9attrBase1,   'editStep'=>5];
 
     $s9picksLeg2 = [];
     if ($s9isMultiCity) {
-        if ($selectedMcFlight)     $s9picksLeg2[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedMcFlight['airline']??'').' '.($selectedMcFlight['number']??''), 'cost'=>$s9flightBase2, 'editStep'=>2];
-        if ($selectedMcHotel)      $s9picksLeg2[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedMcHotel['name']??'Hotel',                                         'cost'=>$s9hotelBase2,  'editStep'=>3];
-        if ($selectedMcVenue)      $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining',  'val'=>$selectedMcVenue['name']??'Restaurant',                                    'cost'=>$s9venueBase2,  'editStep'=>4];
-        if ($selectedMcAttraction) $s9picksLeg2[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedMcAttraction['name']??'Attraction',                               'cost'=>$s9attrBase2,   'editStep'=>5];
+        if ($selectedMcFlight) $s9picksLeg2[] = ['icon'=>'fa-plane', 'label'=>'Flight',        'val'=>($selectedMcFlight['airline']??'').' '.($selectedMcFlight['number']??''), 'cost'=>$s9flightBase2, 'editStep'=>2];
+        if ($selectedMcHotel)  $s9picksLeg2[] = ['icon'=>'fa-bed',   'label'=>'Accommodation', 'val'=>$selectedMcHotel['name']??'Hotel',                                         'cost'=>$s9hotelBase2,  'editStep'=>3];
+        foreach ($selectedMcVenues as $sv9) {
+            $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>$sv9['name']??'Restaurant', 'cost'=>(float)($sv9['priceMax']??$sv9['priceMin']??0), 'editStep'=>4];
+        }
+        foreach ($selectedMcAttractions as $sa9) {
+            $s9picksLeg2[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>$sa9['name']??'Attraction', 'cost'=>($sa9['isFree']??false)?0:(int)preg_replace('/[^\d]/','',$sa9['price']??'0'), 'editStep'=>5];
+        }
     }
 
     $s9leg1Dest = trim($manualTo ?: 'Unknown');
@@ -2843,7 +2813,6 @@ window.sortAttractions = function(dir) {
     $s9leg2Sdow  = $mcStartDate ? \Carbon\Carbon::parse($mcStartDate)->format('l') : '';
     $s9leg2Edow  = $mcEndDate   ? \Carbon\Carbon::parse($mcEndDate)->format('l')   : '';
     $s9leg2Days  = ($mcStartDate && $mcEndDate) ? max(1,(int)round((strtotime($mcEndDate)-strtotime($mcStartDate))/86400)) : 1;
->>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
 @endphp
 
 <div style="max-width:1200px;margin:0 auto;padding:20px 0;">

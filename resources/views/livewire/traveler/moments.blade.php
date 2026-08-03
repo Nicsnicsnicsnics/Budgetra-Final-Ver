@@ -21,6 +21,10 @@
     .moments-overview-map-el { width: 100%; height: 640px; }
     @media (max-width: 900px) { .moments-overview-map-el { height: 480px; } }
     @media (max-width: 560px) { .moments-overview-map-el { height: 400px; } }
+    .timeline-entry .timeline-card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+    .timeline-entry:hover .timeline-card { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(45,27,20,.10); border-color: #934B19; }
+    .moments-share-trip-btn { transition: background .15s ease, border-color .15s ease; }
+    .moments-share-trip-btn:hover { background: #FDF3EB; border-color: #934B19; }
     .moments-float-chip {
         position: absolute; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.14); max-width: calc(100% - 32px);
@@ -33,23 +37,29 @@
         bottom: 16px; left: 16px; background: rgba(28,20,15,.80); color: #fff;
         padding: 10px 16px; font-size: 12px; display: flex; align-items: center; gap: 8px;
     }
-    .moments-view-toggle-btn { transition: background .15s ease, color .15s ease; }
+    .moments-segmented {
+        display: inline-flex; background: var(--bg, #F8F5F2); border: 1px solid var(--border, #E5E7EB);
+        border-radius: 999px; padding: 4px; gap: 2px; margin-bottom: 16px;
+    }
+    .moments-segment {
+        display: inline-flex; align-items: center; gap: 7px; border: none; background: transparent;
+        color: #817470; font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 999px;
+        cursor: pointer; transition: background .2s ease, color .2s ease, box-shadow .2s ease;
+    }
+    .moments-segment.is-active { background: #fff; color: #934B19; box-shadow: 0 2px 8px rgba(45,27,20,.10); }
+    .moments-segment:not(.is-active):hover { color: #4f4441; }
 </style>
 
 {{-- Map View / Timeline View toggle for the overview page itself — a
      separate Alpine store from the per-trip toggle below, so the two never
      interfere with each other. --}}
-<div x-data style="display:flex;gap:8px;margin-bottom:14px;">
-    <button type="button" class="moments-view-toggle-btn" @click="$store.overviewMoments.view = 'map'"
-            :style="$store.overviewMoments.view === 'map'
-                ? 'background:#934B19;color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'
-                : 'background:#fff;color:#817470;border:1.5px solid var(--border);border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'">
+<div x-data class="moments-segmented">
+    <button type="button" class="moments-segment" :class="{ 'is-active': $store.overviewMoments.view === 'map' }"
+            @click="$store.overviewMoments.view = 'map'">
         <i class="fa-solid fa-map-location-dot"></i> Map View
     </button>
-    <button type="button" class="moments-view-toggle-btn" @click="$store.overviewMoments.view = 'timeline'"
-            :style="$store.overviewMoments.view === 'timeline'
-                ? 'background:#934B19;color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'
-                : 'background:#fff;color:#817470;border:1.5px solid var(--border);border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'">
+    <button type="button" class="moments-segment" :class="{ 'is-active': $store.overviewMoments.view === 'timeline' }"
+            @click="$store.overviewMoments.view = 'timeline'">
         <i class="fa-solid fa-timeline"></i> Timeline View
     </button>
 </div>
@@ -92,7 +102,7 @@
                 <div style="font-size:13px;color:#9B8EA0;max-width:320px;line-height:1.6;margin-bottom:18px;">
                     Switch to Map View and click anywhere to post your first Moment — it'll show up here as a timeline entry.
                 </div>
-                <button type="button" @click="$store.overviewMoments.view = 'map'"
+                <button type="button" @click="$store.overviewMoments.view = 'map'" class="moments-btn-primary"
                         style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;">
                     <i class="fa-solid fa-map-location-dot"></i> Go to Map View
                 </button>
@@ -100,15 +110,25 @@
             @else
             @foreach ($overviewTimelineGrouped as $destination => $destMoments)
             <div style="margin-bottom:28px;">
-                <div style="font-size:14px;font-weight:800;color:#934B19;text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid #F0E8DF;">
-                    <i class="fa-solid fa-plane"></i> {{ $destination }}
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid #F0E8DF;">
+                    <div style="font-size:14px;font-weight:800;color:#934B19;text-transform:uppercase;letter-spacing:.04em;">
+                        <i class="fa-solid fa-plane"></i> {{ $destination }}
+                    </div>
+                    {{-- Grouped by destination name, so if the same place was
+                         visited on two separate trips this shares whichever
+                         one the first moment in the group belongs to — same
+                         limitation the grouping itself already has. --}}
+                    <button type="button" wire:click="openSharePicker({{ $destMoments->first()['trip_id'] }})" class="moments-share-trip-btn"
+                            style="flex-shrink:0;display:inline-flex;align-items:center;gap:6px;background:#fff;color:#934B19;border:1.5px solid #F0E8DF;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">
+                        <i class="fa-solid fa-share-nodes"></i> Share
+                    </button>
                 </div>
                 <div style="position:relative;padding-left:28px;">
                     <div style="position:absolute;left:9px;top:6px;bottom:6px;width:2px;background:#EDE0D6;"></div>
                     @foreach ($destMoments as $moment)
                     <div class="timeline-entry" style="position:relative;margin-bottom:14px;">
                         <div style="position:absolute;left:-24px;top:18px;width:10px;height:10px;border-radius:50%;background:#C8874A;"></div>
-                        <div class="timeline-card" style="background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:14px;padding:14px;">
+                        <div class="timeline-card" style="background:#fff;border:1.5px solid #F0E8DF;border-radius:16px;padding:16px;">
                             <div class="timeline-card-inner" style="display:flex;gap:12px;">
                                 @if (count($moment['photo_urls']))
                                 <img src="{{ $moment['photo_urls'][0] }}" alt="{{ $moment['place_name'] }}"
@@ -143,10 +163,13 @@
 </div>
 
 @else
-<button wire:click="backToOverview" type="button"
+<button wire:click="backToOverview" type="button" class="moments-back-btn"
         style="display:flex;align-items:center;gap:8px;background:none;border:none;padding:0 0 16px;font-size:13px;font-weight:600;color:#934B19;cursor:pointer;">
-    <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> All Destinations
+    <i class="fa-solid fa-arrow-left" style="font-size:11px;transition:transform .15s ease;"></i> All Destinations
 </button>
+<style>
+    .moments-back-btn:hover i { transform: translateX(-3px); }
+</style>
 
 @if ($selectedTripId && $this->selectedTrip)
 @php
@@ -158,8 +181,8 @@
 @endphp
 
 <style>
-    .timeline-entry .timeline-card { transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
-    .timeline-entry:hover .timeline-card { transform: translateX(2px); box-shadow: 0 4px 14px rgba(0,0,0,.08); border-color: #934B19; }
+    .timeline-entry .timeline-card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+    .timeline-entry:hover .timeline-card { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(45,27,20,.10); border-color: #934B19; }
     .timeline-entry.is-highlighted .timeline-card { animation: timelinePulse 1.4s ease; border-color: #934B19; }
     @keyframes timelinePulse {
         0%   { box-shadow: 0 0 0 0 rgba(147,75,25,.45); }
@@ -172,7 +195,17 @@
         50%  { transform: scale(1.3); }
         100% { filter: drop-shadow(0 0 0 rgba(147,75,25,0)); transform: scale(1); }
     }
-    .moments-view-toggle-btn { transition: background .15s ease, color .15s ease; }
+    .moments-segmented {
+        display: inline-flex; background: var(--bg, #F8F5F2); border: 1px solid var(--border, #E5E7EB);
+        border-radius: 999px; padding: 4px; gap: 2px; margin-bottom: 16px;
+    }
+    .moments-segment {
+        display: inline-flex; align-items: center; gap: 7px; border: none; background: transparent;
+        color: #817470; font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 999px;
+        cursor: pointer; transition: background .2s ease, color .2s ease, box-shadow .2s ease;
+    }
+    .moments-segment.is-active { background: #fff; color: #934B19; box-shadow: 0 2px 8px rgba(45,27,20,.10); }
+    .moments-segment:not(.is-active):hover { color: #4f4441; }
     @media (max-width: 640px) {
         .timeline-card-inner { flex-direction: column; }
     }
@@ -181,17 +214,13 @@
 {{-- Map / Timeline toggle — client-side only (a global Alpine store), so
      switching views never round-trips through Livewire and the map (which
      is wire:ignore'd) is never torn down or reinitialized. --}}
-<div x-data style="display:flex;gap:8px;margin-bottom:14px;">
-    <button type="button" class="moments-view-toggle-btn" @click="$store.moments.view = 'map'"
-            :style="$store.moments.view === 'map'
-                ? 'background:#934B19;color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'
-                : 'background:#fff;color:#817470;border:1.5px solid var(--border);border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'">
+<div x-data class="moments-segmented">
+    <button type="button" class="moments-segment" :class="{ 'is-active': $store.moments.view === 'map' }"
+            @click="$store.moments.view = 'map'">
         <i class="fa-solid fa-map-location-dot"></i> Map View
     </button>
-    <button type="button" class="moments-view-toggle-btn" @click="$store.moments.view = 'timeline'"
-            :style="$store.moments.view === 'timeline'
-                ? 'background:#934B19;color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'
-                : 'background:#fff;color:#817470;border:1.5px solid var(--border);border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;'">
+    <button type="button" class="moments-segment" :class="{ 'is-active': $store.moments.view === 'timeline' }"
+            @click="$store.moments.view = 'timeline'">
         <i class="fa-solid fa-timeline"></i> Timeline View
     </button>
 </div>
@@ -228,7 +257,7 @@
                 <div style="font-size:13px;color:#9B8EA0;max-width:320px;line-height:1.6;margin-bottom:18px;">
                     Switch to Map View and click anywhere to post your first Moment — it'll show up here as a timeline entry.
                 </div>
-                <button type="button" @click="$store.moments.view = 'map'"
+                <button type="button" @click="$store.moments.view = 'map'" class="moments-btn-primary"
                         style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;">
                     <i class="fa-solid fa-map-location-dot"></i> Go to Map View
                 </button>
@@ -253,7 +282,7 @@
                          style="position:relative;margin-bottom:14px;cursor:pointer;"
                          onclick="focusMapOnMoment({{ $moment['id'] }})">
                         <div style="position:absolute;left:-24px;top:18px;width:10px;height:10px;border-radius:50%;background:#C8874A;"></div>
-                        <div class="timeline-card" style="background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:14px;padding:14px;">
+                        <div class="timeline-card" style="background:#fff;border:1.5px solid #F0E8DF;border-radius:16px;padding:16px;">
                             <div class="timeline-card-inner" style="display:flex;gap:12px;">
                                 @if (count($moment['photo_urls']))
                                 <img src="{{ $moment['photo_urls'][0] }}" alt="{{ $moment['place_name'] }}"
@@ -286,10 +315,29 @@
 @endif
 @endif
 
+{{-- Shared modal entrance animation — a plain CSS keyframe rather than an
+     Alpine x-transition, since these modals are gated by a Blade @if (a
+     real DOM insert on each open), not an Alpine x-show, so a CSS
+     animation on mount is what actually replays it every time. --}}
+<style>
+    @keyframes momentsModalBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes momentsModalCardIn { from { opacity: 0; transform: scale(.96) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    .moments-modal-backdrop { animation: momentsModalBackdropIn .18s ease both; }
+    .moments-modal-card { animation: momentsModalCardIn .22s cubic-bezier(.2,.9,.3,1.1) both; }
+    .moments-input { transition: border-color .15s ease, box-shadow .15s ease; }
+    .moments-input:focus { outline: none; border-color: #934B19 !important; box-shadow: 0 0 0 3px rgba(147,75,25,.12); }
+    .moments-btn-primary { transition: background .15s ease, transform .12s ease, box-shadow .15s ease; }
+    .moments-btn-primary:hover:not(:disabled) { background: #7A3C12; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(147,75,25,.25); }
+    .moments-btn-outline { transition: background .15s ease, border-color .15s ease, color .15s ease; }
+    .moments-btn-outline:hover:not(:disabled) { background: #F9FAFB; border-color: #D1D5DB; color: #374151; }
+    .moments-btn-danger { transition: background .15s ease, transform .12s ease, box-shadow .15s ease; }
+    .moments-btn-danger:hover:not(:disabled) { background: #B91C1C; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(220,38,38,.25); }
+</style>
+
 {{-- ── Add/Edit Travel Pin modal ──────────────────────── --}}
 @if ($showPinModal)
-<div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closePinModal">
-    <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(45,27,20,.18);padding:24px 24px 20px;">
+<div class="moments-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closePinModal">
+    <div class="moments-modal-card" style="background:#fff;border-radius:20px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(45,27,20,.18);padding:24px 24px 20px;">
 
         {{-- Header --}}
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
@@ -317,7 +365,7 @@
         {{-- Place Name --}}
         <div style="margin-bottom:14px;">
             <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9B8EA0;margin-bottom:6px;">Place Name</label>
-            <input type="text" wire:model="pinPlaceName" placeholder="e.g. Magellan's Cross"
+            <input type="text" wire:model="pinPlaceName" placeholder="e.g. Magellan's Cross" class="moments-input"
                    style="width:100%;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#1c1c19;box-sizing:border-box;">
             @error('pinPlaceName') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
@@ -325,7 +373,7 @@
         {{-- Description / memory --}}
         <div style="margin-bottom:14px;">
             <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9B8EA0;margin-bottom:6px;">Description / Memory</label>
-            <textarea wire:model="pinDescription" rows="3" placeholder="What happened here?"
+            <textarea wire:model="pinDescription" rows="3" placeholder="What happened here?" class="moments-input"
                       style="width:100%;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:11px 14px;font-size:13px;color:#1c1c19;box-sizing:border-box;resize:vertical;font-family:inherit;"></textarea>
             @error('pinDescription') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
@@ -333,7 +381,7 @@
         {{-- Date visited --}}
         <div style="margin-bottom:14px;">
             <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9B8EA0;margin-bottom:6px;">Date Visited</label>
-            <input type="date" wire:model="pinVisitedDate"
+            <input type="date" wire:model="pinVisitedDate" class="moments-input"
                    style="width:100%;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#1c1c19;box-sizing:border-box;">
             @error('pinVisitedDate') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
@@ -378,14 +426,13 @@
 
         {{-- Actions --}}
         <div style="display:flex;gap:10px;">
-            <button wire:click="closePinModal" type="button"
+            <button wire:click="closePinModal" type="button" class="moments-btn-outline"
                     style="flex:1;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:12px;padding:12px 0;font-size:13px;font-weight:600;cursor:pointer;">
                 Cancel
             </button>
-            <button wire:click="savePin"
+            <button wire:click="savePin" class="moments-btn-primary"
                     style="flex:2;background:#934B19;color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;"
-                    wire:loading.attr="disabled" wire:target="savePin"
-                    onmouseenter="this.style.background='#7A3C12'" onmouseleave="this.style.background='#934B19'">
+                    wire:loading.attr="disabled" wire:target="savePin">
                 <span wire:loading.remove wire:target="savePin">{{ $pinModalMode === 'edit' ? 'Save Changes' : 'Add Pin' }}</span>
                 <span wire:loading wire:target="savePin"><i class="fa-solid fa-spinner fa-spin"></i> Saving…</span>
             </button>
@@ -397,8 +444,8 @@
 
 {{-- ── Delete Pin confirmation modal ─────────────────────── --}}
 @if ($pinToDelete)
-<div style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
-    <div style="background:#fff;border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
+<div class="moments-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div class="moments-modal-card" style="background:#fff;border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
         {{-- Icon header --}}
         <div style="background:#FEF2F2;padding:28px 24px 20px;text-align:center;">
             <div style="width:52px;height:52px;border-radius:50%;background:#FEE2E2;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
@@ -411,16 +458,75 @@
         </div>
         {{-- Actions --}}
         <div style="display:flex;gap:10px;padding:18px 20px;">
-            <button wire:click="cancelDeletePin"
+            <button wire:click="cancelDeletePin" class="moments-btn-outline"
                     style="flex:1;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:10px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
                 Cancel
             </button>
-            <button wire:click="deletePin"
-                    style="flex:1;background:#DC2626;color:#fff;border:none;border-radius:10px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
+            <button wire:click="deletePin" class="moments-btn-danger"
+                    style="flex:1;background:#DC2626;color:#fff;border:none;border-radius:10px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;"
+                    wire:loading.attr="disabled" wire:target="deletePin">
                 <span wire:loading.remove wire:target="deletePin">Delete</span>
                 <span wire:loading wire:target="deletePin"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
         </div>
+    </div>
+</div>
+@endif
+
+{{-- ── Share Photos picker ────────────────────────────────
+     Which photos are checked lives in local Alpine state, not a Livewire
+     property — Livewire only ever supplies the initial photo list for
+     whichever trip openSharePicker() was opened with; every click after
+     that is instant, no round-trip. --}}
+@if ($showSharePicker)
+<div class="moments-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closeSharePicker">
+    <div class="moments-modal-card" x-data="{ selected: [], sharing: false }" style="background:#fff;border-radius:20px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(45,27,20,.18);padding:24px 24px 20px;">
+
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa-solid fa-share-nodes" style="color:#934B19;font-size:15px;"></i>
+            </div>
+            <span style="font-size:17px;font-weight:800;color:#1c1c19;font-family:'Hanken Grotesk',sans-serif;">Choose Photos to Share</span>
+        </div>
+        <p style="margin:0 0 16px;font-size:12px;color:#9B8EA0;">Tap the ones you want, then share.</p>
+
+        @if (empty($this->sharePickerPhotos))
+        <div style="padding:32px 0;text-align:center;color:#9B8EA0;font-size:13px;">
+            <i class="fa-solid fa-camera" style="font-size:24px;color:#D8CFC5;display:block;margin-bottom:10px;"></i>
+            No photos logged for this trip yet.
+        </div>
+        @else
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;">
+            @foreach ($this->sharePickerPhotos as $i => $photo)
+            <button type="button"
+                    @click="selected.includes({{ $i }}) ? selected = selected.filter(x => x !== {{ $i }}) : selected.push({{ $i }})"
+                    :style="selected.includes({{ $i }}) ? 'border-color:#934B19;' : 'border-color:transparent;'"
+                    style="position:relative;padding:0;border:2px solid transparent;border-radius:10px;overflow:hidden;cursor:pointer;aspect-ratio:1;background:none;">
+                <img src="{{ $photo['url'] }}" alt="{{ $photo['place_name'] }}" style="width:100%;height:100%;object-fit:cover;display:block;">
+                <div x-show="selected.includes({{ $i }})" x-cloak
+                     style="position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:#934B19;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3);">
+                    <i class="fa-solid fa-check" style="font-size:10px;"></i>
+                </div>
+            </button>
+            @endforeach
+        </div>
+        @endif
+
+        <div style="display:flex;gap:10px;">
+            <button type="button" wire:click="closeSharePicker" class="moments-btn-outline"
+                    style="flex:1;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:12px;padding:12px 0;font-size:13px;font-weight:600;cursor:pointer;">
+                Cancel
+            </button>
+            <button type="button" class="moments-btn-primary"
+                    x-bind:disabled="selected.length === 0 || sharing"
+                    @click="sharing = true; shareSelectedPhotos(selected, {{ json_encode($this->sharePickerPhotos) }}).finally(() => sharing = false)"
+                    :style="(selected.length === 0 || sharing) ? 'opacity:.5;cursor:not-allowed;' : ''"
+                    style="flex:2;background:#934B19;color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;">
+                <span x-show="!sharing" x-text="'Share' + (selected.length ? ' (' + selected.length + ')' : '')"></span>
+                <span x-show="sharing" x-cloak><i class="fa-solid fa-spinner fa-spin"></i> Preparing…</span>
+            </button>
+        </div>
+
     </div>
 </div>
 @endif
@@ -450,6 +556,50 @@
             document.addEventListener('alpine:init', initMomentsStores);
         }
     })();
+
+    // "Share" in the trip photo picker — fetches each selected photo, then
+    // hands them all to the browser's own native share sheet
+    // (navigator.share) so the traveler can post them to whichever app
+    // they actually have installed. No social platform API involved;
+    // Budgetra never talks to Instagram/Facebook/etc. directly. Returns a
+    // promise so the caller's Alpine "sharing" state resolves correctly
+    // whichever path is taken.
+    window.shareSelectedPhotos = function (selectedIndexes, allPhotos) {
+        if (!selectedIndexes.length) return Promise.resolve();
+
+        var urls = selectedIndexes.map(function (i) { return allPhotos[i].url; });
+
+        return Promise.all(urls.map(function (url, idx) {
+            return fetch(url)
+                .then(function (r) { return r.blob(); })
+                .then(function (blob) {
+                    var ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+                    return new File([blob], 'moment-' + (idx + 1) + '.' + ext, { type: blob.type });
+                });
+        })).then(function (files) {
+            if (navigator.canShare && navigator.canShare({ files: files })) {
+                return navigator.share({ files: files, title: 'My travel moments — made with Budgetra' });
+            }
+
+            // Can't share files on this browser — download them instead so
+            // the traveler still gets something out of the click.
+            files.forEach(function (f) {
+                var link = document.createElement('a');
+                link.href = URL.createObjectURL(f);
+                link.download = f.name;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(link.href);
+            });
+        }).catch(function (err) {
+            // AbortError just means the traveler closed the native share
+            // sheet without picking anything — not a real failure.
+            if (err && err.name !== 'AbortError') {
+                console.error('Share failed', err);
+            }
+        });
+    };
 
     // Timeline card clicked → jump to Map View, fly to that moment's pin,
     // open its popup, and give the marker a brief highlight pulse.
@@ -713,7 +863,7 @@
         var STATUS_COLORS = { active: '#22C55E', upcoming: '#3B82F6', past: '#6B7280' };
         var STATUS_LABELS = { active: 'Ongoing', upcoming: 'Upcoming', past: 'Completed' };
 
-        // Trip pins are pure visual indicators — no click, no cursor change.
+        // Pure visual indicator — hover tooltip only, no click, no popup.
         function buildTripMarkerElement(pin) {
             var color = STATUS_COLORS[pin.status] || '#6B7280';
             var statusLabel = STATUS_LABELS[pin.status] || pin.status;

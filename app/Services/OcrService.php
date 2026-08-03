@@ -43,6 +43,13 @@ class OcrService
                 'detectOrientation' => 'true',
                 'scale'             => 'true',
                 'OCREngine'         => '2',
+                // Engine 2 supports auto language detection, but only for
+                // Western Latin-character languages and Chinese — Japanese,
+                // Korean, Thai, and Vietnamese aren't in its supported
+                // script set regardless of this setting. Without it, the
+                // API silently assumes English and does poorly on anything
+                // else in the languages it does support.
+                'language'          => 'auto',
             ]);
         } catch (\Throwable $e) {
             OcrLog::create([
@@ -82,10 +89,24 @@ class OcrService
     {
         $amount = $date = $description = null;
 
-        if (preg_match('/(?:TOTAL|AMOUNT|SUBTOTAL|DUE|GRAND TOTAL)[:\s]*[₱$]?\s*([\d,]+\.?\d{0,2})/i', $text, $m)) {
-            $amount = (float) str_replace(',', '', $m[1]);
-        } elseif (preg_match('/[₱$]\s*([\d,]+\.?\d{0,2})/', $text, $m)) {
-            $amount = (float) str_replace(',', '', $m[1]);
+        // Real receipts print Subtotal, then Tax, then Total, in that
+        // reading order — and a bare "TOTAL" pattern also matches inside
+        // "SUBTOTAL" itself (it's a literal substring of it), so grabbing
+        // the FIRST hit would silently pick the smaller, pre-tax subtotal
+        // on any receipt that has both lines, which is the norm for
+        // anything with itemized tax. Taking the LAST hit instead relies
+        // on that same reliable reading order to land on the actual total
+        // paid rather than the largest confidently-labeled figure.
+        // ₱/$ only covered Philippine and US-style receipts — everything
+        // else (¥ JPY/CNY, € EUR, £ GBP, ₩ KRW, ₫ VND, ฿ THB) fell through
+        // to no match at all. The symbol is often still readable even when
+        // OCR garbles surrounding foreign-script text around it, so this
+        // helps regardless of whether the "TOTAL"-style keyword above
+        // matched (which only recognizes English/French/Spanish wording).
+        if (preg_match_all('/(?:GRAND\s*TOTAL|SUB\s*TOTAL|SUBTOTAL|TOTAL|AMOUNT\s*DUE|DUE|AMOUNT)[:\s]*[₱$¥€£₩₫฿]?\s*([\d,]+\.?\d{0,2})/iu', $text, $matches) && !empty($matches[1])) {
+            $amount = (float) str_replace(',', '', end($matches[1]));
+        } elseif (preg_match_all('/[₱$¥€£₩₫฿]\s*([\d,]+\.?\d{0,2})/u', $text, $matches) && !empty($matches[1])) {
+            $amount = (float) str_replace(',', '', end($matches[1]));
         }
 
         if (preg_match('/(\d{4}-\d{2}-\d{2})/', $text, $m)) {

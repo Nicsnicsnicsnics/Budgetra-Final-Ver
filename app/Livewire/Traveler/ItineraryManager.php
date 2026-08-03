@@ -36,6 +36,10 @@ class ItineraryManager extends Component
     public array   $pinExistingPhotos = []; // [['id'=>.., 'url'=>..], ...] — saved photos (edit mode)
     public ?int    $pinToDelete       = null;
 
+    // ── Moments: share-to-social photo picker ────────────────
+    public bool $showSharePicker   = false;
+    public ?int $sharePickerTripId = null;
+
     // Destination name (lowercased) -> [lat, lng]. Used only for the Moments
     // map marker; not shared with SerpApiService's own coords table.
     private const DEST_COORDS = [
@@ -683,6 +687,40 @@ class ItineraryManager extends Component
         }
 
         $this->pinToDelete = null;
+    }
+
+    // ── Moments: share-to-social photo picker ────────────────
+    // Triggered with an explicit trip id (from the destination header, not
+    // from a "currently selected" trip — this can be opened straight from
+    // the overview page), so it re-verifies ownership itself the same way
+    // showTripOnMap()/selectTrip() do, rather than trusting selectedTrip.
+    public function openSharePicker(int $tripId): void
+    {
+        $trip = Trip::where('id', $tripId)->where('user_id', auth()->id())->first();
+        if (!$trip) return;
+
+        $this->sharePickerTripId = $tripId;
+        $this->showSharePicker   = true;
+    }
+
+    public function closeSharePicker(): void
+    {
+        $this->showSharePicker   = false;
+        $this->sharePickerTripId = null;
+    }
+
+    // sharePickerTripId is a public property a client can set directly
+    // (same reasoning as selectedTripId elsewhere in this file) — this
+    // re-verifies ownership on every access rather than trusting that
+    // openSharePicker() was the only way it was ever set, so a tampered id
+    // can't be used to pull another traveler's photos into this picker.
+    public function getSharePickerPhotosProperty(): array
+    {
+        if (!$this->sharePickerTripId) return [];
+        $trip = Trip::where('id', $this->sharePickerTripId)->where('user_id', auth()->id())->first();
+        if (!$trip) return [];
+
+        return $this->momentService->allPhotosForTrip($trip);
     }
 
     public function render()

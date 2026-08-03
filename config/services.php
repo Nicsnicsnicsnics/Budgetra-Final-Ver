@@ -35,10 +35,6 @@ return [
         ],
     ],
 
-    'google_vision' => [
-        'key' => env('GOOGLE_VISION_KEY', ''),
-    ],
-
     'ocr' => [
         'key'      => env('OCR_API_KEY', ''),
         'endpoint' => 'https://api.ocr.space/parse/image',

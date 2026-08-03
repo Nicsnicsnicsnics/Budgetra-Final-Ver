@@ -5,6 +5,22 @@
 <style>
     .edit-expense-card { max-width: 560px; margin: 0 auto; animation: expenseEditIn .3s ease both; }
     @keyframes expenseEditIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .edit-receipt-preview {
+        display: flex; align-items: center; gap: 12px; background: var(--bg); border: 1px solid var(--border);
+        border-radius: var(--radius-sm); padding: 10px 14px; text-decoration: none; transition: border-color .15s ease;
+    }
+    .edit-receipt-preview:hover { border-color: var(--primary); }
+    .edit-receipt-preview img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+    .edit-receipt-preview span { font-size: 13px; font-weight: 600; color: var(--text); }
+    .edit-receipt-preview i { color: var(--primary); margin-right: 4px; }
+
+    /* .is-invalid is already used to flag failed server-side validation on
+       every form in this app, but was never actually given a style anywhere
+       — the class did nothing. This also backs the new inline (client-side,
+       as-you-type) validation added on this page. */
+    .form-control.is-invalid { border-color: var(--danger); }
+    .form-control.is-invalid:focus { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(220,38,38,0.12); }
 </style>
 @endpush
 
@@ -28,7 +44,7 @@
     @endif
 
     <div class="card"><div class="card-body">
-        <form method="POST" action="{{ route('expenses.update', $expense) }}">
+        <form method="POST" action="{{ route('expenses.update', $expense) }}" id="expenseEditForm">
             @csrf @method('PUT')
 
             <div class="form-group">
@@ -79,10 +95,10 @@
             @if ($expense->receipt_path)
             <div class="form-group">
                 <label class="form-label">Receipt</label>
-                <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;">
-                    <i class="fa-solid fa-paperclip" style="color:var(--primary);"></i>
-                    <a href="{{ Storage::url($expense->receipt_path) }}" target="_blank" style="font-size:13px;font-weight:600;">View attached receipt</a>
-                </div>
+                <a href="{{ Storage::url($expense->receipt_path) }}" target="_blank" rel="noopener" class="edit-receipt-preview">
+                    <img src="{{ Storage::url($expense->receipt_path) }}" alt="Receipt preview" loading="lazy">
+                    <span><i class="fa-solid fa-paperclip"></i> View attached receipt</span>
+                </a>
             </div>
             @endif
 
@@ -96,3 +112,65 @@
     </div></div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    var form = document.getElementById('expenseEditForm');
+    if (!form) return;
+
+    function showFieldError(field, message) {
+        field.classList.add('is-invalid');
+        var msg = field.nextElementSibling;
+        if (!msg || !msg.classList.contains('form-error-live')) {
+            msg = document.createElement('div');
+            msg.className = 'form-error form-error-live';
+            field.insertAdjacentElement('afterend', msg);
+        }
+        msg.textContent = message;
+    }
+
+    function clearFieldError(field) {
+        field.classList.remove('is-invalid');
+        var msg = field.nextElementSibling;
+        if (msg && msg.classList.contains('form-error-live')) msg.remove();
+    }
+
+    function friendlyMessage(field) {
+        if (field.validity.valueMissing) return 'This field is required.';
+        if (field.name === 'amount' && field.validity.rangeUnderflow) return 'Amount must be greater than 0.';
+        if (field.validity.badInput || field.validity.typeMismatch) return 'Please enter a valid value.';
+        return field.validationMessage || 'Please check this field.';
+    }
+
+    function validateField(field) {
+        if (field.checkValidity()) { clearFieldError(field); return true; }
+        showFieldError(field, friendlyMessage(field));
+        return false;
+    }
+
+    var fields = form.querySelectorAll('[required]');
+    fields.forEach(function (field) {
+        field.addEventListener('blur', function () { validateField(field); });
+        field.addEventListener('input', function () {
+            if (field.classList.contains('is-invalid')) validateField(field);
+        });
+        field.addEventListener('change', function () {
+            if (field.classList.contains('is-invalid')) validateField(field);
+        });
+    });
+
+    form.addEventListener('submit', function (e) {
+        var allValid = true;
+        fields.forEach(function (field) { if (!validateField(field)) allValid = false; });
+        if (!allValid) { e.preventDefault(); return; }
+
+        var btn = form.querySelector('button[type="submit"]');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating...';
+        }
+    });
+})();
+</script>
+@endpush

@@ -18,6 +18,13 @@
     #dropZone { animation: expenseCardIn .3s ease both; }
     .expense-form-card { animation: expenseCardIn .35s ease both; }
     @keyframes expenseCardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* .is-invalid is already used to flag failed server-side validation on
+       every form in this app, but was never actually given a style anywhere
+       — the class did nothing. This also backs the new inline (client-side,
+       as-you-type) validation added on this page. */
+    .form-control.is-invalid { border-color: var(--danger); }
+    .form-control.is-invalid:focus { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(220,38,38,0.12); }
 </style>
 @endpush
 
@@ -82,7 +89,7 @@
             <div class="alert alert-danger">{{ $errors->first() }}</div>
             @endif
 
-            <form method="POST" action="{{ route('expenses.store') }}" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('expenses.store') }}" enctype="multipart/form-data" id="expenseForm">
                 @csrf
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
@@ -177,26 +184,62 @@
         reader.readAsDataURL(file);
     }
 
-    function scanReceipt(file) {
+    function setStatus(message, isWarning) {
+        statusDiv.innerHTML = isWarning
+            ? '<i class="fa-solid fa-triangle-exclamation"></i> ' + message
+            : '<i class="fa-solid fa-spinner fa-spin"></i> ' + message;
+        statusDiv.classList.toggle('alert-warning', true);
         statusDiv.style.display = '';
+    }
+
+    function scanReceipt(file) {
+        setStatus('Scanning receipt...', false);
         dropZone.classList.add('ocr-active');
 
         var formData = new FormData();
         formData.append('receipt', file);
         formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
 
-        fetch('/expenses/ocr', { method: 'POST', body: formData })
-            .then(function (r) { return r.json(); })
+        fetch('/expenses/ocr', {
+            method: 'POST',
+            body: formData,
+            // Without this, Laravel can't tell this is an AJAX request and
+            // responds to a validation failure with an HTML redirect instead
+            // of JSON — which would fail r.json() below with a parse error
+            // rather than a real message.
+            headers: { 'Accept': 'application/json' }
+        })
+            .then(function (r) {
+                if (!r.ok) {
+                    // Validation error (e.g. file too large/unsupported format) or
+                    // server error — still valid JSON, just not OCR fields, so it
+                    // has to be handled here rather than falling through silently.
+                    return r.json().then(function (body) {
+                        var msg = (body && body.errors && body.errors.receipt)
+                            ? body.errors.receipt[0]
+                            : "Couldn't scan this receipt.";
+                        throw new Error(msg);
+                    });
+                }
+                return r.json();
+            })
             .then(function (data) {
-                statusDiv.style.display = 'none';
                 dropZone.classList.remove('ocr-active');
                 if (data.amount)      amountInput.value = data.amount;
                 if (data.date)        dateInput.value   = data.date;
                 if (data.description) descInput.value   = data.description;
+
+                if (data.amount) {
+                    setStatus('Receipt scanned — details filled in below.', false);
+                } else {
+                    setStatus("Couldn't auto-read this receipt. Please fill in the details manually.", true);
+                }
+                setTimeout(function () { statusDiv.style.display = 'none'; }, 4000);
             })
-            .catch(function () {
-                statusDiv.style.display = 'none';
+            .catch(function (err) {
                 dropZone.classList.remove('ocr-active');
+                setStatus((err && err.message) || 'Scan failed. Please fill in the details manually.', true);
+                setTimeout(function () { statusDiv.style.display = 'none'; }, 5000);
             });
     }
 
@@ -224,6 +267,65 @@
     dropZone.addEventListener('drop', function (e) {
         e.preventDefault(); this.classList.remove('drag-over');
         handleFile(e.dataTransfer.files[0]);
+    });
+})();
+</script>
+<script>
+(function () {
+    var form = document.getElementById('expenseForm');
+    if (!form) return;
+
+    function showFieldError(field, message) {
+        field.classList.add('is-invalid');
+        var msg = field.nextElementSibling;
+        if (!msg || !msg.classList.contains('form-error-live')) {
+            msg = document.createElement('div');
+            msg.className = 'form-error form-error-live';
+            field.insertAdjacentElement('afterend', msg);
+        }
+        msg.textContent = message;
+    }
+
+    function clearFieldError(field) {
+        field.classList.remove('is-invalid');
+        var msg = field.nextElementSibling;
+        if (msg && msg.classList.contains('form-error-live')) msg.remove();
+    }
+
+    function friendlyMessage(field) {
+        if (field.validity.valueMissing) return 'This field is required.';
+        if (field.name === 'amount' && field.validity.rangeUnderflow) return 'Amount must be greater than 0.';
+        if (field.validity.badInput || field.validity.typeMismatch) return 'Please enter a valid value.';
+        return field.validationMessage || 'Please check this field.';
+    }
+
+    function validateField(field) {
+        if (field.checkValidity()) { clearFieldError(field); return true; }
+        showFieldError(field, friendlyMessage(field));
+        return false;
+    }
+
+    var fields = form.querySelectorAll('[required]');
+    fields.forEach(function (field) {
+        field.addEventListener('blur', function () { validateField(field); });
+        field.addEventListener('input', function () {
+            if (field.classList.contains('is-invalid')) validateField(field);
+        });
+        field.addEventListener('change', function () {
+            if (field.classList.contains('is-invalid')) validateField(field);
+        });
+    });
+
+    form.addEventListener('submit', function (e) {
+        var allValid = true;
+        fields.forEach(function (field) { if (!validateField(field)) allValid = false; });
+        if (!allValid) { e.preventDefault(); return; }
+
+        var btn = form.querySelector('button[type="submit"]');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        }
     });
 })();
 </script>

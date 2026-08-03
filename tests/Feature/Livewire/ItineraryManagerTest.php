@@ -325,6 +325,68 @@ class ItineraryManagerTest extends TestCase
         $this->assertEmpty($component->get('initialPins'));
     }
 
+    // ── Moments: share-to-social photo picker ────────────────
+
+    public function test_open_share_picker_lists_every_photo_across_the_trips_moments(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $trip = $this->makeTrip($user);
+        $m1 = Moment::create(['trip_id' => $trip->id, 'place_name' => 'Spot A', 'visited_date' => '2026-08-01', 'lat' => 1, 'lng' => 1]);
+        $m2 = Moment::create(['trip_id' => $trip->id, 'place_name' => 'Spot B', 'visited_date' => '2026-08-02', 'lat' => 2, 'lng' => 2]);
+        $upload = UploadedFile::fake()->image('a.jpg');
+        MomentPhoto::create(['moment_id' => $m1->id, 'photo_path' => $upload->store('moment-photos', 'public')]);
+        MomentPhoto::create(['moment_id' => $m1->id, 'photo_path' => $upload->store('moment-photos', 'public')]);
+        MomentPhoto::create(['moment_id' => $m2->id, 'photo_path' => $upload->store('moment-photos', 'public')]);
+
+        $component = Livewire::actingAs($user)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->call('openSharePicker', $trip->id);
+
+        $component->assertSet('showSharePicker', true);
+        $this->assertCount(3, $component->get('sharePickerPhotos'));
+    }
+
+    public function test_open_share_picker_rejects_another_users_trip(): void
+    {
+        $attacker = User::factory()->create();
+        $victim   = User::factory()->create();
+        $victimTrip = $this->makeTrip($victim);
+
+        $component = Livewire::actingAs($attacker)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->call('openSharePicker', $victimTrip->id);
+
+        $component->assertSet('showSharePicker', false);
+        $component->assertSet('sharePickerTripId', null);
+    }
+
+    // Same tampering vector as the selectedTripId tests above — confirms
+    // sharePickerPhotos re-verifies ownership itself rather than trusting
+    // that openSharePicker() was the only way sharePickerTripId got set.
+    public function test_tampering_share_picker_trip_id_does_not_leak_another_users_photos(): void
+    {
+        Storage::fake('public');
+        $attacker = User::factory()->create();
+        $victim   = User::factory()->create();
+        $victimTrip = $this->makeTrip($victim);
+        $victimMoment = Moment::create([
+            'trip_id' => $victimTrip->id, 'place_name' => 'Victim spot',
+            'visited_date' => '2026-08-01', 'lat' => 1, 'lng' => 1,
+        ]);
+        MomentPhoto::create([
+            'moment_id' => $victimMoment->id,
+            'photo_path' => UploadedFile::fake()->image('secret.jpg')->store('moment-photos', 'public'),
+        ]);
+
+        $component = Livewire::actingAs($attacker)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->set('sharePickerTripId', $victimTrip->id)
+            ->set('showSharePicker', true);
+
+        $this->assertEmpty($component->get('sharePickerPhotos'));
+    }
+
     // ── Moments: destination overview map ───────────────────
 
     public function test_moments_tab_defaults_to_overview_mode(): void
