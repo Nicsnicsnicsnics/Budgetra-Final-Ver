@@ -34,6 +34,35 @@ class ExpenseObserver
                 . ($trip ? " on your {$trip->destination} trip." : '.'),
             'is_read' => false,
         ]);
+
+        $this->checkOverallBudgetExceeded($trip);
+    }
+
+    // Overall trip budget (Trip::budget_limit), as opposed to the per-category
+    // checks in syncBudgetForExpense() below which compare against each
+    // TripBudget row's own estimated_cost.
+    private function checkOverallBudgetExceeded(?Trip $trip): void
+    {
+        if (!$trip || $trip->budget_limit <= 0) return;
+
+        $totalSpent = Expense::where('trip_id', $trip->id)->sum('amount');
+        if ($totalSpent <= $trip->budget_limit) return;
+
+        $exists = Notification::where('user_id', $trip->user_id)
+            ->where('trip_id', $trip->id)
+            ->where('type', 'budget_alert')
+            ->where('message', 'like', '%exceeded your overall budget%')
+            ->exists();
+        if ($exists) return;
+
+        Notification::create([
+            'user_id' => $trip->user_id,
+            'trip_id' => $trip->id,
+            'type'    => 'budget_alert',
+            'message' => "You've exceeded your overall budget for {$trip->destination}! Total spent: ₱"
+                . number_format($totalSpent, 2) . ' of your ₱' . number_format($trip->budget_limit, 2) . ' budget.',
+            'is_read' => false,
+        ]);
     }
 
     public static function syncBudgetForExpense(Expense $expense): void

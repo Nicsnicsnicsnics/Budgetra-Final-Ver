@@ -88,7 +88,7 @@ class TripCrudTest extends TestCase
         $user = User::factory()->create();
         $trip = Trip::factory()->create(['user_id' => $user->id]);
 
-        $this->actingAs($user)->delete("/trips/{$trip->id}")->assertRedirect(route('trips.index'));
+        $this->actingAs($user)->delete("/trips/{$trip->id}")->assertRedirect(route('dashboard'));
         $this->assertDatabaseMissing('trips', ['id' => $trip->id]);
     }
 
@@ -106,5 +106,30 @@ class TripCrudTest extends TestCase
         $user = User::factory()->create();
         $response = $this->actingAs($user)->post('/trips', []);
         $response->assertSessionHasErrors(['destination', 'start_date', 'end_date', 'travel_type']);
+    }
+
+    public function test_creating_a_trip_sends_a_congratulations_notification(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post('/trips', [
+            'destination'   => 'Coron, Palawan',
+            'start_date'    => '2026-09-01',
+            'end_date'      => '2026-09-05',
+            'num_travelers' => 2,
+            'budget_limit'  => 40000,
+            'travel_type'   => 'Couple',
+        ]);
+
+        $trip = Trip::where('destination', 'Coron, Palawan')->first();
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $user->id,
+            'trip_id' => $trip->id,
+            'type'    => 'trip_created',
+            'is_read' => false,
+        ]);
+        $notif = \App\Models\Notification::where('type', 'trip_created')->where('trip_id', $trip->id)->first();
+        $this->assertStringContainsString('Coron, Palawan', $notif->message);
     }
 }

@@ -12,7 +12,22 @@ class Trip extends Model
         'user_id', 'destination', 'trip_name', 'start_date', 'end_date',
         'num_travelers', 'budget_limit', 'travel_type', 'status', 'notes',
         'cover_image', 'total_cost', 'summary_data', 'origin', 'origin_code', 'destination_code',
+        'is_shared', 'share_code',
     ];
+
+    // Generates an 8-char code from an alphabet without 0/O/1/I so it's
+    // never ambiguous when a traveler reads it aloud or retypes it.
+    public static function generateUniqueShareCode(): string
+    {
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        do {
+            $code = collect(range(1, 8))
+                ->map(fn () => $alphabet[random_int(0, strlen($alphabet) - 1)])
+                ->implode('');
+        } while (static::where('share_code', $code)->exists());
+
+        return $code;
+    }
 
     protected function casts(): array
     {
@@ -21,6 +36,7 @@ class Trip extends Model
             'end_date'      => 'date',
             'budget_limit'  => 'decimal:2',
             'summary_data'  => 'array',
+            'is_shared'     => 'boolean',
         ];
     }
 

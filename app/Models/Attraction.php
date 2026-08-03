@@ -13,4 +13,6 @@ class Attraction extends Model
     {
         return ['rating' => 'decimal:1'];
     }
+
+    public function reviews() { return $this->hasMany(Review::class); }
 }

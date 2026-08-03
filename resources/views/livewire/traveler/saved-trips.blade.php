@@ -124,6 +124,16 @@
                        style="flex:1;background:transparent;color:#934B19;border:1.5px solid #934B19;border-radius:10px;padding:12px 6px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;">
                         <i class="fa-solid fa-receipt" style="font-size:11px;"></i>Add Expense
                     </a>
+                    <button wire:click="toggleShare({{ $trip->id }})" type="button"
+                       style="flex:1;background:{{ $trip->is_shared ? '#934B19' : 'transparent' }};color:{{ $trip->is_shared ? '#fff' : '#934B19' }};border:1.5px solid #934B19;border-radius:10px;padding:12px 6px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;"
+                       title="{{ $trip->is_shared ? 'Other travelers can copy this itinerary. Click to unshare.' : 'Let other travelers copy this itinerary' }}">
+                        <i class="fa-solid fa-share-nodes" style="font-size:11px;"></i>{{ $trip->is_shared ? 'Shared ✓' : 'Share Itinerary' }}
+                    </button>
+                </div>
+                <div style="text-align:center;margin-top:8px;">
+                    <a href="#" wire:click.prevent="showShareCode({{ $trip->id }})" style="font-size:12px;color:#9B8EA0;text-decoration:underline;">
+                        or share with a code instead
+                    </a>
                 </div>
             </div>
         </div>
@@ -352,6 +362,38 @@
                 </button>
             </div>
 
+        </div>
+    </div>
+    @endif
+
+    {{-- Share via Code Modal --}}
+    @if ($shareCodeTripId)
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#fff;border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
+            <div style="padding:28px 24px 20px;text-align:center;">
+                <div style="width:52px;height:52px;border-radius:50%;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                    <i class="fa-solid fa-key" style="font-size:20px;color:#934B19;"></i>
+                </div>
+                <div style="font-size:16px;font-weight:700;color:#1A0A00;margin-bottom:6px;">Share with a Code</div>
+                <div style="font-size:13px;color:#6B7280;line-height:1.5;margin-bottom:18px;">
+                    Give this code to another traveler — they can enter it directly to copy this itinerary.
+                </div>
+                <div id="share-code-value" style="font-family:monospace;font-size:26px;font-weight:700;letter-spacing:5px;
+                            background:#F5F0EB;border-radius:12px;padding:16px;margin-bottom:14px;color:#1A0A00;">
+                    {{ $shareCodeValue }}
+                </div>
+                <button type="button" onclick="
+                    navigator.clipboard.writeText('{{ $shareCodeValue }}');
+                    this.textContent = 'Copied!';
+                    setTimeout(() => this.textContent = 'Copy Code', 1500);
+                " style="width:100%;background:#934B19;color:#fff;border:none;border-radius:10px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px;">
+                    Copy Code
+                </button>
+                <button type="button" wire:click="closeShareCodeModal"
+                        style="width:100%;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:10px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
+                    Close
+                </button>
+            </div>
         </div>
     </div>
     @endif

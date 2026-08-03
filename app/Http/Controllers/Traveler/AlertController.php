@@ -16,6 +16,14 @@ class AlertController extends Controller
         $tripId     = request('trip_id');
         $activeTrip = $tripId ? $trips->find($tripId) : $trips->first();
 
+        // Unread notification count per trip, for the badge on each trip pill.
+        $unreadCounts = $user->notifications()
+            ->where('is_read', false)
+            ->whereNotNull('trip_id')
+            ->selectRaw('trip_id, count(*) as count')
+            ->groupBy('trip_id')
+            ->pluck('count', 'trip_id');
+
         $query = $user->notifications()->with('trip')->latest();
 
         if ($trips->isEmpty()) {
@@ -26,19 +34,19 @@ class AlertController extends Controller
 
         $notifications = $query->paginate(20);
 
-        return view('traveler.alerts.index', compact('notifications', 'trips', 'activeTrip'));
+        return view('traveler.alerts.index', compact('notifications', 'trips', 'activeTrip', 'unreadCounts'));
     }
 
     public function markRead(Notification $notification)
     {
         abort_if($notification->user_id !== auth()->id(), 403);
         $notification->update(['is_read' => true]);
-        return redirect()->route('alerts.index');
+        return back();
     }
 
     public function markAllRead()
     {
         auth()->user()->notifications()->where('is_read', false)->update(['is_read' => true]);
-        return redirect()->route('alerts.index');
+        return back();
     }
 }

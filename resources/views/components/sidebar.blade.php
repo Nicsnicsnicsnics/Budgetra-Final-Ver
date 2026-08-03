@@ -131,4 +131,29 @@
         document.addEventListener('livewire:navigated', syncActiveLink);
     }
 })();
+
+(function () {
+    // The sidebar markup uses the persist directive across wire:navigate transitions for a
+    // smooth SPA feel, so its server-rendered "active" class is frozen at
+    // whatever page first mounted it. A plain re-run of this script won't fix
+    // that: Livewire's morph skips re-executing <script> tags whose content is
+    // byte-identical to the previous page's (true here, since this component
+    // is the same on every page), so it only ever fires once per session.
+    // Binding to the livewire:navigated event instead guarantees a re-check on
+    // every navigation, independent of whether the script tag itself re-runs.
+    function updateActiveSidebarLink() {
+        var path = window.location.pathname.replace(/^\/+/, '');
+        document.querySelectorAll('.sidebar-link[data-segment]').forEach(function (link) {
+            var segment = link.dataset.segment;
+            var isActive = path === segment || path.indexOf(segment + '/') === 0;
+            link.classList.toggle('active', isActive);
+        });
+    }
+
+    updateActiveSidebarLink();
+    if (!window.__sidebarActiveListenerBound) {
+        window.__sidebarActiveListenerBound = true;
+        document.addEventListener('livewire:navigated', updateActiveSidebarLink);
+    }
+})();
 </script>
