@@ -1,9 +1,39 @@
 <div>
 
 {{-- ═══════════════════════════════════════════════════════════════
+     STEP 1a — Have a trip code? (Manual Planning only, skippable)
+═══════════════════════════════════════════════════════════════ --}}
+@if ($planningMode === 'manual' && $step === 1 && !$manualCodeGateDone)
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 120px);padding:20px;">
+    <div style="width:100%;max-width:520px;background:#fff;border:1.5px solid var(--border);border-radius:26px;padding:48px 44px;text-align:center;">
+        <div style="width:72px;height:72px;border-radius:20px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
+            <i class="fa-solid fa-key" style="font-size:28px;color:#934B19;"></i>
+        </div>
+        <h2 style="font-size:26px;font-weight:800;color:var(--dark);margin:0 0 10px;">Have a trip code?</h2>
+        <p style="font-size:15px;color:var(--muted);line-height:1.6;margin:0 0 28px;">
+            Enter it here to copy another traveler's flight, accommodation, food & dining, and attraction picks into your own trip.
+        </p>
+        <input type="text" wire:model="importCodeInput" wire:keydown.enter="importCode" maxlength="8" placeholder="e.g. AB1C2D3E"
+               style="width:100%;box-sizing:border-box;border:1.5px solid #d3c3be;border-radius:12px;padding:16px 18px;font-size:18px;font-family:inherit;text-align:center;margin-bottom:16px;">
+        @if($importCodeError)
+        <div style="font-size:13px;color:#ba1a1a;margin-bottom:16px;">{{ $importCodeError }}</div>
+        @endif
+        <button wire:click="importCode" wire:loading.attr="disabled" wire:target="importCode"
+                style="width:100%;background:#934B19;color:#fff;border:none;border-radius:12px;padding:16px 0;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px;">
+            <span wire:loading.remove wire:target="importCode">Import Trip</span>
+            <span wire:loading wire:target="importCode"><i class="fa-solid fa-spinner fa-spin"></i></span>
+        </button>
+        <a href="#" wire:click.prevent="skipCode" style="font-size:14px;color:#9B8EA0;text-decoration:underline;">
+            Skip, I don't have a code
+        </a>
+    </div>
+</div>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════
      STEP 1 — Plan Your Trip (manual)
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode !== '' && $step === 1)
+@if ($planningMode !== '' && $step === 1 && ($planningMode !== 'manual' || $manualCodeGateDone))
 @php
 $localCities = [
     ['name'=>'Manila','code'=>'MNL'],['name'=>'Cebu City','code'=>'CEB'],['name'=>'Davao City','code'=>'DVO'],
@@ -2162,10 +2192,24 @@ window.sortAttractions = function(dir) {
     } else { $mcFlightIsRT = false; $mcFlightDepCost = 0; }
     if ($selectedHotel && !$isLeg2Now)         $selCards[] = ['icon'=>'fa-bed',      'type'=>'Accommodation',        'title'=>$selectedHotel['name']??'Hotel',   'sub'=>($selectedHotel['stars']??3).'★ · '.($selectedHotel['nights']??1).' nights', 'time'=>'Check-in',  'cost'=>$selectedHotel['total']??0,    'isFree'=>false];
     if ($selectedMcHotel && $isLeg2Now)        $selCards[] = ['icon'=>'fa-bed',      'type'=>'Accommodation','title'=>$selectedMcHotel['name']??'Hotel', 'sub'=>($selectedMcHotel['stars']??3).'★ · '.($selectedMcHotel['nights']??1).' nights','time'=>'Check-in','cost'=>$selectedMcHotel['total']??0,  'isFree'=>false];
-    if ($selectedVenue && !$isLeg2Now)         $selCards[] = ['icon'=>'fa-utensils', 'type'=>'Food & Dining',        'title'=>$selectedVenue['name']??'Restaurant',   'sub'=>$selectedVenue['cuisine']??'',   'time'=>'Dinner',    'cost'=>($selectedVenue['priceMin']??0).($selectedVenue['priceMax']??0 ? '–'.($selectedVenue['priceMax']??0) : ''), 'isFree'=>false];
-    if ($selectedMcVenue && $isLeg2Now)        $selCards[] = ['icon'=>'fa-utensils', 'type'=>'Food & Dining','title'=>$selectedMcVenue['name']??'Restaurant', 'sub'=>$selectedMcVenue['cuisine']??'', 'time'=>'Dinner',    'cost'=>($selectedMcVenue['priceMin']??0).($selectedMcVenue['priceMax']??0 ? '–'.($selectedMcVenue['priceMax']??0) : ''), 'isFree'=>false];
-    if ($selectedAttraction && !$isLeg2Now)    $selCards[] = ['icon'=>'fa-camera',   'type'=>'Attraction',           'title'=>$selectedAttraction['name']??'Attraction',   'sub'=>$selectedAttraction['type']??'',   'time'=>'Activity', 'cost'=>$selectedAttraction['price']??0,   'isFree'=>$selectedAttraction['isFree']??false];
-    if ($selectedMcAttraction && $isLeg2Now)   $selCards[] = ['icon'=>'fa-camera',   'type'=>'Attraction','title'=>$selectedMcAttraction['name']??'Attraction', 'sub'=>$selectedMcAttraction['type']??'', 'time'=>'Activity', 'cost'=>$selectedMcAttraction['price']??0, 'isFree'=>$selectedMcAttraction['isFree']??false];
+    if (!$isLeg2Now) {
+        foreach ($selectedVenues as $v8) {
+            $selCards[] = ['icon'=>'fa-utensils', 'type'=>'Food & Dining', 'title'=>$v8['name']??'Restaurant', 'sub'=>$v8['cuisine']??'', 'time'=>'Dinner', 'cost'=>($v8['priceMin']??0).($v8['priceMax']??0 ? '–'.($v8['priceMax']??0) : ''), 'isFree'=>false];
+        }
+    } else {
+        foreach ($selectedMcVenues as $v8) {
+            $selCards[] = ['icon'=>'fa-utensils', 'type'=>'Food & Dining', 'title'=>$v8['name']??'Restaurant', 'sub'=>$v8['cuisine']??'', 'time'=>'Dinner', 'cost'=>($v8['priceMin']??0).($v8['priceMax']??0 ? '–'.($v8['priceMax']??0) : ''), 'isFree'=>false];
+        }
+    }
+    if (!$isLeg2Now) {
+        foreach ($selectedAttractions as $a8) {
+            $selCards[] = ['icon'=>'fa-camera', 'type'=>'Attraction', 'title'=>$a8['name']??'Attraction', 'sub'=>$a8['type']??'', 'time'=>'Activity', 'cost'=>$a8['price']??0, 'isFree'=>$a8['isFree']??false];
+        }
+    } else {
+        foreach ($selectedMcAttractions as $a8) {
+            $selCards[] = ['icon'=>'fa-camera', 'type'=>'Attraction', 'title'=>$a8['name']??'Attraction', 'sub'=>$a8['type']??'', 'time'=>'Activity', 'cost'=>$a8['price']??0, 'isFree'=>$a8['isFree']??false];
+        }
+    }
 
     $totalCost8 = 0;
     foreach ($selCards as $c) {
@@ -2675,10 +2719,10 @@ window.sortAttractions = function(dir) {
     $s9flightBase2 = (float) ($selectedMcFlight['price'] ?? 0);
     $s9hotelBase1  = (float) ($selectedHotel['total']    ?? 0);
     $s9hotelBase2  = (float) ($selectedMcHotel['total']  ?? 0);
-    $s9venueBase1  = (float) ($selectedVenue['priceMax']   ?? $selectedVenue['priceMin']   ?? 0);
-    $s9venueBase2  = (float) ($selectedMcVenue['priceMax'] ?? $selectedMcVenue['priceMin'] ?? 0);
-    $s9attrBase1   = $selectedAttraction['isFree']   ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $selectedAttraction['price']   ?? '0');
-    $s9attrBase2   = $selectedMcAttraction['isFree'] ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $selectedMcAttraction['price'] ?? '0');
+    $s9venueBase1  = array_sum(array_map(fn($v) => (float) ($v['priceMax'] ?? $v['priceMin'] ?? 0), $selectedVenues));
+    $s9venueBase2  = array_sum(array_map(fn($v) => (float) ($v['priceMax'] ?? $v['priceMin'] ?? 0), $selectedMcVenues));
+    $s9attrBase1   = array_sum(array_map(fn($a) => ($a['isFree'] ?? false) ? 0 : (int) preg_replace('/[^\d]/', '', $a['price'] ?? '0'), $selectedAttractions));
+    $s9attrBase2   = array_sum(array_map(fn($a) => ($a['isFree'] ?? false) ? 0 : (int) preg_replace('/[^\d]/', '', $a['price'] ?? '0'), $selectedMcAttractions));
 
     $s9flight1 = $s9flightBase1 + $s9leg1AiTotals['transport'];
     $s9flight2 = $s9flightBase2 + $s9leg2AiTotals['transport'];
@@ -2704,10 +2748,10 @@ window.sortAttractions = function(dir) {
     $s9picks = [];
     if ($selectedFlight)      $s9picks[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''),  'cost'=>$s9flightBase1, 'editStep'=>2, 'color'=>'#3B82F6'];
     if ($selectedHotel)       $s9picks[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotelBase1,  'editStep'=>3, 'color'=>'#0D9488'];
-    foreach ($this->selectedVenuesFlat() as $sv9) {
+    foreach ($selectedVenues as $sv9) {
         $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>$sv9['name']??'Restaurant', 'cost'=>(float)($sv9['priceMax']??$sv9['priceMin']??0), 'editStep'=>4, 'color'=>'#EF4444'];
     }
-    foreach ($this->selectedAttractionsFlat() as $sa9) {
+    foreach ($selectedAttractions as $sa9) {
         $s9picks[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>$sa9['name']??'Attraction', 'cost'=>($sa9['isFree']??false)?0:(int)preg_replace('/[^\d]/','',$sa9['price']??'0'), 'editStep'=>5, 'color'=>'#10B981'];
     }
 
@@ -2715,8 +2759,12 @@ window.sortAttractions = function(dir) {
     if ($s9isMultiCity) {
         if ($selectedMcFlight)     $s9picksLeg2[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedMcFlight['airline']??'').' '.($selectedMcFlight['number']??''), 'cost'=>$s9flightBase2, 'editStep'=>2, 'color'=>'#3B82F6'];
         if ($selectedMcHotel)      $s9picksLeg2[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedMcHotel['name']??'Hotel',                                         'cost'=>$s9hotelBase2,  'editStep'=>3, 'color'=>'#0D9488'];
-        if ($selectedMcVenue)      $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining',  'val'=>$selectedMcVenue['name']??'Restaurant',                                    'cost'=>$s9venueBase2,  'editStep'=>4, 'color'=>'#EF4444'];
-        if ($selectedMcAttraction) $s9picksLeg2[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedMcAttraction['name']??'Attraction',                               'cost'=>$s9attrBase2,   'editStep'=>5, 'color'=>'#10B981'];
+        foreach ($selectedMcVenues as $sv9b) {
+            $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>$sv9b['name']??'Restaurant', 'cost'=>(float)($sv9b['priceMax']??$sv9b['priceMin']??0), 'editStep'=>4, 'color'=>'#EF4444'];
+        }
+        foreach ($selectedMcAttractions as $sa9b) {
+            $s9picksLeg2[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>$sa9b['name']??'Attraction', 'cost'=>($sa9b['isFree']??false)?0:(int)preg_replace('/[^\d]/','',$sa9b['price']??'0'), 'editStep'=>5, 'color'=>'#10B981'];
+        }
     }
 
     $s9leg1Dest = trim($manualTo ?: 'Unknown');

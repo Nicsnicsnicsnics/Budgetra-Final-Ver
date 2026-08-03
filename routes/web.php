@@ -33,6 +33,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile/setup',   \App\Livewire\Traveler\ProfileBuilder::class)->name('profile.setup');
 
     Route::get('/saved-trips',             \App\Livewire\Traveler\SavedTrips::class)->name('saved-trips');
+    Route::get('/trips/import/{code}',    [Traveler\TripImportController::class, 'import'])->name('trips.import');
     Route::get('/trips',                  \App\Livewire\Traveler\TripPlannerWizard::class)->name('trips.index');
     Route::get('/multi-trips',            \App\Livewire\Traveler\MultiTripHub::class)->name('multi-trips.index');
     Route::get('/trips/plan',             \App\Livewire\Traveler\TripPlannerWizard::class)->name('trips.plan');
@@ -46,7 +47,6 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/trips/{trip}',        [Traveler\TripController::class, 'destroy'])->name('trips.destroy');
     Route::get('/trips/{trip}/budget',    [Traveler\TripController::class, 'budget'])->name('trips.budget');
     Route::get('/trips/{trip}/dashboard', \App\Livewire\Traveler\TripDashboard::class)->name('trips.dashboard');
-    Route::post('/trips/{trip}/share',     [Traveler\TripShareController::class, 'toggle'])->name('trips.share');
     Route::post('/trips/{trip}/budget',   [Traveler\TripController::class, 'budgetStore'])->name('trips.budgetStore');
     Route::get('/trips/{trip}/estimate',  [Traveler\TripController::class, 'estimate'])->name('trips.estimate');
     Route::post('/trips/{trip}/estimate', [Traveler\TripController::class, 'applyEstimates'])->name('trips.applyEstimates');

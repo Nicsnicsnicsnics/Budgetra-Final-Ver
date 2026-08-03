@@ -142,6 +142,12 @@
                         </button>
                     </div>
                 </div>
+                {{-- Share button, directly below the kebab menu --}}
+                <button wire:click="openShare({{ $trip->id }})" type="button" title="Share this trip"
+                        style="position:absolute;top:52px;right:12px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,0.35);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;backdrop-filter:blur(4px);transition:background .18s;"
+                        onmouseenter="this.style.background='rgba(0,0,0,0.55)'" onmouseleave="this.style.background='rgba(0,0,0,0.35)'">
+                    <i class="fa-solid fa-share-nodes" style="font-size:13px;"></i>
+                </button>
                 <div style="position:absolute;bottom:12px;left:16px;right:16px;">
                     <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:8px;">
                         {{ $dest }}
@@ -196,16 +202,6 @@
                        style="flex:1;background:transparent;color:#934B19;border:1.5px solid #934B19;border-radius:10px;padding:12px 6px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;transition:background .18s;"
                        onmouseenter="this.style.background='#FDF3EB'" onmouseleave="this.style.background='transparent'">
                         <i class="fa-solid fa-receipt" style="font-size:11px;"></i>Add Expense
-                    </a>
-                    <button wire:click="toggleShare({{ $trip->id }})" type="button"
-                       style="flex:1;background:{{ $trip->is_shared ? '#934B19' : 'transparent' }};color:{{ $trip->is_shared ? '#fff' : '#934B19' }};border:1.5px solid #934B19;border-radius:10px;padding:12px 6px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;"
-                       title="{{ $trip->is_shared ? 'Other travelers can copy this itinerary. Click to unshare.' : 'Let other travelers copy this itinerary' }}">
-                        <i class="fa-solid fa-share-nodes" style="font-size:11px;"></i>{{ $trip->is_shared ? 'Shared ✓' : 'Share Itinerary' }}
-                    </button>
-                </div>
-                <div style="text-align:center;margin-top:8px;">
-                    <a href="#" wire:click.prevent="showShareCode({{ $trip->id }})" style="font-size:12px;color:#9B8EA0;text-decoration:underline;">
-                        or share with a code instead
                     </a>
                 </div>
             </div>
@@ -445,33 +441,66 @@
     </div>
     @endif
 
-    {{-- Share via Code Modal --}}
-    @if ($shareCodeTripId)
+    {{-- Share Trip Modal --}}
+    @if ($shareTripId)
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:#fff;border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
+        <div style="background:#fff;border-radius:20px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
             <div style="padding:28px 24px 20px;text-align:center;">
                 <div style="width:52px;height:52px;border-radius:50%;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
-                    <i class="fa-solid fa-key" style="font-size:20px;color:#934B19;"></i>
+                    <i class="fa-solid fa-share-nodes" style="font-size:20px;color:#934B19;"></i>
                 </div>
-                <div style="font-size:16px;font-weight:700;color:#1A0A00;margin-bottom:6px;">Share with a Code</div>
+
+                @if ($shareNotAvailable)
+                <div style="font-size:16px;font-weight:700;color:#1A0A00;margin-bottom:6px;">Not Available to Share</div>
                 <div style="font-size:13px;color:#6B7280;line-height:1.5;margin-bottom:18px;">
-                    Give this code to another traveler — they can enter it directly to copy this itinerary.
+                    This trip was saved before sharing was added, so it has no selections to share. Available for trips saved after this update.
                 </div>
-                <div id="share-code-value" style="font-family:monospace;font-size:26px;font-weight:700;letter-spacing:5px;
-                            background:#F5F0EB;border-radius:12px;padding:16px;margin-bottom:14px;color:#1A0A00;">
-                    {{ $shareCodeValue }}
-                </div>
-                <button type="button" onclick="
-                    navigator.clipboard.writeText('{{ $shareCodeValue }}');
-                    this.textContent = 'Copied!';
-                    setTimeout(() => this.textContent = 'Copy Code', 1500);
-                " style="width:100%;background:#934B19;color:#fff;border:none;border-radius:10px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px;">
-                    Copy Code
-                </button>
-                <button type="button" wire:click="closeShareCodeModal"
+                <button type="button" wire:click="closeShareModal"
                         style="width:100%;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:10px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
                     Close
                 </button>
+                @else
+                <div style="font-size:16px;font-weight:700;color:#1A0A00;margin-bottom:6px;">Share This Trip</div>
+                <div style="font-size:13px;color:#6B7280;line-height:1.5;margin-bottom:18px;">
+                    Share your flight, accommodation, food & dining, and attraction picks with another traveler — they can copy them into their own Saved Trips.
+                </div>
+
+                <div style="text-align:left;margin-bottom:14px;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;margin-bottom:6px;">Share via Link</div>
+                    <div style="display:flex;gap:8px;">
+                        <input readonly value="{{ $shareLink }}" id="share-link-value"
+                               style="flex:1;min-width:0;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 10px;font-size:12px;color:#4B5563;">
+                        <button type="button" onclick="
+                            navigator.clipboard.writeText('{{ $shareLink }}');
+                            this.textContent = 'Copied!';
+                            setTimeout(() => this.textContent = 'Copy', 1500);
+                        " style="background:#934B19;color:#fff;border:none;border-radius:8px;padding:0 16px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
+                            Copy
+                        </button>
+                    </div>
+                </div>
+
+                <div style="text-align:left;margin-bottom:20px;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;margin-bottom:6px;">Share via Code</div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div style="flex:1;font-family:monospace;font-size:20px;font-weight:700;letter-spacing:4px;background:#F5F0EB;border-radius:8px;padding:10px;color:#1A0A00;text-align:center;">
+                            {{ $shareCode }}
+                        </div>
+                        <button type="button" onclick="
+                            navigator.clipboard.writeText('{{ $shareCode }}');
+                            this.textContent = 'Copied!';
+                            setTimeout(() => this.textContent = 'Copy', 1500);
+                        " style="background:#934B19;color:#fff;border:none;border-radius:8px;padding:0 16px;height:40px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
+                            Copy
+                        </button>
+                    </div>
+                </div>
+
+                <button type="button" wire:click="closeShareModal"
+                        style="width:100%;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:10px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
+                    Close
+                </button>
+                @endif
             </div>
         </div>
     </div>

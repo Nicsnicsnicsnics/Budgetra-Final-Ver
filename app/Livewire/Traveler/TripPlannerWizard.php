@@ -7,6 +7,7 @@ use App\Models\Trip;
 use App\Models\TripBudget;
 use App\Services\SerpApiService;
 use App\Services\SerperService;
+use App\Services\TripImportService;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -24,6 +25,60 @@ class TripPlannerWizard extends Component
     // ── Navigation ─────────────────────────────────────────
     public int    $step     = 0;
     public string $planningMode = ''; // 'manual' | 'ai'
+
+    // ── "Have a trip code?" gate — shown right after picking Manual
+    // Planning, before Trip Details. Skippable; imports and redirects away
+    // on success so it never needs to hand control back to Trip Details.
+    public bool   $manualCodeGateDone = false;
+    public string $importCodeInput   = '';
+    public string $importCodeError   = '';
+
+    public function importCode(): void
+    {
+        $this->importCodeError = '';
+        $code = trim($this->importCodeInput);
+        if ($code === '') {
+            $this->importCodeError = 'Enter a share code.';
+            return;
+        }
+
+        $importer   = app(TripImportService::class);
+        $sourceTrip = $importer->findByCode($code);
+
+        if (!$sourceTrip) {
+            $this->importCodeError = 'No trip found with that code.';
+            return;
+        }
+        if ($sourceTrip->user_id === auth()->id()) {
+            $this->importCodeError = "That's your own trip — you can't import it.";
+            return;
+        }
+        if (!$importer->isShareable($sourceTrip)) {
+            $this->importCodeError = 'This trip has nothing shareable saved on it.';
+            return;
+        }
+
+        $importer->import($sourceTrip, auth()->user());
+
+        // If an earlier pass through Trip Details already autosaved a draft
+        // for this session, the traveler is abandoning it in favor of the
+        // imported trip — remove it so it doesn't linger in Draft Trips.
+        if ($this->draftTripId) {
+            Trip::where('id', $this->draftTripId)
+                ->where('user_id', auth()->id())
+                ->where('status', 'draft')
+                ->delete();
+            $this->draftTripId = null;
+        }
+
+        session()->flash('success', 'Trip imported!');
+        $this->redirect(route('saved-trips'), navigate: true);
+    }
+
+    public function skipCode(): void
+    {
+        $this->manualCodeGateDone = true;
+    }
 
     // ── Step 1: trip details form (new) ───────────────────
     public string $manualFrom      = '';
@@ -1910,6 +1965,17 @@ class TripPlannerWizard extends Component
             'leg2_destination_code' => $isMultiCitySaved ? ($this->selectedMcFlight['arr_id'] ?? $this->resolveCode($this->mcTo)) : null,
             'leg2_start_date'       => $isMultiCitySaved ? ($this->mcStartDate ?: null) : null,
             'leg2_end_date'         => $isMultiCitySaved ? ($this->mcEndDate   ?: null) : null,
+            // Raw traveler-made selections (not the AI-suggested itinerary)
+            // — snapshotted so this trip can later be shared via a code/link
+            // and copied into another traveler's own Saved Trips.
+            'flight_selection'          => $this->selectedFlight ?: null,
+            'hotel_selection'           => $this->selectedHotel ?: null,
+            'venue_selection'           => $this->selectedVenues ?: null,
+            'attraction_selection'      => $this->selectedAttractions ?: null,
+            'leg2_flight_selection'     => $isMultiCitySaved ? ($this->selectedMcFlight ?: null) : null,
+            'leg2_hotel_selection'      => $isMultiCitySaved ? ($this->selectedMcHotel ?: null) : null,
+            'leg2_venue_selection'      => $isMultiCitySaved ? ($this->selectedMcVenues ?: null) : null,
+            'leg2_attraction_selection' => $isMultiCitySaved ? ($this->selectedMcAttractions ?: null) : null,
         ]);
 
         // autosaveDraft() silently saved a placeholder Trip (status=draft)

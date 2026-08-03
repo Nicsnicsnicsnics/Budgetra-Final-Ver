@@ -170,7 +170,7 @@
     </div></div>
 
     {{-- Transactions --}}
-    <div class="card" style="overflow:hidden;padding-bottom:60px;">
+    <div class="card" style="overflow:hidden;">
         @if (!$selectedTrip || $expenses->isEmpty())
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:64px 24px;text-align:center;">
             <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:16px;">

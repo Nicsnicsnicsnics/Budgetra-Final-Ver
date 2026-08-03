@@ -18,6 +18,10 @@
     #dropZone { animation: expenseCardIn .3s ease both; }
     .expense-form-card { animation: expenseCardIn .35s ease both; }
     @keyframes expenseCardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .scan-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch; }
+    .scan-layout > div:first-child { display: flex; flex-direction: column; }
+    .scan-layout #dropZone { flex: 1; }
+    @media (max-width: 860px) { .scan-layout { grid-template-columns: 1fr; } }
 </style>
 @endpush
 
@@ -36,47 +40,43 @@
 </div>
 @else
 
-<div class="mb-24" style="max-width:1100px;margin-left:auto;margin-right:auto;text-align:center;">
+<div class="mb-24" style="max-width:1400px;margin-left:auto;margin-right:auto;text-align:center;">
     <h1>Scan Your Receipt</h1>
     <p class="text-muted">Upload a photo of your receipt to automatically extract and track expenses.</p>
 </div>
 
-<div style="max-width:1100px;margin:0 auto;">
-    <div>
+<div style="max-width:1400px;margin:0 auto;">
+    <div class="scan-layout">
         {{-- Drop zone --}}
-        <div class="dropzone" id="dropZone">
-            <div class="dropzone-icon"><i class="fa-solid fa-camera"></i></div>
-            <div class="dropzone-title">Drag &amp; Drop Receipt</div>
-            <div class="dropzone-sub">or click to browse from your computer</div>
-            <div x-data="{ open: false }" style="position:relative;display:inline-block;">
-                <button type="button" class="btn btn-primary" @click="open = !open" @click.away="open = false">
-                    <i class="fa-solid fa-upload"></i> Select File
-                </button>
-                <div x-show="open" x-transition class="scan-select-menu" x-cloak>
-                    <button type="button" class="scan-select-option" @click="open = false" onclick="document.getElementById('mobileCamera').click()">
-                        <i class="fa-solid fa-camera"></i> Take Photo
+        <div>
+            <div class="dropzone" id="dropZone">
+                <div id="dropzonePrompt">
+                    <div class="dropzone-icon"><i class="fa-solid fa-camera"></i></div>
+                    <div class="dropzone-title">Drag &amp; Drop Receipt</div>
+                    <div class="dropzone-sub">or click to browse from your computer</div>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('receiptFile').click()">
+                        <i class="fa-solid fa-upload"></i> Select File
                     </button>
-                    <button type="button" class="scan-select-option" @click="open = false" onclick="document.getElementById('receiptFile').click()">
-                        <i class="fa-solid fa-image"></i> Choose from Gallery
+                </div>
+                <input type="file" id="receiptFile" accept="image/*,application/pdf" style="display:none;">
+
+                <div class="dropzone-preview" id="dropzonePreview">
+                    <img id="dropzonePreviewImg" alt="Receipt preview">
+                    <button type="button" id="dropzoneClear" class="btn btn-outline btn-sm" style="margin-top:14px;">
+                        <i class="fa-solid fa-arrow-rotate-left"></i> Choose a different file
                     </button>
                 </div>
             </div>
-            <input type="file" id="receiptFile" accept="image/*,application/pdf" style="display:none;">
-            <input type="file" id="mobileCamera" accept="image/*" capture="environment" style="display:none;">
 
-            <div class="dropzone-preview" id="dropzonePreview">
-                <img id="dropzonePreviewImg" alt="Receipt preview">
+            <div id="ocrStatus" style="display:none;" class="alert alert-warning mt-8">
+                <i class="fa-solid fa-spinner fa-spin"></i> Scanning receipt...
             </div>
         </div>
 
-        <div id="ocrStatus" style="display:none;" class="alert alert-warning mt-8">
-            <i class="fa-solid fa-spinner fa-spin"></i> Scanning receipt...
-        </div>
-
         {{-- Expense Details form --}}
-        <div class="card expense-form-card mt-16"><div class="card-body">
-            <h3 class="mb-4">Expense Details</h3>
-            <p class="text-muted mb-16" style="font-size:13px;">Fill in details below or let OCR auto-fill after scanning.</p>
+        <div class="card expense-form-card"><div class="card-body" style="padding:32px;">
+            <h3 class="mb-4" style="font-size:20px;">Expense Details</h3>
+            <p class="text-muted mb-16" style="font-size:14px;">Fill in details below or let OCR auto-fill after scanning.</p>
 
             @if ($errors->any())
             <div class="alert alert-danger">{{ $errors->first() }}</div>
@@ -157,14 +157,15 @@
 (function () {
     var dropZone       = document.getElementById('dropZone');
     var fileInput      = document.getElementById('receiptFile');
-    var mobileInput    = document.getElementById('mobileCamera');
     var submitInput    = document.getElementById('receiptSubmit');
     var statusDiv      = document.getElementById('ocrStatus');
     var amountInput    = document.getElementById('amount');
     var dateInput      = document.getElementById('expense_date');
     var descInput      = document.getElementById('description');
+    var promptEl       = document.getElementById('dropzonePrompt');
     var previewWrap    = document.getElementById('dropzonePreview');
     var previewImg     = document.getElementById('dropzonePreviewImg');
+    var clearBtn       = document.getElementById('dropzoneClear');
 
     if (!dropZone) return; // no trips: the form isn't on the page at all
 
@@ -172,10 +173,24 @@
         var reader = new FileReader();
         reader.onload = function (e) {
             previewImg.src = e.target.result;
+            promptEl.style.display = 'none';
             previewWrap.style.display = 'block';
         };
         reader.readAsDataURL(file);
     }
+
+    function clearPreview() {
+        previewImg.src = '';
+        previewWrap.style.display = 'none';
+        promptEl.style.display = '';
+        fileInput.value = '';
+        submitInput.value = '';
+    }
+
+    clearBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        clearPreview();
+    });
 
     function scanReceipt(file) {
         statusDiv.style.display = '';
@@ -214,7 +229,6 @@
 
     // Click to browse
     fileInput.addEventListener('change', function () { handleFile(this.files[0]); });
-    mobileInput.addEventListener('change', function () { handleFile(this.files[0]); });
 
     // Drag and drop
     dropZone.addEventListener('dragover', function (e) {

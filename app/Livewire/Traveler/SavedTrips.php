@@ -4,6 +4,7 @@ namespace App\Livewire\Traveler;
 use App\Models\GroupMember;
 use App\Models\Trip;
 use App\Models\User;
+use App\Services\TripImportService;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -22,8 +23,10 @@ class SavedTrips extends Component
     public string $memberError   = '';
     public array  $pendingMembers = [];  // [['id'=>..,'name'=>..,'email'=>..]]
     public array  $savedMembers   = [];  // already saved for this trip
-    public ?int $shareCodeTripId  = null;
-    public string $shareCodeValue = '';
+    public ?int $shareTripId    = null;
+    public string $shareCode    = '';
+    public string $shareLink    = '';
+    public bool $shareNotAvailable = false;
 
     public function showDetail(int $id): void
     {
@@ -146,30 +149,33 @@ class SavedTrips extends Component
         $this->deleteTripName = '';
     }
 
-    public function toggleShare(int $id): void
-    {
-        $trip = Trip::find($id);
-        if ($trip && $trip->user_id === auth()->id()) {
-            $trip->update(['is_shared' => !$trip->is_shared]);
-        }
-    }
-
-    public function showShareCode(int $id): void
+    public function openShare(int $id): void
     {
         $trip = Trip::find($id);
         if (!$trip || $trip->user_id !== auth()->id()) return;
 
-        if (!$trip->share_code) {
-            $trip->update(['share_code' => Trip::generateUniqueShareCode()]);
+        $importer = app(TripImportService::class);
+        if (!$importer->isShareable($trip)) {
+            $this->shareTripId       = $id;
+            $this->shareNotAvailable = true;
+            $this->shareCode         = '';
+            $this->shareLink         = '';
+            return;
         }
-        $this->shareCodeTripId = $id;
-        $this->shareCodeValue  = $trip->share_code;
+
+        $code = $importer->shareCodeFor($trip);
+        $this->shareTripId       = $id;
+        $this->shareCode         = $code;
+        $this->shareLink         = route('trips.import', $code);
+        $this->shareNotAvailable = false;
     }
 
-    public function closeShareCodeModal(): void
+    public function closeShareModal(): void
     {
-        $this->shareCodeTripId = null;
-        $this->shareCodeValue  = '';
+        $this->shareTripId       = null;
+        $this->shareCode         = '';
+        $this->shareLink         = '';
+        $this->shareNotAvailable = false;
     }
 
     public function deleteTrip(): void
