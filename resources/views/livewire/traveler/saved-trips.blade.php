@@ -1,5 +1,16 @@
 <div style="display:flex;flex-direction:column;flex:1;">
 
+@if (session('success'))
+<div style="background:#F0FDF4;border:1.5px solid #BBF7D0;color:#16A34A;border-radius:12px;padding:12px 18px;margin-bottom:16px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;">
+    <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
+</div>
+@endif
+@if (session('error'))
+<div style="background:#FEF2F2;border:1.5px solid #FECACA;color:#DC2626;border-radius:12px;padding:12px 18px;margin-bottom:16px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;">
+    <i class="fa-solid fa-circle-exclamation"></i> {{ session('error') }}
+</div>
+@endif
+
 <style>
 .st-panel-pop{animation:stPanelPop .22s ease;transform-origin:left center;}
 @keyframes stPanelPop{from{opacity:0;transform:scaleX(.9);}to{opacity:1;transform:scaleX(1);}}
@@ -198,10 +209,10 @@
             $sd      = $dt->summary_data ?? [];
             $dtSpendColor = $dt->spend_pct >= 80 ? '#DC2626' : ($dt->spend_pct >= 50 ? '#D97706' : '#1A0A00');
             $rows = [
-                'transportation' => ['label' => 'Transportation',  'icon' => 'fa-solid fa-plane',           'color' => '#2563EB'],
-                'accommodation'  => ['label' => 'Accommodation',   'icon' => 'fa-solid fa-bed',             'color' => '#934B19'],
-                'food'           => ['label' => 'Food & Dining',   'icon' => 'fa-solid fa-utensils',        'color' => '#EA7A1F'],
-                'attractions'    => ['label' => 'Attractions',     'icon' => 'fa-solid fa-landmark',        'color' => '#D4A70C'],
+                'transportation' => ['label' => 'Transportation',  'icon' => 'fa-solid fa-plane',           'color' => '#3B82F6'],
+                'accommodation'  => ['label' => 'Accommodation',   'icon' => 'fa-solid fa-bed',             'color' => '#0D9488'],
+                'food'           => ['label' => 'Food & Dining',   'icon' => 'fa-solid fa-utensils',        'color' => '#EF4444'],
+                'attractions'    => ['label' => 'Attractions',     'icon' => 'fa-solid fa-landmark',        'color' => '#10B981'],
                 'emergency_fund' => ['label' => 'Emergency Fund',  'icon' => 'fa-solid fa-shield-halved',   'color' => '#2563EB'],
             ];
         @endphp
@@ -423,4 +434,5 @@
         </div>
     </div>
     @endif
+
 </div>

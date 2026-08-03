@@ -2619,17 +2619,17 @@ window.sortAttractions = function(dir) {
     // Selections for summary list — leg 1 always; leg 2 only for multi-city.
     // Costs here are each pick's own price only (see $s9*Base* above).
     $s9picks = [];
-    if ($selectedFlight)      $s9picks[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''),  'cost'=>$s9flightBase1, 'editStep'=>2];
-    if ($selectedHotel)       $s9picks[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotelBase1,  'editStep'=>3];
-    if ($selectedVenue)       $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining',  'val'=>$selectedVenue['name']??'Restaurant',                                 'cost'=>$s9venueBase1,  'editStep'=>4];
-    if ($selectedAttraction)  $s9picks[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedAttraction['name']??'Attraction',                            'cost'=>$s9attrBase1,   'editStep'=>5];
+    if ($selectedFlight)      $s9picks[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''),  'cost'=>$s9flightBase1, 'editStep'=>2, 'color'=>'#3B82F6'];
+    if ($selectedHotel)       $s9picks[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotelBase1,  'editStep'=>3, 'color'=>'#0D9488'];
+    if ($selectedVenue)       $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining',  'val'=>$selectedVenue['name']??'Restaurant',                                 'cost'=>$s9venueBase1,  'editStep'=>4, 'color'=>'#EF4444'];
+    if ($selectedAttraction)  $s9picks[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedAttraction['name']??'Attraction',                            'cost'=>$s9attrBase1,   'editStep'=>5, 'color'=>'#10B981'];
 
     $s9picksLeg2 = [];
     if ($s9isMultiCity) {
-        if ($selectedMcFlight)     $s9picksLeg2[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedMcFlight['airline']??'').' '.($selectedMcFlight['number']??''), 'cost'=>$s9flightBase2, 'editStep'=>2];
-        if ($selectedMcHotel)      $s9picksLeg2[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedMcHotel['name']??'Hotel',                                         'cost'=>$s9hotelBase2,  'editStep'=>3];
-        if ($selectedMcVenue)      $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining',  'val'=>$selectedMcVenue['name']??'Restaurant',                                    'cost'=>$s9venueBase2,  'editStep'=>4];
-        if ($selectedMcAttraction) $s9picksLeg2[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedMcAttraction['name']??'Attraction',                               'cost'=>$s9attrBase2,   'editStep'=>5];
+        if ($selectedMcFlight)     $s9picksLeg2[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedMcFlight['airline']??'').' '.($selectedMcFlight['number']??''), 'cost'=>$s9flightBase2, 'editStep'=>2, 'color'=>'#3B82F6'];
+        if ($selectedMcHotel)      $s9picksLeg2[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedMcHotel['name']??'Hotel',                                         'cost'=>$s9hotelBase2,  'editStep'=>3, 'color'=>'#0D9488'];
+        if ($selectedMcVenue)      $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining',  'val'=>$selectedMcVenue['name']??'Restaurant',                                    'cost'=>$s9venueBase2,  'editStep'=>4, 'color'=>'#EF4444'];
+        if ($selectedMcAttraction) $s9picksLeg2[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedMcAttraction['name']??'Attraction',                               'cost'=>$s9attrBase2,   'editStep'=>5, 'color'=>'#10B981'];
     }
 
     $s9leg1Dest = trim($manualTo ?: 'Unknown');
@@ -2817,8 +2817,8 @@ window.sortAttractions = function(dir) {
                     @foreach($s9picks as $pk)
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EB;">
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:28px;height:28px;border-radius:7px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:#934B19;"></i>
+                            <div style="width:28px;height:28px;border-radius:7px;background:{{ $pk['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:{{ $pk['color'] }};"></i>
                             </div>
                             <div>
                                 <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">{{ $pk['label'] }}</div>
@@ -2837,8 +2837,8 @@ window.sortAttractions = function(dir) {
                     @foreach($s9picksLeg2 as $pk)
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EB;">
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:28px;height:28px;border-radius:7px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:#934B19;"></i>
+                            <div style="width:28px;height:28px;border-radius:7px;background:{{ $pk['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:{{ $pk['color'] }};"></i>
                             </div>
                             <div>
                                 <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">{{ $pk['label'] }}</div>
@@ -2920,32 +2920,26 @@ window.sortAttractions = function(dir) {
 {{-- ═══════════════════════════════════════════════════════════════
      EMPTY STATE — no trips yet
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($showEmpty)
+@if ($showEmpty && !auth()->user()?->userProfile)
 <div class="empty-state-center" style="min-height:80vh;">
     <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
         <i class="fa-solid fa-map-location-dot" style="font-size:28px;color:#fff;"></i>
     </div>
-    @if (!auth()->user()?->userProfile)
     <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">Set up your profile first</h2>
     <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile so we can tailor budget suggestions before you plan your first trip.</p>
     <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
         <i class="fa-solid fa-user"></i> Set Up Your Profile First
     </a>
-    @else
-    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">No trips planned yet</h2>
-    <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Start your journey by planning your first adventure. Track expenses, save for goals, and capture moments all in one place.</p>
-    <button wire:click="startFromEmpty"
-            style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border:none;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;">
-        <i class="fa-solid fa-plane"></i> Plan Your First Trip
-    </button>
-    @endif
 </div>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════
      MODE SELECT — manual or AI
+     Shown as the empty state too (no trips yet, but profile exists) —
+     skips the old "No trips planned yet" screen and its button so
+     first-time planners land straight on Manual/AI Powered Planning.
 ═══════════════════════════════════════════════════════════════ --}}
-@if (!$showEmpty && $planningMode === '' && $step === 0)
+@if ((!$showEmpty || auth()->user()?->userProfile) && $planningMode === '' && $step === 0)
 <style>
 .mode-card{background:#fff;border:1.5px solid var(--border);border-radius:22px;overflow:hidden;cursor:pointer;transition:box-shadow .25s ease,transform .25s ease,border-color .25s ease;display:flex;flex-direction:column;height:fit-content;align-self:start;text-decoration:none;color:inherit;position:relative;}
 .mode-card:hover{box-shadow:0 20px 50px rgba(26,10,0,0.14);transform:translateY(-6px);border-color:#E7D4C4;}

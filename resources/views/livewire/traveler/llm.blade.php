@@ -39,7 +39,7 @@
     {{-- Heading --}}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;">
         <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0;display:flex;align-items:center;gap:10px;">
-            <span style="width:32px;height:32px;background:#F5F0EB;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✦</span>
+            <span style="width:28px;height:28px;background:#F5F0EB;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:#934B19;flex-shrink:0;">✦</span>
             Your trip package for {{ $aiTo }}
         </h2>
         <button wire:click="editWithWizard" wire:loading.attr="disabled" wire:target="editWithWizard"
