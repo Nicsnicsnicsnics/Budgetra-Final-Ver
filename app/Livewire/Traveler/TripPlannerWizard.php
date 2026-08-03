@@ -7,6 +7,7 @@ use App\Models\Trip;
 use App\Models\TripBudget;
 use App\Services\SerpApiService;
 use App\Services\SerperService;
+use App\Services\TripImportService;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -24,6 +25,60 @@ class TripPlannerWizard extends Component
     // ── Navigation ─────────────────────────────────────────
     public int    $step     = 0;
     public string $planningMode = ''; // 'manual' | 'ai'
+
+    // ── "Have a trip code?" gate — shown right after picking Manual
+    // Planning, before Trip Details. Skippable; imports and redirects away
+    // on success so it never needs to hand control back to Trip Details.
+    public bool   $manualCodeGateDone = false;
+    public string $importCodeInput   = '';
+    public string $importCodeError   = '';
+
+    public function importCode(): void
+    {
+        $this->importCodeError = '';
+        $code = trim($this->importCodeInput);
+        if ($code === '') {
+            $this->importCodeError = 'Enter a share code.';
+            return;
+        }
+
+        $importer   = app(TripImportService::class);
+        $sourceTrip = $importer->findByCode($code);
+
+        if (!$sourceTrip) {
+            $this->importCodeError = 'No trip found with that code.';
+            return;
+        }
+        if ($sourceTrip->user_id === auth()->id()) {
+            $this->importCodeError = "That's your own trip — you can't import it.";
+            return;
+        }
+        if (!$importer->isShareable($sourceTrip)) {
+            $this->importCodeError = 'This trip has nothing shareable saved on it.';
+            return;
+        }
+
+        $importer->import($sourceTrip, auth()->user());
+
+        // If an earlier pass through Trip Details already autosaved a draft
+        // for this session, the traveler is abandoning it in favor of the
+        // imported trip — remove it so it doesn't linger in Draft Trips.
+        if ($this->draftTripId) {
+            Trip::where('id', $this->draftTripId)
+                ->where('user_id', auth()->id())
+                ->where('status', 'draft')
+                ->delete();
+            $this->draftTripId = null;
+        }
+
+        session()->flash('success', 'Trip imported!');
+        $this->redirect(route('saved-trips'), navigate: true);
+    }
+
+    public function skipCode(): void
+    {
+        $this->manualCodeGateDone = true;
+    }
 
     // ── Step 1: trip details form (new) ───────────────────
     public string $manualFrom      = '';
@@ -314,7 +369,7 @@ class TripPlannerWizard extends Component
 
             $this->selectedFlight     = $handoff['flight']     ?? null;
             $this->selectedHotel      = $handoff['hotel']      ?? null;
-            $this->selectedVenues     = !empty($handoff['venue'])      ? [$handoff['venue']['name']      => $handoff['venue']]      : [];
+            $this->selectedVenues      = !empty($handoff['venue'])      ? [$handoff['venue']['name']      => $handoff['venue']]      : [];
             $this->selectedAttractions = !empty($handoff['attraction']) ? [$handoff['attraction']['name'] => $handoff['attraction']] : [];
             $this->flightTripType     = strtolower($this->selectedFlight['type'] ?? '') === 'one way' ? 'one_way' : 'round_trip';
 
@@ -1921,6 +1976,17 @@ class TripPlannerWizard extends Component
             'leg2_destination_code' => $isMultiCitySaved ? ($this->selectedMcFlight['arr_id'] ?? $this->resolveCode($this->mcTo)) : null,
             'leg2_start_date'       => $isMultiCitySaved ? ($this->mcStartDate ?: null) : null,
             'leg2_end_date'         => $isMultiCitySaved ? ($this->mcEndDate   ?: null) : null,
+            // Raw traveler-made selections (not the AI-suggested itinerary)
+            // — snapshotted so this trip can later be shared via a code/link
+            // and copied into another traveler's own Saved Trips.
+            'flight_selection'          => $this->selectedFlight ?: null,
+            'hotel_selection'           => $this->selectedHotel ?: null,
+            'venue_selection'           => $this->selectedVenues ?: null,
+            'attraction_selection'      => $this->selectedAttractions ?: null,
+            'leg2_flight_selection'     => $isMultiCitySaved ? ($this->selectedMcFlight ?: null) : null,
+            'leg2_hotel_selection'      => $isMultiCitySaved ? ($this->selectedMcHotel ?: null) : null,
+            'leg2_venue_selection'      => $isMultiCitySaved ? ($this->selectedMcVenues ?: null) : null,
+            'leg2_attraction_selection' => $isMultiCitySaved ? ($this->selectedMcAttractions ?: null) : null,
         ]);
 
         // autosaveDraft() silently saved a placeholder Trip (status=draft)
@@ -1944,9 +2010,8 @@ class TripPlannerWizard extends Component
         $origLabel = trim($this->manualFrom ?: 'Manila');
 
         // Leg 1 (main destination) and leg 2 (multi-city second destination)
-        // are kept as separate variables now — previously `??` merged them,
-        // so if both existed only leg 1 was ever written to the itinerary
-        // and leg 2 was silently dropped.
+        // are kept as separate variables — merging them with `??` would
+        // silently drop leg 2 whenever leg 1 also existed.
         $flight  = $this->selectedFlight;
         $hotel   = $this->selectedHotel;
         $flight2 = $this->selectedMcFlight;
@@ -2054,10 +2119,10 @@ class TripPlannerWizard extends Component
             }
         }
 
-        // Leg 2 (multi-city second destination) — scheduled on the day
-        // after leg 1's hotel stay ends ($leg2Day, computed above alongside
-        // leg 1's own activity-day bound), so it doesn't collide with leg
-        // 1's activities.
+        // Leg 2 (multi-city second destination) — flight arrival + hotel
+        // check-in, scheduled on the day after leg 1's hotel stay ends
+        // ($leg2Day, computed above alongside leg 1's own activity-day
+        // bound), so it doesn't collide with leg 1's own activities above.
         $leg2Label = trim($this->mcTo ?: '');
 
         if ($hasLeg2) {
@@ -2140,10 +2205,10 @@ class TripPlannerWizard extends Component
         }
 
         // Save AI-generated itinerary days.
-        // If selections took Day 2 (and leg 2, if any), leg 1's AI days start
-        // after that. Leg 1's AI days are capped so they never spill into
-        // leg 2's date range; leg 2's AI days start on/after leg2Day and are
-        // capped to the trip end.
+        // If selections took up activity days (and leg 2, if any), leg 1's
+        // AI days start after that. Leg 1's AI days are capped so they never
+        // spill into leg 2's date range; leg 2's AI days start on/after
+        // leg2Day and are capped to the trip end.
         $writeAiDays = function (array $days, string $location, \Carbon\Carbon $fromDate, \Carbon\Carbon $capDate) use ($trip) {
             foreach ($days as $i => $day) {
                 $dayDate = $fromDate->copy()->addDays($i);
@@ -2168,16 +2233,27 @@ class TripPlannerWizard extends Component
             }
         };
 
+        // AI content starts right after however many days leg 1's own
+        // selections actually consumed (clamped to the days we scheduled
+        // onto). Scoped to leg 1's own buckets, not the combined
+        // selectionDayBuckets() — that mixes in leg 2's picks too, which
+        // would overcount this leg's offset on a multi-city trip.
+        $leg1SelectionDaysUsed = min(count($activityDays), count($dayBucketsFor($this->selectedAttractions, $this->selectedVenues)));
         $aiDayOffset = 1;
-        if ($totalDays >= 2 && (!empty($this->selectedAttractions) || !empty($this->selectedVenues))) $aiDayOffset++;
+        if ($totalDays >= 2 && $leg1SelectionDaysUsed > 0) $aiDayOffset += $leg1SelectionDaysUsed;
         if ($hasLeg2) $aiDayOffset++;
         $leg1CapDate = $hasLeg2 ? $leg2Day->copy()->subDay() : $lastDate;
         if (!empty($leg1AiDays)) {
             $writeAiDays($leg1AiDays, $destLabel, \Carbon\Carbon::parse($tripStart)->addDays($aiDayOffset), $leg1CapDate);
         }
         if (!empty($leg2AiDays)) {
-            $leg2SelectionsUsedDay = $flight2 || $hotel2 || !empty($this->selectedMcAttractions) || !empty($this->selectedMcVenues);
-            $leg2AiStart = $leg2SelectionsUsedDay ? $leg2Day->copy()->addDay() : $leg2Day->copy();
+            // How many days leg 2's own arrival (flight/hotel) + its
+            // Explore & Dine buckets actually consumed, so leg 2's AI days
+            // start right after rather than colliding with them.
+            $leg2SelectionDaysUsed = count($dayBucketsFor($this->selectedMcAttractions, $this->selectedMcVenues));
+            $leg2ArrivalDayUsed    = ($flight2 || $hotel2) ? 1 : 0;
+            $leg2AiStart = $leg2Day->copy()->addDays($leg2ArrivalDayUsed + $leg2SelectionDaysUsed);
+            if ($leg2AiStart->gt($lastDate)) $leg2AiStart = $lastDate->copy();
             $writeAiDays($leg2AiDays, $leg2Label, $leg2AiStart, $lastDate);
         }
 

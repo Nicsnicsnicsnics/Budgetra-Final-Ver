@@ -39,7 +39,7 @@
     {{-- Heading --}}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;">
         <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0;display:flex;align-items:center;gap:10px;">
-            <span style="width:32px;height:32px;background:#F5F0EB;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✦</span>
+            <span style="width:28px;height:28px;background:#F5F0EB;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:#934B19;flex-shrink:0;">✦</span>
             Your trip package for {{ $aiTo }}
         </h2>
         <button wire:click="editWithWizard" wire:loading.attr="disabled" wire:target="editWithWizard"
@@ -221,11 +221,10 @@
         .llm-interest-pill:hover{border-color:#934B19;box-shadow:0 4px 12px rgba(147,75,25,0.12);transform:translateY(-1px);}
         .llm-interest-edit{color:#934B19;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
         .llm-interest-edit:hover{text-decoration:underline;}
-        .llm-composer{width:100%;max-width:600px;background:#fff;border:1.5px solid var(--border);border-radius:24px;box-shadow:0 8px 32px rgba(45,27,20,.07);padding:20px 22px;transition:box-shadow .2s ease,border-color .2s ease;}
+        .llm-composer{width:100%;max-width:520px;margin:0 auto;background:#fff;border:1.5px solid var(--border);border-radius:999px;box-shadow:0 8px 32px rgba(45,27,20,.07);padding:8px 8px 8px 22px;display:flex;align-items:center;gap:10px;transition:box-shadow .2s ease,border-color .2s ease;}
         .llm-composer:focus-within{border-color:#934B19;box-shadow:0 12px 40px rgba(147,75,25,.14);}
-        .llm-composer textarea{width:100%;border:none;outline:none;resize:none;font-family:inherit;font-size:15px;color:var(--dark);background:transparent;line-height:1.5;max-height:120px;}
-        .llm-composer-footer{display:flex;align-items:center;justify-content:flex-end;margin-top:12px;}
-        .llm-send-btn{width:40px;height:40px;border-radius:50%;background:#934B19;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 16px rgba(147,75,25,0.28);transition:transform .15s ease,background .15s ease;}
+        .llm-composer textarea{flex:1;min-width:0;border:none;outline:none;resize:none;font-family:inherit;font-size:14px;color:var(--dark);background:transparent;line-height:1.4;max-height:100px;padding:8px 0;}
+        .llm-send-btn{width:38px;height:38px;border-radius:50%;background:#934B19;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 16px rgba(147,75,25,0.28);transition:transform .15s ease,background .15s ease;}
         .llm-send-btn:hover{background:#6A3500;transform:scale(1.08);}
         .llm-send-btn:active{transform:scale(.92);}
         .llm-thread{width:100%;max-width:600px;margin:0 auto;flex:1;overflow-y:auto;padding:80px 4px 16px;display:flex;flex-direction:column;gap:12px;}
@@ -233,7 +232,7 @@
         .llm-msg-user{align-self:flex-end;background:#934B19;color:#fff;border-bottom-right-radius:4px;}
         .llm-msg-assistant{align-self:flex-start;background:#fff;border:1.5px solid var(--border);color:var(--dark);border-bottom-left-radius:4px;}
         @media (max-width:640px){
-            .llm-composer{border-radius:18px;padding:14px 16px;}
+            .llm-composer{padding:6px 6px 6px 16px;}
         }
     </style>
 
@@ -261,16 +260,14 @@
                 <style>#llm-ai-prompt::placeholder{color:#B7A99B;opacity:1;}</style>
                 <textarea id="llm-ai-prompt" wire:model="aiPrompt"
                           placeholder="Describe your dream trip... destination, budget, travel dates, or interests."
-                          rows="2"
+                          rows="1"
                           x-data
                           x-on:input="$el.style.height='auto';$el.style.height=$el.scrollHeight+'px'"
                           x-on:keydown.enter.prevent="if (!$event.shiftKey) $wire.automateTrip()"></textarea>
-                <div class="llm-composer-footer">
-                    <button type="button" wire:click="automateTrip" wire:loading.attr="disabled" wire:target="automateTrip" class="llm-send-btn" aria-label="Send">
-                        <span wire:loading.remove wire:target="automateTrip"><i class="fa-solid fa-paper-plane" style="font-size:13px;"></i></span>
-                        <span wire:loading wire:target="automateTrip"><i class="fa-solid fa-spinner fa-spin" style="font-size:13px;"></i></span>
-                    </button>
-                </div>
+                <button type="button" wire:click="automateTrip" wire:loading.attr="disabled" wire:target="automateTrip" class="llm-send-btn" aria-label="Send">
+                    <span wire:loading.remove wire:target="automateTrip"><i class="fa-solid fa-paper-plane" style="font-size:13px;"></i></span>
+                    <span wire:loading wire:target="automateTrip"><i class="fa-solid fa-spinner fa-spin" style="font-size:13px;"></i></span>
+                </button>
             </div>
 
         </div>
@@ -292,12 +289,10 @@
                           x-data
                           x-on:input="$el.style.height='auto';$el.style.height=$el.scrollHeight+'px'"
                           x-on:keydown.enter.prevent="if (!$event.shiftKey) $wire.automateTrip()"></textarea>
-                <div class="llm-composer-footer">
-                    <button type="button" wire:click="automateTrip" wire:loading.attr="disabled" wire:target="automateTrip" class="llm-send-btn" aria-label="Send">
-                        <span wire:loading.remove wire:target="automateTrip"><i class="fa-solid fa-paper-plane" style="font-size:13px;"></i></span>
-                        <span wire:loading wire:target="automateTrip"><i class="fa-solid fa-spinner fa-spin" style="font-size:13px;"></i></span>
-                    </button>
-                </div>
+                <button type="button" wire:click="automateTrip" wire:loading.attr="disabled" wire:target="automateTrip" class="llm-send-btn" aria-label="Send">
+                    <span wire:loading.remove wire:target="automateTrip"><i class="fa-solid fa-paper-plane" style="font-size:13px;"></i></span>
+                    <span wire:loading wire:target="automateTrip"><i class="fa-solid fa-spinner fa-spin" style="font-size:13px;"></i></span>
+                </button>
             </div>
 
         </div>

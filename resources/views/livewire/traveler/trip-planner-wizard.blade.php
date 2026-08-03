@@ -1,9 +1,39 @@
 <div>
 
 {{-- ═══════════════════════════════════════════════════════════════
+     STEP 1a — Have a trip code? (Manual Planning only, skippable)
+═══════════════════════════════════════════════════════════════ --}}
+@if ($planningMode === 'manual' && $step === 1 && !$manualCodeGateDone)
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 120px);padding:20px;">
+    <div style="width:100%;max-width:520px;background:#fff;border:1.5px solid var(--border);border-radius:26px;padding:48px 44px;text-align:center;">
+        <div style="width:72px;height:72px;border-radius:20px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
+            <i class="fa-solid fa-key" style="font-size:28px;color:#934B19;"></i>
+        </div>
+        <h2 style="font-size:26px;font-weight:800;color:var(--dark);margin:0 0 10px;">Have a trip code?</h2>
+        <p style="font-size:15px;color:var(--muted);line-height:1.6;margin:0 0 28px;">
+            Enter it here to copy another traveler's flight, accommodation, food & dining, and attraction picks into your own trip.
+        </p>
+        <input type="text" wire:model="importCodeInput" wire:keydown.enter="importCode" maxlength="8" placeholder="e.g. AB1C2D3E"
+               style="width:100%;box-sizing:border-box;border:1.5px solid #d3c3be;border-radius:12px;padding:16px 18px;font-size:18px;font-family:inherit;text-align:center;margin-bottom:16px;">
+        @if($importCodeError)
+        <div style="font-size:13px;color:#ba1a1a;margin-bottom:16px;">{{ $importCodeError }}</div>
+        @endif
+        <button wire:click="importCode" wire:loading.attr="disabled" wire:target="importCode"
+                style="width:100%;background:#934B19;color:#fff;border:none;border-radius:12px;padding:16px 0;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px;">
+            <span wire:loading.remove wire:target="importCode">Import Trip</span>
+            <span wire:loading wire:target="importCode"><i class="fa-solid fa-spinner fa-spin"></i></span>
+        </button>
+        <a href="#" wire:click.prevent="skipCode" style="font-size:14px;color:#9B8EA0;text-decoration:underline;">
+            Skip, I don't have a code
+        </a>
+    </div>
+</div>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════
      STEP 1 — Plan Your Trip (manual)
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode !== '' && $step === 1)
+@if ($planningMode !== '' && $step === 1 && ($planningMode !== 'manual' || $manualCodeGateDone))
 @php
 $localCities = [
     ['name'=>'Manila','code'=>'MNL'],['name'=>'Cebu City','code'=>'CEB'],['name'=>'Davao City','code'=>'DVO'],
@@ -2600,7 +2630,7 @@ window.sortAttractions = function(dir) {
                     $actCost = $act['cost'] ?? null;
                     $actFree = $act['isFree'] ?? false;
                 @endphp
-                <div class="itin8-act-card">
+                <div class="itin8-act-card" style="position:relative;">
                     @if($act['isCustom'] ?? false)
                     <button wire:click="removeCustomActivity({{ $act['customIndex'] }})" title="Remove"
                             style="position:absolute;top:8px;right:8px;background:none;border:none;color:#9B8EA0;cursor:pointer;font-size:12px;padding:2px;">
@@ -2785,24 +2815,24 @@ window.sortAttractions = function(dir) {
     // Selections for summary list — leg 1 always; leg 2 only for multi-city.
     // Costs here are each pick's own price only (see $s9*Base* above).
     $s9picks = [];
-    if ($selectedFlight) $s9picks[] = ['icon'=>'fa-plane', 'label'=>'Flight',        'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''), 'cost'=>$s9flightBase1, 'editStep'=>2];
-    if ($selectedHotel)  $s9picks[] = ['icon'=>'fa-bed',   'label'=>'Accommodation', 'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotelBase1,  'editStep'=>3];
+    if ($selectedFlight)      $s9picks[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''),  'cost'=>$s9flightBase1, 'editStep'=>2, 'color'=>'#3B82F6'];
+    if ($selectedHotel)       $s9picks[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotelBase1,  'editStep'=>3, 'color'=>'#0D9488'];
     foreach ($selectedVenues as $sv9) {
-        $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>$sv9['name']??'Restaurant', 'cost'=>(float)($sv9['priceMax']??$sv9['priceMin']??0), 'editStep'=>4];
+        $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>$sv9['name']??'Restaurant', 'cost'=>(float)($sv9['priceMax']??$sv9['priceMin']??0), 'editStep'=>4, 'color'=>'#EF4444'];
     }
     foreach ($selectedAttractions as $sa9) {
-        $s9picks[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>$sa9['name']??'Attraction', 'cost'=>($sa9['isFree']??false)?0:(int)preg_replace('/[^\d]/','',$sa9['price']??'0'), 'editStep'=>5];
+        $s9picks[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>$sa9['name']??'Attraction', 'cost'=>($sa9['isFree']??false)?0:(int)preg_replace('/[^\d]/','',$sa9['price']??'0'), 'editStep'=>5, 'color'=>'#10B981'];
     }
 
     $s9picksLeg2 = [];
     if ($s9isMultiCity) {
-        if ($selectedMcFlight) $s9picksLeg2[] = ['icon'=>'fa-plane', 'label'=>'Flight',        'val'=>($selectedMcFlight['airline']??'').' '.($selectedMcFlight['number']??''), 'cost'=>$s9flightBase2, 'editStep'=>2];
-        if ($selectedMcHotel)  $s9picksLeg2[] = ['icon'=>'fa-bed',   'label'=>'Accommodation', 'val'=>$selectedMcHotel['name']??'Hotel',                                         'cost'=>$s9hotelBase2,  'editStep'=>3];
-        foreach ($selectedMcVenues as $sv9) {
-            $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>$sv9['name']??'Restaurant', 'cost'=>(float)($sv9['priceMax']??$sv9['priceMin']??0), 'editStep'=>4];
+        if ($selectedMcFlight)     $s9picksLeg2[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedMcFlight['airline']??'').' '.($selectedMcFlight['number']??''), 'cost'=>$s9flightBase2, 'editStep'=>2, 'color'=>'#3B82F6'];
+        if ($selectedMcHotel)      $s9picksLeg2[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedMcHotel['name']??'Hotel',                                         'cost'=>$s9hotelBase2,  'editStep'=>3, 'color'=>'#0D9488'];
+        foreach ($selectedMcVenues as $sv9b) {
+            $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>$sv9b['name']??'Restaurant', 'cost'=>(float)($sv9b['priceMax']??$sv9b['priceMin']??0), 'editStep'=>4, 'color'=>'#EF4444'];
         }
-        foreach ($selectedMcAttractions as $sa9) {
-            $s9picksLeg2[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>$sa9['name']??'Attraction', 'cost'=>($sa9['isFree']??false)?0:(int)preg_replace('/[^\d]/','',$sa9['price']??'0'), 'editStep'=>5];
+        foreach ($selectedMcAttractions as $sa9b) {
+            $s9picksLeg2[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>$sa9b['name']??'Attraction', 'cost'=>($sa9b['isFree']??false)?0:(int)preg_replace('/[^\d]/','',$sa9b['price']??'0'), 'editStep'=>5, 'color'=>'#10B981'];
         }
     }
 
@@ -2991,8 +3021,8 @@ window.sortAttractions = function(dir) {
                     @foreach($s9picks as $pk)
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EB;">
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:28px;height:28px;border-radius:7px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:#934B19;"></i>
+                            <div style="width:28px;height:28px;border-radius:7px;background:{{ $pk['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:{{ $pk['color'] }};"></i>
                             </div>
                             <div>
                                 <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">{{ $pk['label'] }}</div>
@@ -3011,8 +3041,8 @@ window.sortAttractions = function(dir) {
                     @foreach($s9picksLeg2 as $pk)
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EB;">
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:28px;height:28px;border-radius:7px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:#934B19;"></i>
+                            <div style="width:28px;height:28px;border-radius:7px;background:{{ $pk['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:{{ $pk['color'] }};"></i>
                             </div>
                             <div>
                                 <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">{{ $pk['label'] }}</div>
@@ -3094,32 +3124,26 @@ window.sortAttractions = function(dir) {
 {{-- ═══════════════════════════════════════════════════════════════
      EMPTY STATE — no trips yet
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($showEmpty)
+@if ($showEmpty && !auth()->user()?->userProfile)
 <div class="empty-state-center" style="min-height:80vh;">
     <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
         <i class="fa-solid fa-map-location-dot" style="font-size:28px;color:#fff;"></i>
     </div>
-    @if (!auth()->user()?->userProfile)
     <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">Set up your profile first</h2>
     <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile so we can tailor budget suggestions before you plan your first trip.</p>
     <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
         <i class="fa-solid fa-user"></i> Set Up Your Profile First
     </a>
-    @else
-    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">No trips planned yet</h2>
-    <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Start your journey by planning your first adventure. Track expenses, save for goals, and capture moments all in one place.</p>
-    <button wire:click="startFromEmpty"
-            style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border:none;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;">
-        <i class="fa-solid fa-plane"></i> Plan Your First Trip
-    </button>
-    @endif
 </div>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════
      MODE SELECT — manual or AI
+     Shown as the empty state too (no trips yet, but profile exists) —
+     skips the old "No trips planned yet" screen and its button so
+     first-time planners land straight on Manual/AI Powered Planning.
 ═══════════════════════════════════════════════════════════════ --}}
-@if (!$showEmpty && $planningMode === '' && $step === 0)
+@if ((!$showEmpty || auth()->user()?->userProfile) && $planningMode === '' && $step === 0)
 <style>
 .mode-card{background:#fff;border:1.5px solid var(--border);border-radius:22px;overflow:hidden;cursor:pointer;transition:box-shadow .25s ease,transform .25s ease,border-color .25s ease;display:flex;flex-direction:column;height:fit-content;align-self:start;text-decoration:none;color:inherit;position:relative;}
 .mode-card:hover{box-shadow:0 20px 50px rgba(26,10,0,0.14);transform:translateY(-6px);border-color:#E7D4C4;}

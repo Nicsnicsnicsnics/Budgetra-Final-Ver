@@ -32,9 +32,6 @@
     </div>
 </div>
 
-{{-- Share / Import trips via code --}}
-@livewire('traveler.import-shared-trip')
-
 {{-- Active Trips --}}
 @php $activeTrips = $trips->whereIn('status', ['upcoming', 'active']); @endphp
 @if ($activeTrips->isNotEmpty())
@@ -72,12 +69,6 @@
         <div style="display:flex;align-items:center;gap:16px;font-size:13px;font-weight:600;">
             <a href="{{ route('trips.dashboard', $trip) }}" style="color:var(--primary);text-decoration:none;">Dashboard</a>
             <a href="{{ route('expenses.index') }}?trip_id={{ $trip->id }}" style="color:var(--primary);text-decoration:none;">Expenses</a>
-            <form method="POST" action="{{ route('trips.share', $trip) }}" style="margin:0;">
-                @csrf
-                <button type="submit" style="background:none;border:none;padding:0;font:inherit;font-weight:600;color:{{ $trip->is_shared ? '#16A34A' : 'var(--primary)' }};cursor:pointer;">
-                    {{ $trip->is_shared ? 'Shared ✓' : 'Share' }}
-                </button>
-            </form>
             <form id="delete-trip-form-{{ $trip->id }}" method="POST" action="{{ route('trips.destroy', $trip) }}" style="display:none;">
                 @csrf
                 @method('DELETE')
