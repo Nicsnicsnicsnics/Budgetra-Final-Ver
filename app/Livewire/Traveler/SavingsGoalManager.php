@@ -1,6 +1,7 @@
 <?php
 namespace App\Livewire\Traveler;
 
+use App\Models\Notification;
 use App\Models\SavingsGoal;
 use Carbon\Carbon;
 use Livewire\Component;
@@ -38,8 +39,26 @@ class SavingsGoalManager extends Component
     {
         abort_if($this->goal->user_id !== auth()->id(), 403);
         $this->validate(['depositAmount' => 'required|numeric|min:0.01']);
+
+        // No stored "completed" flag on the goal, so detect "just reached it on
+        // this deposit" by comparing before/after — that's also what naturally
+        // stops this from re-firing on every subsequent deposit past the goal.
+        $wasCompleted = $this->goal->current_savings >= $this->goal->target_amount;
+
         $this->goal->increment('current_savings', $this->depositAmount);
         $this->goal->refresh();
+
+        if (!$wasCompleted && $this->goal->current_savings >= $this->goal->target_amount) {
+            Notification::create([
+                'user_id' => $this->goal->user_id,
+                'trip_id' => $this->goal->trip_id,
+                'type'    => 'savings_goal_reached',
+                'message' => "🎉 Congratulations! You've reached your savings goal \"{$this->goal->goal_name}\" — ₱"
+                    . number_format($this->goal->current_savings, 2) . ' saved!',
+                'is_read' => false,
+            ]);
+        }
+
         $this->depositAmount = 0;
         $this->showDeposit   = false;
         $this->dispatch('goalUpdated');

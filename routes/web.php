@@ -46,6 +46,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/trips/{trip}',        [Traveler\TripController::class, 'destroy'])->name('trips.destroy');
     Route::get('/trips/{trip}/budget',    [Traveler\TripController::class, 'budget'])->name('trips.budget');
     Route::get('/trips/{trip}/dashboard', \App\Livewire\Traveler\TripDashboard::class)->name('trips.dashboard');
+    Route::post('/trips/{trip}/share',     [Traveler\TripShareController::class, 'toggle'])->name('trips.share');
     Route::post('/trips/{trip}/budget',   [Traveler\TripController::class, 'budgetStore'])->name('trips.budgetStore');
     Route::get('/trips/{trip}/estimate',  [Traveler\TripController::class, 'estimate'])->name('trips.estimate');
     Route::post('/trips/{trip}/estimate', [Traveler\TripController::class, 'applyEstimates'])->name('trips.applyEstimates');

@@ -1,6 +1,7 @@
 <?php
 namespace App\Livewire\Traveler;
 
+use App\Models\Expense;
 use App\Models\Trip;
 use Carbon\Carbon;
 use Livewire\Component;
@@ -8,39 +9,38 @@ use Livewire\Component;
 class MultiTripHub extends Component
 {
     public string $search         = '';
+    public ?int   $detailTripId   = null;
     public array  $compareIds     = [];
     public bool   $showComparison = false;
 
-    public function toggleCompare(int $tripId): void
+    private array $compareCategories = ['Transportation', 'Accommodation', 'Food', 'Tourist Attractions'];
+
+    public function showDetail(int $id): void
     {
-        if (in_array($tripId, $this->compareIds)) {
-            $this->compareIds = array_values(array_filter($this->compareIds, fn($id) => $id !== $tripId));
-        } else {
-            if (count($this->compareIds) < 2) {
-                $this->compareIds[] = $tripId;
-            }
-        }
+        $this->detailTripId = $this->detailTripId === $id ? null : $id;
     }
 
-    public function openComparison(): void
+    public function closeDetail(): void
     {
-        if (count($this->compareIds) === 2) {
-            $this->showComparison = true;
-        }
+        $this->detailTripId = null;
+    }
+
+    public function compareWith(int $tripId): void
+    {
+        $partner = $this->fetchTrips()->reject(fn ($t) => $t->id === $tripId)->first();
+        if (!$partner) return; // nothing else to compare against yet
+
+        $this->compareIds     = [$tripId, $partner->id];
+        $this->showComparison = true;
     }
 
     public function closeComparison(): void
     {
         $this->showComparison = false;
-    }
-
-    public function clearCompare(): void
-    {
         $this->compareIds     = [];
-        $this->showComparison = false;
     }
 
-    public function getTripsProperty()
+    private function fetchTrips()
     {
         $query = auth()->user()->trips()->withSum('expenses', 'amount')->latest('start_date');
         if ($this->search) {
@@ -53,7 +53,6 @@ class MultiTripHub extends Component
             $trip->setAttribute('total_spent', (float) $spent);
             $trip->setAttribute('pct_used',    $trip->budget_limit > 0 ? round($spent / $trip->budget_limit * 100) : 0);
             $trip->setAttribute('days',        $days);
-            $trip->setAttribute('daily_avg',   round($spent / $days, 2));
             $trip->setAttribute('status',
                 $trip->start_date->gt($today) ? 'upcoming' :
                 ($trip->end_date->lt($today)  ? 'past'     : 'active'));
@@ -61,35 +60,34 @@ class MultiTripHub extends Component
         });
     }
 
-    public function getActiveTripsProperty()
-    {
-        return $this->trips->whereIn('status', ['upcoming', 'active'])->values();
-    }
-
-    public function getPastTripsProperty()
-    {
-        return $this->trips->where('status', 'past')->values();
-    }
-
-    public function getTotalsProperty(): array
-    {
-        $all = $this->trips;
-        return [
-            'count'  => $all->count(),
-            'budget' => $all->sum('budget_limit'),
-            'spent'  => $all->sum('total_spent'),
-        ];
-    }
-
-    public function getCompareTripsProperty(): array
+    private function fetchCompareData(\Illuminate\Support\Collection $trips): array
     {
         if (count($this->compareIds) !== 2) return [];
-        return $this->trips->whereIn('id', $this->compareIds)->values()->toArray();
+
+        return array_map(function ($id) use ($trips) {
+            $categories = [];
+            foreach ($this->compareCategories as $cat) {
+                $categories[$cat] = (float) Expense::where('trip_id', $id)->where('category', $cat)->sum('amount');
+            }
+            return [
+                'trip'       => $trips->firstWhere('id', $id),
+                'categories' => $categories,
+            ];
+        }, $this->compareIds);
     }
 
     public function render()
     {
-        return view('livewire.traveler.multi-trip-hub')
-            ->layout('layouts.app', ['title' => 'Multi-Trip Hub', 'active' => 'multi-trips']);
+        $trips = $this->fetchTrips();
+        $totals = [
+            'count'  => $trips->count(),
+            'budget' => $trips->sum('budget_limit'),
+            'spent'  => $trips->sum('total_spent'),
+        ];
+        $detailTrip  = $this->detailTripId ? $trips->firstWhere('id', $this->detailTripId) : null;
+        $compareData = $this->fetchCompareData($trips);
+
+        return view('livewire.traveler.multi-trip-hub', compact('trips', 'totals', 'detailTrip', 'compareData'))
+            ->layout('layouts.app', ['title' => 'Multi Trip Hub', 'active' => 'multi-trips']);
     }
 }

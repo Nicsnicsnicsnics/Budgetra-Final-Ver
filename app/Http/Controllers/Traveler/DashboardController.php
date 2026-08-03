@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Traveler;
 
 use App\Http\Controllers\Controller;
+use App\Models\Attraction;
 use App\Models\Trip;
 use Carbon\Carbon;
 
@@ -10,9 +11,11 @@ class DashboardController extends Controller
     public function __invoke()
     {
         $user = auth()->user();
+        $recommended = Attraction::withCount(['reviews' => fn ($q) => $q->where('status', 'active')])
+            ->orderByDesc('rating')->limit(4)->get();
 
         if (!$user) {
-            return view('traveler.dashboard.index', ['trips' => collect(), 'totalBudget' => 0, 'totalSpent' => 0]);
+            return view('traveler.dashboard.index', ['trips' => collect(), 'totalBudget' => 0, 'totalSpent' => 0, 'recommended' => $recommended]);
         }
 
         $trips = $user->trips()->withSum('expenses', 'amount')->latest()->get()->map(function (Trip $trip) {
@@ -27,6 +30,6 @@ class DashboardController extends Controller
         });
         $totalBudget = $trips->sum('budget_limit');
         $totalSpent  = $trips->sum('total_spent');
-        return view('traveler.dashboard.index', compact('trips', 'totalBudget', 'totalSpent'));
+        return view('traveler.dashboard.index', compact('trips', 'totalBudget', 'totalSpent', 'recommended'));
     }
 }

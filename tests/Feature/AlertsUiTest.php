@@ -18,6 +18,8 @@ class AlertsUiTest extends TestCase
     public function test_alerts_page_loads(): void
     {
         $user = User::factory()->create();
+        \App\Models\UserProfile::create(['user_id' => $user->id]);
+        Trip::factory()->create(['user_id' => $user->id]);
         $this->actingAs($user)->get('/alerts')->assertStatus(200)->assertSee('Alerts');
     }
 

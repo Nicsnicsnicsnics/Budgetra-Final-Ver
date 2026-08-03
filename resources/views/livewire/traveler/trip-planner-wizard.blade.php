@@ -2171,6 +2171,7 @@ window.sortAttractions = function(dir) {
     foreach ($selCards as $c) {
         if (!$c['isFree'] && is_numeric($c['cost'])) $totalCost8 += (float) $c['cost'];
     }
+    $totalCost8 += $this->selectedVenuesCost() + $this->selectedAttractionsCost();
     // Add AI activity costs
     if ($aiItinerary && !empty($aiItinerary['days'])) {
         foreach ($aiItinerary['days'] as $d) {
@@ -2183,8 +2184,7 @@ window.sortAttractions = function(dir) {
     // Map activity type to icon
     $actIcons = ['food'=>'fa-utensils','attraction'=>'fa-camera','transport'=>'fa-plane','leisure'=>'fa-umbrella-beach','hotel'=>'fa-bed','default'=>'fa-map-pin'];
 
-    // Merge user selections into day structure alongside AI days
-    // Build selection activities to prepend to Day 1
+    // Day 1 = arrival (flight + hotel only)
     $selActivities = [];
     foreach ($selCards as $sc) {
         $selActivities[] = ['time'=>$sc['time'],'title'=>$sc['title'],'description'=>$sc['sub'],'type'=>$sc['type'],'cost'=>$sc['cost'],'isFree'=>$sc['isFree'],'icon'=>$sc['icon'],'isUserPick'=>true];
@@ -2316,6 +2316,7 @@ window.sortAttractions = function(dir) {
                     @endif
                 </div>
                 <div class="itin8-cost-val">₱{{ number_format($totalCost8) }}</div>
+            </div>
                 <div class="itin8-actions" style="justify-content:flex-end;margin-top:12px;">
                     <button class="itin8-btn-ghost" wire:click="regenerateItineraryOptions" wire:loading.attr="disabled" wire:target="regenerateItineraryOptions">
                         <span wire:loading.remove wire:target="regenerateItineraryOptions" style="white-space:nowrap;"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Generate Other Options</span>
@@ -2365,6 +2366,11 @@ window.sortAttractions = function(dir) {
                 onmouseenter="this.style.background='#6A3500'" onmouseleave="this.style.background='#934B19'">
             <i class="fa-solid fa-rotate" style="font-size:11px;"></i> Try Again
         </button>
+    </div>
+    @elseif(empty($aiItinerary['days'] ?? []))
+    <div class="itin8-loading" style="background:#FEF3E2;color:#92400E;">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:16px;"></i>
+        Couldn't generate extra AI suggestions right now — you can still save your trip with what you've picked so far, or try "Generate Other Options" again in a bit.
     </div>
     @endif
 
@@ -2518,7 +2524,13 @@ window.sortAttractions = function(dir) {
                     $actCost = $act['cost'] ?? null;
                     $actFree = $act['isFree'] ?? false;
                 @endphp
-                <div class="itin8-act-card">
+                <div class="itin8-act-card" style="position:relative;">
+                    @if($act['isCustom'] ?? false)
+                    <button wire:click="removeCustomActivity({{ $act['customIndex'] }})" title="Remove"
+                            style="position:absolute;top:8px;right:8px;background:none;border:none;color:#9B8EA0;cursor:pointer;font-size:12px;padding:2px;">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    @endif
                     <div class="itin8-act-icon" style="box-shadow:0 0 0 2px {{ $msColor }};">
                         <span class="material-symbols-outlined" style="color:{{ $msColor }};">{{ $msIcon }}</span>
                     </div>
@@ -2544,6 +2556,77 @@ window.sortAttractions = function(dir) {
             </div>
         </div>
         @endforeach
+    </div>
+
+    {{-- Add Custom Activity button --}}
+    <div style="display:flex;justify-content:center;padding-top:4px;">
+        <button wire:click="openCustomActivityModal" style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:2px solid #934b19;border-radius:8px;padding:10px 20px;font-size:12px;font-weight:700;color:#934b19;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;">
+            <span class="material-symbols-outlined" style="font-size:16px;">add</span> Add Custom Activity
+        </button>
+    </div>
+    @endif
+
+    {{-- Add Custom Activity modal --}}
+    @if($showCustomActivityModal)
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;" wire:click.self="closeCustomActivityModal">
+        <div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:24px;font-family:'Hanken Grotesk',sans-serif;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <span style="font-size:16px;font-weight:700;color:#1c1c19;">Add Custom Activity</span>
+                <button wire:click="closeCustomActivityModal" style="background:none;border:none;font-size:18px;cursor:pointer;color:#9CA3AF;line-height:1;">&times;</button>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Day</label>
+                <select wire:model="customActivityDay" style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;">
+                    @foreach($allDays as $d)
+                    <option value="{{ $d['day'] }}">Day {{ $d['day'] }} · {{ $d['label'] ?? 'Itinerary' }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Title</label>
+                <input type="text" wire:model="customActivityTitle" placeholder="e.g. Souvenir shopping at the market"
+                       style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+            </div>
+
+            <div style="display:flex;gap:10px;margin-bottom:12px;">
+                <div style="flex:1;">
+                    <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Time</label>
+                    <input type="time" wire:model="customActivityTime"
+                           style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Type</label>
+                    <select wire:model="customActivityType" style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;">
+                        @foreach(['Activity','Food & Dining','Attraction','Transport','Shopping'] as $typeOpt)
+                        <option value="{{ $typeOpt }}">{{ $typeOpt }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Est. Cost (₱, optional)</label>
+                <input type="number" min="0" step="1" wire:model="customActivityCost" placeholder="0"
+                       style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Notes (optional)</label>
+                <textarea wire:model="customActivityDescription" rows="2" placeholder="Any extra detail…"
+                          style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;"></textarea>
+            </div>
+
+            <div style="display:flex;gap:10px;">
+                <button wire:click="closeCustomActivityModal" style="flex:1;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:8px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
+                    Cancel
+                </button>
+                <button wire:click="addCustomActivity" style="flex:1;background:#934b19;color:#fff;border:none;border-radius:8px;padding:11px 0;font-size:13px;font-weight:700;cursor:pointer;">
+                    Add Activity
+                </button>
+            </div>
+        </div>
     </div>
     @endif
 
@@ -2621,8 +2704,12 @@ window.sortAttractions = function(dir) {
     $s9picks = [];
     if ($selectedFlight)      $s9picks[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''),  'cost'=>$s9flightBase1, 'editStep'=>2, 'color'=>'#3B82F6'];
     if ($selectedHotel)       $s9picks[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotelBase1,  'editStep'=>3, 'color'=>'#0D9488'];
-    if ($selectedVenue)       $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining',  'val'=>$selectedVenue['name']??'Restaurant',                                 'cost'=>$s9venueBase1,  'editStep'=>4, 'color'=>'#EF4444'];
-    if ($selectedAttraction)  $s9picks[] = ['icon'=>'fa-camera',   'label'=>'Attraction',     'val'=>$selectedAttraction['name']??'Attraction',                            'cost'=>$s9attrBase1,   'editStep'=>5, 'color'=>'#10B981'];
+    foreach ($this->selectedVenuesFlat() as $sv9) {
+        $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>$sv9['name']??'Restaurant', 'cost'=>(float)($sv9['priceMax']??$sv9['priceMin']??0), 'editStep'=>4, 'color'=>'#EF4444'];
+    }
+    foreach ($this->selectedAttractionsFlat() as $sa9) {
+        $s9picks[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>$sa9['name']??'Attraction', 'cost'=>($sa9['isFree']??false)?0:(int)preg_replace('/[^\d]/','',$sa9['price']??'0'), 'editStep'=>5, 'color'=>'#10B981'];
+    }
 
     $s9picksLeg2 = [];
     if ($s9isMultiCity) {

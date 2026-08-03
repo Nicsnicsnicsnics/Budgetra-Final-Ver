@@ -66,11 +66,17 @@
         @if ($trips->count() > 1)
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             @foreach ($trips as $trip)
+            @php $tripUnread = $unreadCounts[$trip->id] ?? 0; @endphp
             <a href="{{ route('alerts.index', ['trip_id' => $trip->id]) }}"
-               style="font-size:12px;font-weight:600;padding:5px 14px;border-radius:20px;text-decoration:none;
+               style="position:relative;font-size:12px;font-weight:600;padding:5px 14px;border-radius:20px;text-decoration:none;
                       background:{{ $activeTrip?->id === $trip->id ? 'var(--primary)' : 'var(--border)' }};
                       color:{{ $activeTrip?->id === $trip->id ? '#fff' : 'var(--dark)' }};">
                 {{ $trip->destination }}
+                @if ($tripUnread > 0)
+                <span style="position:absolute;top:-7px;right:-6px;min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:#DC2626;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;border:1.5px solid #fff;">
+                    {{ $tripUnread > 9 ? '9+' : $tripUnread }}
+                </span>
+                @endif
             </a>
             @endforeach
         </div>

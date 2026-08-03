@@ -47,7 +47,49 @@ class AlertTest extends TestCase
             'type' => 'budget_alert', 'message' => 'Test alert', 'is_read' => false,
         ]);
 
-        $this->actingAs($user)->patch("/alerts/{$notif->id}/read")->assertRedirect(route('alerts.index'));
+        $this->actingAs($user)
+            ->from(route('alerts.index'))
+            ->patch("/alerts/{$notif->id}/read")
+            ->assertRedirect(route('alerts.index'));
         $this->assertDatabaseHas('notifications', ['id' => $notif->id, 'is_read' => true]);
+    }
+
+    // Marking read/all-read used to always bounce back to the default
+    // (most-recent) trip's alerts page, even if you were viewing a different
+    // trip — this confirms it now stays on whichever trip page you came from.
+    public function test_marking_read_stays_on_the_trip_you_were_viewing(): void
+    {
+        $user   = User::factory()->create();
+        $recent = Trip::factory()->create(['user_id' => $user->id, 'start_date' => now()->addDays(30)]);
+        $older  = Trip::factory()->create(['user_id' => $user->id, 'start_date' => now()->addDays(5)]);
+        $notif  = Notification::create([
+            'user_id' => $user->id, 'trip_id' => $older->id,
+            'type' => 'expense_added', 'message' => 'Test alert', 'is_read' => false,
+        ]);
+
+        $referer = route('alerts.index', ['trip_id' => $older->id]);
+
+        $this->actingAs($user)
+            ->from($referer)
+            ->patch("/alerts/{$notif->id}/read")
+            ->assertRedirect($referer);
+    }
+
+    public function test_marking_all_read_stays_on_the_trip_you_were_viewing(): void
+    {
+        $user   = User::factory()->create();
+        $recent = Trip::factory()->create(['user_id' => $user->id, 'start_date' => now()->addDays(30)]);
+        $older  = Trip::factory()->create(['user_id' => $user->id, 'start_date' => now()->addDays(5)]);
+        Notification::create([
+            'user_id' => $user->id, 'trip_id' => $older->id,
+            'type' => 'expense_added', 'message' => 'Test alert', 'is_read' => false,
+        ]);
+
+        $referer = route('alerts.index', ['trip_id' => $older->id]);
+
+        $this->actingAs($user)
+            ->from($referer)
+            ->patch('/alerts/read-all')
+            ->assertRedirect($referer);
     }
 }

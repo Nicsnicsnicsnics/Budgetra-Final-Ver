@@ -173,6 +173,61 @@ class ExpenseCrudTest extends TestCase
         $this->assertStringContainsString('Boracay', $notif->message);
     }
 
+    public function test_exceeding_overall_trip_budget_sends_a_notification(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create(['user_id' => $user->id, 'destination' => 'Bohol', 'budget_limit' => 1000]);
+
+        $this->actingAs($user)->post('/expenses', [
+            'trip_id'      => $trip->id,
+            'amount'       => 1200,
+            'category'     => 'Food',
+            'expense_date' => '2026-08-01',
+        ]);
+
+        $notif = \App\Models\Notification::where('type', 'budget_alert')
+            ->where('message', 'like', '%exceeded your overall budget%')
+            ->first();
+        $this->assertNotNull($notif);
+        $this->assertSame($trip->id, $notif->trip_id);
+        $this->assertStringContainsString('Bohol', $notif->message);
+        $this->assertStringContainsString('1,200.00', $notif->message);
+        $this->assertStringContainsString('1,000.00', $notif->message);
+    }
+
+    public function test_overall_budget_notification_is_not_duplicated_on_further_expenses(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create(['user_id' => $user->id, 'budget_limit' => 1000]);
+
+        $this->actingAs($user)->post('/expenses', [
+            'trip_id' => $trip->id, 'amount' => 1200, 'category' => 'Food', 'expense_date' => '2026-08-01',
+        ]);
+        $this->actingAs($user)->post('/expenses', [
+            'trip_id' => $trip->id, 'amount' => 100, 'category' => 'Food', 'expense_date' => '2026-08-02',
+        ]);
+
+        $count = \App\Models\Notification::where('type', 'budget_alert')
+            ->where('message', 'like', '%exceeded your overall budget%')
+            ->count();
+        $this->assertSame(1, $count);
+    }
+
+    public function test_staying_under_overall_budget_does_not_send_the_exceeded_notification(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create(['user_id' => $user->id, 'budget_limit' => 5000]);
+
+        $this->actingAs($user)->post('/expenses', [
+            'trip_id' => $trip->id, 'amount' => 1200, 'category' => 'Food', 'expense_date' => '2026-08-01',
+        ]);
+
+        $notif = \App\Models\Notification::where('type', 'budget_alert')
+            ->where('message', 'like', '%exceeded your overall budget%')
+            ->first();
+        $this->assertNull($notif);
+    }
+
     public function test_deleting_expense_does_not_create_a_notification(): void
     {
         $user    = User::factory()->create();

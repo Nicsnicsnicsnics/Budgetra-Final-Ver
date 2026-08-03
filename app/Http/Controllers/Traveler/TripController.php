@@ -78,7 +78,7 @@ class TripController extends Controller
     {
         abort_if($trip->user_id !== auth()->id(), 403);
         $trip->delete();
-        return redirect()->route('trips.index');
+        return redirect()->route('dashboard')->with('success', 'Trip deleted.');
     }
 
     public function applyEstimates(Request $request, Trip $trip)

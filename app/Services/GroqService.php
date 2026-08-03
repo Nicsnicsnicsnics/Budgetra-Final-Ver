@@ -165,7 +165,7 @@ PROMPT;
         bool    $needsAccommodation = false,
         int     $timeout = 18
     ): ?array {
-        $days         = max(1, (int) round((strtotime($endDate) - strtotime($startDate)) / 86400));
+        $days         = max(1, (int) round((strtotime($endDate) - strtotime($startDate)) / 86400) + 1);
         $selected     = implode(', ', $alreadySelected) ?: 'none';
         $tags         = implode(', ', array_filter($interests, fn($i) => strlen($i) < 80)) ?: 'general travel';
         $minBudg      = $budgetMin ?: (int) round(($budgetMax ?: 0) * 0.7);

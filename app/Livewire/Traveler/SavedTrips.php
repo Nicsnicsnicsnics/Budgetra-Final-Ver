@@ -22,6 +22,8 @@ class SavedTrips extends Component
     public string $memberError   = '';
     public array  $pendingMembers = [];  // [['id'=>..,'name'=>..,'email'=>..]]
     public array  $savedMembers   = [];  // already saved for this trip
+    public ?int $shareCodeTripId  = null;
+    public string $shareCodeValue = '';
 
     public function showDetail(int $id): void
     {
@@ -142,6 +144,32 @@ class SavedTrips extends Component
     {
         $this->deleteTripId   = null;
         $this->deleteTripName = '';
+    }
+
+    public function toggleShare(int $id): void
+    {
+        $trip = Trip::find($id);
+        if ($trip && $trip->user_id === auth()->id()) {
+            $trip->update(['is_shared' => !$trip->is_shared]);
+        }
+    }
+
+    public function showShareCode(int $id): void
+    {
+        $trip = Trip::find($id);
+        if (!$trip || $trip->user_id !== auth()->id()) return;
+
+        if (!$trip->share_code) {
+            $trip->update(['share_code' => Trip::generateUniqueShareCode()]);
+        }
+        $this->shareCodeTripId = $id;
+        $this->shareCodeValue  = $trip->share_code;
+    }
+
+    public function closeShareCodeModal(): void
+    {
+        $this->shareCodeTripId = null;
+        $this->shareCodeValue  = '';
     }
 
     public function deleteTrip(): void
