@@ -32,6 +32,11 @@ class TripPlannerWizard extends Component
     public string $manualBudgetMax = '';
     public string $travelWith      = ''; // 'solo' | 'group'
 
+    // Shown when "Next" is clicked from the trip-details form with one or
+    // more of From/To/Budget/Start Date/End Date still empty.
+    public bool  $showTripDetailsModal = false;
+    public array $missingTripFields    = [];
+
     // ── Step 2: flight selection ───────────────────────────
     public array  $flightResults     = [];
     public bool   $flightLoading     = false;
@@ -53,7 +58,8 @@ class TripPlannerWizard extends Component
     public bool   $hotelLoading      = false;
     public ?array $selectedHotel     = null;
     public int    $hotelGuests       = 1;
-    public string $hotelType         = 'hotel'; // hotel | apartment | inn
+    public string $hotelType         = 'hotel'; // hotel | apartment | inn | resort
+    public string $hotelError        = '';
     // multi-city leg 2 accommodation
     public bool   $mcHotelStep       = false;
     public array  $mcHotelResults    = [];
@@ -66,11 +72,13 @@ class TripPlannerWizard extends Component
     public array  $selectedVenues   = [];   // ['Venue Name' => $venueArray, ...] — multi-select
     public array  $selectedMcVenues = [];
     public string $venueCategory    = 'All Cuisines';
+    public string $venueError       = '';
     public bool   $mcVenueStep      = false;
     public array  $mcVenueResults   = [];
     public bool   $mcVenueLoading   = false;
 
     // ── Step 5: attractions ────────────────────────────────
+<<<<<<< HEAD
     public array  $attractionResults      = [];
     public bool   $attractionLoading      = false;
     public array  $selectedAttractions    = [];  // ['Attraction Name' => $attrArray, ...] — multi-select
@@ -141,14 +149,47 @@ class TripPlannerWizard extends Component
 
         return Carbon::parse($start)->addDays($remainingDays - 1)->toDateString();
     }
+=======
+    public array  $attractionResults     = [];
+    public bool   $attractionLoading     = false;
+    public ?array $selectedAttraction    = null;
+    public string $attractionType        = 'All Attractions';
+    public string $attractionError       = '';
+    public bool   $mcAttractionStep      = false;
+    public array  $mcAttractionResults   = [];
+    public bool   $mcAttractionLoading   = false;
+    public ?array $selectedMcAttraction  = null;
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
+
+    // ── Cross-cutting: submission guard ────────────────────
+    // Prevents a fast double-click on Save/Confirm from creating duplicate
+    // Trip rows — Livewire's wire:loading.attr="disabled" is client-side
+    // only and can be bypassed (double network request race, JS disabled).
+    public bool   $isSaving = false;
+
+    // Tracks the Trip row created by autosaveDraft() (Step 1's "From/To/
+    // Budget/Dates" form autosaves in the background instead of requiring
+    // an explicit "Save Draft" click) so repeated autosaves update the
+    // same row instead of creating a new draft every time.
+    public ?int   $draftTripId = null;
 
     // Step 8 — AI-generated itinerary
-    public ?array $aiItinerary      = null;
+    public ?array $aiItinerary          = null; // the currently selected option (what saveItinerary() reads)
+    public array  $aiItineraryOptions   = [];   // 2-3 generated alternatives to choose between
+    public int    $selectedItineraryIndex = 0;
     public bool   $aiLoading        = false;
+    // Multi-city: itinerary suggestions are generated one leg at a time —
+    // leg 1 first, then leg 2 after the traveler continues past leg 1's
+    // options. $itineraryLeg tracks which leg is currently being shown;
+    // leg 1's chosen option is stashed here once leg 2 generation starts.
+    public int    $itineraryLeg         = 1;
+    public ?array $aiItineraryLeg1      = null;
+    public array  $aiItineraryLeg1Options = [];
     public bool   $showBudgetAdjust = false;
     public string $adjustBudgetMin  = '';
     public string $adjustBudgetMax  = '';
 
+<<<<<<< HEAD
     // Step 8 — traveler-added custom activities
     public array  $customActivities        = []; // [['day'=>int,'title'=>,'time'=>,'cost'=>float,'type'=>,'description'=>], ...]
     public bool   $showCustomActivityModal = false;
@@ -196,6 +237,19 @@ class TripPlannerWizard extends Component
         unset($this->customActivities[$index]);
         $this->customActivities = array_values($this->customActivities);
     }
+=======
+    // A little variety per generated option so the choices actually read
+    // differently instead of being near-duplicates of each other. Each
+    // entry also carries a short label shown in the option list.
+    // Trimmed from 5 to 3 — each option can fall through up to 3 AI
+    // providers (see suggestItinerary()), so fewer options means a lower
+    // worst-case wait while still giving a real comparison grid.
+    private const ITINERARY_OPTION_CONSTRAINTS = [
+        ['label' => 'Balanced Mix',     'prompt' => 'Mix cultural, culinary, and outdoor experiences for a well-rounded trip.'],
+        ['label' => 'Adventure Focus',  'prompt' => 'Prioritize outdoor adventure, active excursions, and thrill activities.'],
+        ['label' => 'Budget Friendly',  'prompt' => 'Prioritize affordable, high-value activities and local eats to stretch the budget further.'],
+    ];
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
 
     // ── Step 3 (was 2): scope ─────────────────────────────
     public string $tripScope = '';
@@ -223,6 +277,7 @@ class TripPlannerWizard extends Component
     public float  $attractions    = 0;
     public float  $shopping       = 0;
     public float  $emergency      = 0;
+    public string $emergencyError = '';
     public float  $budgetLimit    = 0;
     public string $editingCategory = '';
 
@@ -249,6 +304,78 @@ class TripPlannerWizard extends Component
         $isPlanRoute = request()->routeIs('trips.plan');
         $this->showList  = !$isPlanRoute && $hasTrips;
         $this->showEmpty = !$isPlanRoute && !$hasTrips;
+
+        // Higher-priority deep-link from the AI Trip Planner's "Next" action:
+        // the AI package already stands in for everything steps 2-5 would
+        // otherwise have collected manually, so this lands straight on Step
+        // 6 (Emergency Fund) with selectedFlight/Hotel/Venue/Attraction
+        // synthesized from that package, as if the traveler had picked each
+        // one by hand. One-time use (pull, not get) so refreshing this page
+        // afterward behaves like any other normal wizard session instead of
+        // replaying the same handoff forever. Checked before the "Edit"
+        // handoff below since both can't apply to the same request.
+        if (session()->has('wizard_ai_handoff')) {
+            $handoff = session()->pull('wizard_ai_handoff');
+
+            $this->planningMode    = 'manual';
+            $this->manualFrom      = (string) ($handoff['from'] ?? '');
+            $this->manualTo        = (string) ($handoff['to'] ?? '');
+            $this->manualBudgetMin = (string) ($handoff['budget_min'] ?? '');
+            $this->manualBudgetMax = (string) ($handoff['budget_max'] ?? $handoff['budget_min'] ?? '');
+            $this->startDate       = (string) ($handoff['start'] ?? '');
+            $this->endDate         = (string) ($handoff['end'] ?? '');
+
+            $this->selectedFlight     = $handoff['flight']     ?? null;
+            $this->selectedHotel      = $handoff['hotel']      ?? null;
+            $this->selectedVenue      = $handoff['venue']      ?? null;
+            $this->selectedAttraction = $handoff['attraction'] ?? null;
+            $this->flightTripType     = strtolower($this->selectedFlight['type'] ?? '') === 'one way' ? 'one_way' : 'round_trip';
+
+            // Same international/local auto-detect selectAttraction() runs
+            // right before its own transition to Step 6 — kept in sync so
+            // the destinations() computed property behaves the same
+            // regardless of which path got the traveler here.
+            $intlKeywords = ['singapore','bangkok','phuket','bali','kuala lumpur','hong kong','tokyo','osaka','seoul','taipei','dubai','london','paris','new york','sydney','rome','barcelona','amsterdam','maldives','vietnam','hanoi','ho chi minh','jakarta','yangon','colombo','kathmandu','delhi','mumbai','beijing','shanghai','auckland'];
+            $toLower = strtolower($this->manualTo);
+            $isIntl  = false;
+            foreach ($intlKeywords as $kw) {
+                if (str_contains($toLower, $kw)) { $isIntl = true; break; }
+            }
+            $this->tripScope = $isIntl ? 'international' : 'local';
+
+            $this->showList  = false;
+            $this->showEmpty = false;
+            $this->step = 6;
+            return;
+        }
+
+        // Optional deep-link from the AI Trip Planner's "Edit" action, which
+        // wants the traveler to land straight on flight selection with their
+        // route/budget/dates already filled in instead of re-entering
+        // everything. Only engages when BOTH "from" and "to" query params
+        // are present — every existing way of reaching this page (bare
+        // /trips, /trips/plan, any bookmark) has neither, so this leaves
+        // that behavior completely untouched.
+        if (request()->filled('from') && request()->filled('to')) {
+            $this->planningMode    = 'manual';
+            $this->manualFrom      = (string) request()->query('from');
+            $this->manualTo        = (string) request()->query('to');
+            $budgetMin             = (string) request()->query('budget_min', '');
+            $budgetMax             = (string) request()->query('budget_max', '');
+            $this->manualBudgetMin = ($budgetMax !== '' && $budgetMax !== $budgetMin)
+                ? "{$budgetMin} - {$budgetMax}"
+                : $budgetMin;
+
+            $start = (string) request()->query('start', '');
+            $end   = (string) request()->query('end', '');
+            if ($start !== '') $this->startDate = $start;
+            if ($end   !== '') $this->endDate   = $end;
+            if ($start !== '' && $end !== '') $this->flightTripType = 'round_trip';
+
+            $this->showList  = false;
+            $this->showEmpty = false;
+            $this->proceedFromTripDetails();
+        }
     }
 
     public function startNewTrip(): mixed
@@ -302,6 +429,15 @@ class TripPlannerWizard extends Component
     public static function staticIataCode(string $city): string
     {
         return (new self)->iataCode($city);
+    }
+
+    // Carbon's 'M' format char always gives the standard 3-letter English
+    // abbreviation ("Sep") with no locale/translation hook that yields
+    // "Sept" instead — post-process the one month that differs.
+    public static function fmtDate(?string $date, string $format = 'M j, Y'): string
+    {
+        if (!$date) return '';
+        return str_replace('Sep ', 'Sept ', \Carbon\Carbon::parse($date)->format($format));
     }
 
     public function iataCode(string $city): string
@@ -455,13 +591,18 @@ class TripPlannerWizard extends Component
 
     public function proceedFromTripDetails(): void
     {
-        $this->validate([
-            'manualFrom' => 'required|string|min:2',
-            'manualTo'   => 'required|string|min:2',
-        ], [
-            'manualFrom.required' => 'Please enter your origin city.',
-            'manualTo.required'   => 'Please enter your destination.',
-        ]);
+        $missing = [];
+        if (trim($this->manualFrom) === '')                          $missing[] = 'From (Leaving from?)';
+        if (trim($this->manualTo) === '')                            $missing[] = 'To (Going to?)';
+        if (trim(preg_replace('/[^\d]/', '', $this->manualBudgetMin)) === '') $missing[] = 'Preferred Budget Range';
+        if ($this->startDate === '')                                 $missing[] = 'Start Date';
+        if ($this->endDate === '')                                   $missing[] = 'End Date';
+
+        if ($missing) {
+            $this->missingTripFields    = $missing;
+            $this->showTripDetailsModal = true;
+            return;
+        }
 
         if (strtolower(trim($this->manualFrom)) === strtolower(trim($this->manualTo))) {
             $this->addError('manualTo', 'Destination must be different from your origin city.');
@@ -523,15 +664,30 @@ class TripPlannerWizard extends Component
             }
         }
 
+        if (empty($this->flightResults)) {
+            $this->flightError = 'We couldn\'t load flights right now. Try searching again in a moment.';
+        }
+
         $this->flightLoading = false;
     }
 
     public function selectFlight(int $index): void
     {
         $this->selectedFlight = $this->flightResults[$index] ?? null;
+        // A re-search between render and click can leave this index pointing
+        // past the end of a now-shorter array — don't silently advance with
+        // a null selection.
+        if ($this->selectedFlight === null) {
+            $this->flightError = 'That flight is no longer available. Please pick another.';
+            return;
+        }
 
         // Multi-city: search leg 2 flights before going to accommodation
         if ($this->flightTripType === 'multi_city' && $this->mcTo && $this->mcStartDate) {
+            // Same reasoning as searchManualFlights()'s bump above: a real
+            // SerpAPI call with its own retry, made synchronously here
+            // rather than through an already-covered method.
+            set_time_limit(120);
             $this->mcFlightStep    = true;
             $this->mcFlightResults = [];
             $this->mcFlightLoading = true;
@@ -573,6 +729,10 @@ class TripPlannerWizard extends Component
     public function selectMcFlight(int $index): void
     {
         $this->selectedMcFlight = $this->mcFlightResults[$index] ?? null;
+        if ($this->selectedMcFlight === null) {
+            $this->flightError = 'That flight is no longer available. Please pick another.';
+            return;
+        }
         $this->mcFlightStep = false;
 
         $intlKeywords = ['singapore','bangkok','phuket','bali','kuala lumpur','hong kong','tokyo','osaka','seoul','taipei','dubai','london','paris','new york','sydney','rome','barcelona','amsterdam','maldives','vietnam','hanoi','ho chi minh','jakarta','yangon','colombo','kathmandu','delhi','mumbai','beijing','shanghai','auckland'];
@@ -590,6 +750,8 @@ class TripPlannerWizard extends Component
     {
         set_time_limit(120);
         $serp = new SerpApiService();
+
+        $this->hotelError = '';
 
         if ($this->mcHotelStep) {
             // Re-search second destination
@@ -612,6 +774,12 @@ class TripPlannerWizard extends Component
                 } catch (\Throwable $e2) {
                     $this->mcHotelResults = [];
                 }
+            }
+            // Unlike the main leg below, this branch previously had no
+            // fallback — a total API failure left mcHotelResults empty with
+            // no way forward for the user.
+            if (empty($this->mcHotelResults)) {
+                $this->mcHotelResults = $this->fallbackHotels($this->mcTo, $nights, $this->hotelType);
             }
             $this->mcHotelLoading = false;
             return;
@@ -674,6 +842,12 @@ class TripPlannerWizard extends Component
                 ['name' => 'Cozy Inn %s',             'stars' => 2, 'nightly' => 900],
                 ['name' => '%s Guesthouse',           'stars' => 2, 'nightly' => 650],
             ],
+            'resort' => [
+                ['name' => '%s Beach Resort',         'stars' => 5, 'nightly' => 8500],
+                ['name' => 'Shangri-La %s Resort',    'stars' => 5, 'nightly' => 12000],
+                ['name' => '%s Cove Resort & Spa',     'stars' => 4, 'nightly' => 6500],
+                ['name' => 'Paradise %s Resort',      'stars' => 4, 'nightly' => 5500],
+            ],
         ];
         $list = $templates[$type] ?? $templates['hotel'];
         $shortDest = explode(',', $dest)[0];
@@ -698,7 +872,19 @@ class TripPlannerWizard extends Component
 
     public function skipAccommodation(): void
     {
-        $this->selectedHotel   = null;
+        $this->selectedHotel = null;
+
+        // Skipping leg 1's accommodation on a multi-city trip should still
+        // offer leg 2's accommodation, not jump straight past both legs —
+        // same transition selectAccommodation() makes when a hotel IS picked.
+        if (!$this->mcHotelStep && $this->flightTripType === 'multi_city' && $this->mcTo) {
+            $this->mcHotelStep    = true;
+            $this->mcHotelResults = [];
+            $this->mcHotelLoading = true;
+            $this->searchMcHotels();
+            return;
+        }
+
         $this->selectedMcHotel = null;
         $this->mcHotelStep     = false;
         $this->step = 4;
@@ -708,12 +894,22 @@ class TripPlannerWizard extends Component
     public function selectAccommodation(int $index): void
     {
         $this->selectedHotel = $this->hotelResults[$index] ?? null;
+        if ($this->selectedHotel === null) {
+            $this->hotelError = 'That stay is no longer available. Please pick another.';
+            return;
+        }
 
         if ($this->flightTripType === 'multi_city' && $this->mcTo) {
             $this->mcHotelStep    = true;
             $this->mcHotelResults = [];
             $this->mcHotelLoading = true;
-            $this->dispatch('searchMcHotels');
+            // Search synchronously in the same request (like leg 1's
+            // searchVenues() call below) so results are ready by the time
+            // this response renders — dispatching an event here instead
+            // meant a second round trip: the page would render the "Leg 2"
+            // shell with an empty/loading state first, then only fetch
+            // results after that separate follow-up request came back.
+            $this->searchMcHotels();
             return;
         }
 
@@ -753,6 +949,10 @@ class TripPlannerWizard extends Component
     public function selectMcAccommodation(int $index): void
     {
         $this->selectedMcHotel = $this->mcHotelResults[$index] ?? null;
+        if ($this->selectedMcHotel === null) {
+            $this->hotelError = 'That stay is no longer available. Please pick another.';
+            return;
+        }
         $this->mcHotelStep = false;
         $this->step = 4;
         $this->searchVenues();
@@ -764,6 +964,7 @@ class TripPlannerWizard extends Component
         set_time_limit(60);
         $this->venueLoading        = true;
         $this->venueResults        = [];
+        $this->venueError          = '';
         $this->mcVenueStep         = false;
         $this->mcVenueResults      = [];
         $this->selectedVenues      = [];
@@ -787,14 +988,34 @@ class TripPlannerWizard extends Component
                 $this->venueResults = [];
             }
         }
+        if (empty($this->venueResults)) {
+            $this->venueError = 'We couldn\'t load dining options right now. Try searching again, or skip this step.';
+        }
         $this->venueLoading = false;
     }
 
     public function skipVenue(): void
     {
+<<<<<<< HEAD
         $this->selectedVenues   = [];
         $this->selectedMcVenues = [];
         $this->mcVenueStep      = false;
+=======
+        $this->selectedVenue = null;
+
+        // Same reasoning as skipAccommodation() above — skipping leg 1's
+        // food & dining shouldn't skip leg 2's too.
+        if (!$this->mcVenueStep && $this->flightTripType === 'multi_city' && $this->mcTo) {
+            $this->mcVenueStep    = true;
+            $this->mcVenueResults = [];
+            $this->mcVenueLoading = true;
+            $this->searchMcVenues();
+            return;
+        }
+
+        $this->selectedMcVenue = null;
+        $this->mcVenueStep     = false;
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
         $this->step = 5;
         $this->searchAttractionsList();
     }
@@ -802,20 +1023,37 @@ class TripPlannerWizard extends Component
     public function selectVenue(int $index): void
     {
         if (!$this->mcVenueStep) {
+<<<<<<< HEAD
             $item = $this->venueResults[$index] ?? null;
             $this->selectedVenues = $item ? [$item['name'] => $item] : [];
+=======
+            $this->selectedVenue = $this->venueResults[$index] ?? null;
+            if ($this->selectedVenue === null) {
+                $this->venueError = 'That venue is no longer available. Please pick another.';
+                return;
+            }
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
             if ($this->flightTripType === 'multi_city' && $this->mcTo) {
                 $this->mcVenueStep    = true;
                 $this->mcVenueResults = [];
                 $this->mcVenueLoading = true;
-                $this->dispatch('searchMcVenues');
+                // Synchronous, same reasoning as selectAccommodation() above.
+                $this->searchMcVenues();
             } else {
                 $this->step = 5;
                 $this->searchAttractionsList();
             }
         } else {
+<<<<<<< HEAD
             $item = $this->mcVenueResults[$index] ?? null;
             $this->selectedMcVenues = $item ? [$item['name'] => $item] : [];
+=======
+            $this->selectedMcVenue = $this->mcVenueResults[$index] ?? null;
+            if ($this->selectedMcVenue === null) {
+                $this->venueError = 'That venue is no longer available. Please pick another.';
+                return;
+            }
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
             $this->step = 5;
             $this->searchAttractionsList();
         }
@@ -840,6 +1078,9 @@ class TripPlannerWizard extends Component
                 $this->mcVenueResults = [];
             }
         }
+        if (empty($this->mcVenueResults)) {
+            $this->venueError = 'We couldn\'t load dining options right now. Try searching again, or skip this step.';
+        }
         $this->mcVenueLoading = false;
     }
 
@@ -852,6 +1093,8 @@ class TripPlannerWizard extends Component
         if ($this->flightTripType !== 'multi_city' || !$this->mcTo) {
             $this->mcAttractionStep = false;
         }
+
+        $this->attractionError = '';
 
         if ($this->mcAttractionStep) {
             $this->mcAttractionLoading = true;
@@ -869,6 +1112,9 @@ class TripPlannerWizard extends Component
                 } catch (\Throwable $e2) {
                     $this->mcAttractionResults = [];
                 }
+            }
+            if (empty($this->mcAttractionResults)) {
+                $this->attractionError = 'We couldn\'t load attractions right now. Try searching again, or skip this step.';
             }
             $this->mcAttractionLoading = false;
             return;
@@ -895,33 +1141,70 @@ class TripPlannerWizard extends Component
                 $this->attractionResults = [];
             }
         }
+        if (empty($this->attractionResults)) {
+            $this->attractionError = 'We couldn\'t load attractions right now. Try searching again, or skip this step.';
+        }
         $this->attractionLoading = false;
     }
 
     public function skipAttraction(): void
     {
+<<<<<<< HEAD
         $this->selectedAttractions   = [];
         $this->selectedMcAttractions = [];
         $this->mcAttractionStep      = false;
+=======
+        $this->selectedAttraction = null;
+
+        // Same reasoning as skipAccommodation() above — skipping leg 1's
+        // attractions shouldn't skip leg 2's too.
+        if (!$this->mcAttractionStep && $this->flightTripType === 'multi_city' && $this->mcTo) {
+            $this->mcAttractionStep    = true;
+            $this->mcAttractionResults = [];
+            $this->mcAttractionLoading = true;
+            $this->searchMcAttractions();
+            return;
+        }
+
+        $this->selectedMcAttraction = null;
+        $this->mcAttractionStep     = false;
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
         $this->step = 6;
     }
 
     public function selectAttraction(int $index): void
     {
         if (!$this->mcAttractionStep) {
+<<<<<<< HEAD
             $item = $this->attractionResults[$index] ?? null;
             $this->selectedAttractions = $item ? [$item['name'] => $item] : [];
+=======
+            $this->selectedAttraction = $this->attractionResults[$index] ?? null;
+            if ($this->selectedAttraction === null) {
+                $this->attractionError = 'That attraction is no longer available. Please pick another.';
+                return;
+            }
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
             if ($this->flightTripType === 'multi_city' && $this->mcTo) {
                 $this->mcAttractionStep    = true;
                 $this->mcAttractionResults = [];
                 $this->mcAttractionLoading = true;
-                $this->dispatch('searchMcAttractions');
+                // Synchronous, same reasoning as selectAccommodation() above.
+                $this->searchMcAttractions();
             } else {
                 $this->step = 6;
             }
         } else {
+<<<<<<< HEAD
             $item = $this->mcAttractionResults[$index] ?? null;
             $this->selectedMcAttractions = $item ? [$item['name'] => $item] : [];
+=======
+            $this->selectedMcAttraction = $this->mcAttractionResults[$index] ?? null;
+            if ($this->selectedMcAttraction === null) {
+                $this->attractionError = 'That attraction is no longer available. Please pick another.';
+                return;
+            }
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
             $this->step = 6;
         }
     }
@@ -933,8 +1216,20 @@ class TripPlannerWizard extends Component
         $serp = new SerpApiService();
         try {
             $this->mcAttractionResults = $serp->searchAttractionsRaw($this->mcTo, $this->attractionType) ?? [];
+            if (empty($this->mcAttractionResults)) {
+                $serper = new SerperService();
+                $this->mcAttractionResults = $serper->searchAttractions($this->mcTo) ?? [];
+            }
         } catch (\Throwable) {
-            $this->mcAttractionResults = [];
+            try {
+                $serper = new SerperService();
+                $this->mcAttractionResults = $serper->searchAttractions($this->mcTo) ?? [];
+            } catch (\Throwable) {
+                $this->mcAttractionResults = [];
+            }
+        }
+        if (empty($this->mcAttractionResults)) {
+            $this->attractionError = 'We couldn\'t load attractions right now. Try searching again, or skip this step.';
         }
         $this->mcAttractionLoading = false;
     }
@@ -945,6 +1240,39 @@ class TripPlannerWizard extends Component
         $this->step = 2;
     }
 
+    // Belt-and-braces server-side guard: the client-side calendars already
+    // disable out-of-range days, but $wire.set() calls race over the network,
+    // so also reconcile here whenever either date lands on the server —
+    // whichever one just changed wins, and the other is cleared if it would
+    // now put start after end.
+    public function updatedStartDate(): void
+    {
+        if ($this->startDate && $this->endDate && $this->startDate > $this->endDate) {
+            $this->endDate = '';
+        }
+    }
+
+    public function updatedEndDate(): void
+    {
+        if ($this->startDate && $this->endDate && $this->endDate < $this->startDate) {
+            $this->startDate = '';
+        }
+    }
+
+    public function updatedMcStartDate(): void
+    {
+        if ($this->mcStartDate && $this->mcEndDate && $this->mcStartDate > $this->mcEndDate) {
+            $this->mcEndDate = '';
+        }
+    }
+
+    public function updatedMcEndDate(): void
+    {
+        if ($this->mcStartDate && $this->mcEndDate && $this->mcEndDate < $this->mcStartDate) {
+            $this->mcStartDate = '';
+        }
+    }
+
     public function updatedFlightTripType(): void
     {
         if ($this->flightTripType !== 'multi_city') {
@@ -952,6 +1280,7 @@ class TripPlannerWizard extends Component
             $this->mcTo         = '';
             $this->mcStartDate  = '';
             $this->mcEndDate    = '';
+<<<<<<< HEAD
             // flights
             $this->mcFlightResults  = [];
             $this->mcFlightStep     = false;
@@ -971,7 +1300,44 @@ class TripPlannerWizard extends Component
             $this->mcAttractionResults   = [];
             $this->mcAttractionLoading   = false;
             $this->selectedMcAttractions = [];
+=======
+            $this->resetMultiCityLegState();
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
         }
+    }
+
+    // Fires whenever the second leg's destination changes. Without this, a
+    // user who picks a flight/hotel/venue/attraction for "Cebu", then
+    // changes the leg-2 destination to "Davao" without ever leaving
+    // multi-city mode, would keep Cebu's stale results and selections
+    // sitting in state (no auto-clear existed for this specific case).
+    public function updatedMcTo(): void
+    {
+        $this->resetMultiCityLegState();
+    }
+
+    private function resetMultiCityLegState(): void
+    {
+        // flights
+        $this->mcFlightResults  = [];
+        $this->mcFlightStep     = false;
+        $this->mcFlightLoading  = false;
+        $this->selectedMcFlight = null;
+        // accommodation
+        $this->mcHotelStep      = false;
+        $this->mcHotelResults   = [];
+        $this->mcHotelLoading   = false;
+        $this->selectedMcHotel  = null;
+        // food & dining
+        $this->mcVenueStep      = false;
+        $this->mcVenueResults   = [];
+        $this->mcVenueLoading   = false;
+        $this->selectedMcVenue  = null;
+        // attractions
+        $this->mcAttractionStep     = false;
+        $this->mcAttractionResults  = [];
+        $this->mcAttractionLoading  = false;
+        $this->selectedMcAttraction = null;
     }
 
     public function swapCities(): void
@@ -981,14 +1347,176 @@ class TripPlannerWizard extends Component
 
     public function confirmEmergencyFund(): void
     {
+        // An emergency fund >= the whole entered budget zeroes out the
+        // remaining activity budget in generateItinerary()/regenerateItinerary(),
+        // which then falls back to a floor (aiBudMin + 500) with no real
+        // relationship to what the traveler actually entered. Catch it here
+        // instead of silently producing a nonsensical AI budget later.
+        $totalBudget = (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin);
+        if ($totalBudget > 0 && (int) $this->emergency >= $totalBudget) {
+            $this->emergencyError = 'Your emergency fund can\'t be greater than or equal to your total budget of ₱' . number_format($totalBudget) . '.';
+            return;
+        }
+        $this->emergencyError = '';
         $this->step = 7;
+    }
+
+    // Gemini → Groq → Cerebras → Mistral → OpenRouter — shared by every
+    // place that asks the AI for one itinerary suggestion. Each is tried
+    // only if the previous one failed or returned nothing (dead key, rate
+    // limit, exhausted quota, no billing, etc.), so one provider being
+    // down doesn't stall generation as long as another still has
+    // capacity. As of the last check: Gemini's key returns 401
+    // UNAUTHENTICATED and Cerebras's account has no billing set up (402
+    // on every model) — both fail fast and just fall through; Groq and
+    // Mistral currently have working keys.
+    //
+    // $deadline is a microtime(true) cutoff for this ENTIRE call (all
+    // providers combined) — generateItinerary() calls this up to 5 times
+    // in a row, and trying every provider at a fixed 30s timeout each, per
+    // option, is how a single request used to blow past PHP's 120s
+    // max_execution_time and fatal out. Once the deadline is hit we stop
+    // trying further providers for this option and just report failure —
+    // that option gets skipped same as any other provider failure.
+    private function suggestItinerary(array $args, ?float $deadline = null): ?array
+    {
+        $deadline ??= microtime(true) + 60;
+        // Neither leg of the trip has a hotel picked — ask the AI to
+        // suggest one instead of leaving the itinerary with no lodging.
+        $needsAccommodation = !$this->selectedHotel && !$this->selectedMcHotel;
+        foreach ([\App\Services\GeminiService::class, \App\Services\GroqService::class, \App\Services\CerebrasService::class, \App\Services\MistralService::class, \App\Services\OpenRouterService::class] as $serviceClass) {
+            $remaining = $deadline - microtime(true);
+            if ($remaining < 5) break;
+
+            try {
+                $result = (new $serviceClass())->suggestAdditionalItinerary(...$args, needsAccommodation: $needsAccommodation, timeout: (int) min(25, floor($remaining)));
+            } catch (\Throwable) {
+                $result = null;
+            }
+            if ($result) {
+                return $this->applyDepartureCost($result);
+            }
+        }
+        return null;
+    }
+
+    // The AI is instructed to add a "Head to Airport / Departure" entry with
+    // cost 0. That entry only makes sense for a round trip (there's a return
+    // flight to catch) — for a one-way trip there's no return leg, so drop
+    // it entirely instead of showing a departure that never happens. For a
+    // round trip, the leg is really half of what was paid for the ticket
+    // (the return half), not free.
+    private function applyDepartureCost(array $result): array
+    {
+        $flight  = $this->selectedFlight ?: $this->selectedMcFlight;
+        $isRound = $flight && strtolower($flight['type'] ?? '') === 'round trip';
+        $departureCost = $isRound ? (float) ($flight['price'] ?? 0) / 2 : 0;
+
+        foreach ($result['days'] ?? [] as $di => $day) {
+            $activities = [];
+            foreach ($day['activities'] ?? [] as $act) {
+                $isDeparture = ($act['type'] ?? '') === 'transport' && str_contains($act['title'] ?? '', 'Head to Airport');
+                if ($isDeparture) {
+                    if (!$isRound) continue; // one-way trip: no return flight to catch
+                    $act['cost'] = $departureCost;
+                }
+                $activities[] = $act;
+            }
+            $result['days'][$di]['activities'] = $activities;
+        }
+
+        return $result;
     }
 
     public function generateItinerary(): void
     {
-        $this->aiLoading   = true;
-        $this->aiItinerary = null;
-        $this->step        = 8;
+        $this->itineraryLeg    = 1;
+        $this->aiItineraryLeg1 = null;
+        $this->step             = 8;
+
+        $dest = trim($this->manualTo ?: $this->mcTo ?: 'Unknown');
+        $this->runItineraryGeneration(
+            $dest,
+            $this->startDate ?: now()->toDateString(),
+            $this->endDate   ?: now()->toDateString(),
+        );
+    }
+
+    // Multi-city: called when the traveler continues past leg 1's itinerary
+    // options. Stashes leg 1's chosen option and generates fresh options for
+    // leg 2's destination/dates instead of jumping straight to the summary.
+    public function generateItineraryLeg2(): void
+    {
+        $this->aiItineraryLeg1        = $this->aiItinerary;
+        $this->aiItineraryLeg1Options = $this->aiItineraryOptions;
+        $this->itineraryLeg           = 2;
+
+        $this->runItineraryGeneration(
+            trim($this->mcTo ?: 'Unknown'),
+            $this->mcStartDate ?: now()->toDateString(),
+            $this->mcEndDate   ?: now()->toDateString(),
+        );
+    }
+
+    // Bound to Step 8's "Save Itinerary" button. For a multi-city trip still
+    // showing leg 1's options, this generates leg 2's options instead of
+    // proceeding — the actual summary/save only happens once leg 2 (or the
+    // only leg, for non-multi-city trips) has been reviewed.
+    public function continueItinerary(): void
+    {
+        if ($this->flightTripType === 'multi_city' && $this->mcTo && $this->itineraryLeg === 1) {
+            $this->generateItineraryLeg2();
+            return;
+        }
+        $this->goToSummary();
+    }
+
+    // Bound to Step 8's "Back to Leg 1 Itinerary" button — restores leg 1's
+    // already-generated options instead of regenerating them from scratch.
+    public function backToLeg1Itinerary(): void
+    {
+        $this->itineraryLeg           = 1;
+        $this->aiItineraryOptions     = $this->aiItineraryLeg1Options;
+        $this->aiItinerary            = $this->aiItineraryLeg1;
+        $this->selectedItineraryIndex = 0;
+    }
+
+    // Bound to "Generate Other Options" / "Try Again" on Step 8 — regenerates
+    // options for whichever leg is currently being shown, without resetting
+    // back to leg 1's destination/dates the way generateItinerary() does.
+    public function regenerateItineraryOptions(): void
+    {
+        if ($this->itineraryLeg === 2 && $this->mcTo) {
+            $this->runItineraryGeneration(
+                trim($this->mcTo),
+                $this->mcStartDate ?: now()->toDateString(),
+                $this->mcEndDate   ?: now()->toDateString(),
+            );
+            return;
+        }
+        $dest = trim($this->manualTo ?: $this->mcTo ?: 'Unknown');
+        $this->runItineraryGeneration(
+            $dest,
+            $this->startDate ?: now()->toDateString(),
+            $this->endDate   ?: now()->toDateString(),
+        );
+    }
+
+    private function runItineraryGeneration(string $dest, string $tripStart, string $tripEnd): void
+    {
+        // Up to 3 options below, each capped at its own ~32s slice of a
+        // ~100s overall deadline (see $overallDeadline further down) — a
+        // fatal "Maximum execution time exceeded" isn't catchable, so this
+        // needs its own bump past PHP's default 30s the same way
+        // processAiTrip() (in Llm.php) already does for its own AI chain.
+        // Shared by generateItinerary(), generateItineraryLeg2(), and
+        // regenerateItineraryOptions() — all three funnel through here.
+        set_time_limit(150);
+
+        $this->aiLoading          = true;
+        $this->aiItinerary        = null;
+        $this->aiItineraryOptions = [];
+        $this->selectedItineraryIndex = 0;
 
         $profile       = auth()->user()?->userProfile;
         $profileBudget = (int) ($profile?->daily_budget ?? 0);
@@ -996,9 +1524,12 @@ class TripPlannerWizard extends Component
 
         $budMin  = $profileBudget > 0 ? $profileBudget : (int) preg_replace('/[^\d]/', '', $this->manualBudgetMin);
         $budMax  = (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin);
-        $budMax  = max(0, $budMax - (int) $this->emergency);
+        // If the emergency fund consumes the whole entered budget (or more),
+        // don't let this collapse to 0 — confirmEmergencyFund() should have
+        // already blocked that combination, but keep a sane floor here too
+        // so the AI never gets an all-zero budget disconnected from reality.
+        $budMax  = max(500, $budMax - (int) $this->emergency);
         if ($budMin >= $budMax) $budMin = (int) round($budMax * 0.8);
-        $dest    = trim($this->manualTo ?: $this->mcTo ?: 'Unknown');
 
         // Calculate how much the traveler already spent on selections
         $selectionCost = 0;
@@ -1022,6 +1553,7 @@ class TripPlannerWizard extends Component
 
         $departTime = $this->selectedFlight['depart'] ?? $this->selectedMcFlight['depart'] ?? '';
 
+<<<<<<< HEAD
         $args = [
             $dest,
             $this->startDate ?: now()->toDateString(),
@@ -1046,11 +1578,55 @@ class TripPlannerWizard extends Component
                 $result = (new \App\Services\GroqService())->suggestAdditionalItinerary(...$args);
             } catch (\Throwable) {
                 $result = null;
+=======
+        // Generate a small batch of distinct options up front instead of one
+        // itinerary — each call gets its own "flavor" constraint so they
+        // read as genuinely different choices rather than near-duplicates.
+        // Firing them all back-to-back regularly trips Groq's free-tier
+        // rate limit and starves the option grid down to fewer successful
+        // results, so space them out a little.
+        //
+        // Each option can try up to 5 providers (see suggestItinerary()).
+        // Capping every option to a fixed slice of an overall ~100s budget
+        // (still under PHP's 120s max_execution_time) gives flaky providers
+        // (connection resets/timeouts on Groq/Mistral) more room to recover
+        // via suggestItinerary()'s per-provider timeout before giving up.
+        $overallDeadline = microtime(true) + 100;
+        foreach (self::ITINERARY_OPTION_CONSTRAINTS as $i => $option) {
+            if (microtime(true) >= $overallDeadline) break;
+            if ($i > 0) usleep(600_000);
+            $args = [
+                $dest,
+                $tripStart,
+                $tripEnd,
+                $aiBudMin,
+                $aiBudMax,
+                $profileBudget,
+                $interests,
+                array_values($alreadySelected),
+                $option['prompt'],
+                $departTime,
+            ];
+            $optionDeadline = min($overallDeadline, microtime(true) + 32);
+            $result = $this->suggestItinerary($args, $optionDeadline);
+            if ($result) {
+                $result['_optionLabel'] = $option['label'];
+                $this->aiItineraryOptions[] = $result;
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
             }
         }
 
-        $this->aiItinerary = $result;
-        $this->aiLoading   = false;
+        $this->aiItinerary = $this->aiItineraryOptions[0] ?? null;
+        $this->aiLoading    = false;
+    }
+
+    // Switch which generated option is "active" — the one saveItinerary()
+    // and the cost summary read from.
+    public function selectItineraryOption(int $index): void
+    {
+        if (!isset($this->aiItineraryOptions[$index])) return;
+        $this->selectedItineraryIndex = $index;
+        $this->aiItinerary            = $this->aiItineraryOptions[$index];
     }
 
     public function openBudgetAdjust(): void
@@ -1079,7 +1655,8 @@ class TripPlannerWizard extends Component
         // Min = profile preferred budget; Max = trip total entered in wizard
         $budMin = $profileBudget > 0 ? $profileBudget : (int) preg_replace('/[^\d]/', '', $this->manualBudgetMin);
         $budMax = (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin);
-        $budMax = max(0, $budMax - (int) $this->emergency);
+        // Same floor as generateItinerary() — see comment there.
+        $budMax = max(500, $budMax - (int) $this->emergency);
         if ($budMin >= $budMax) $budMin = (int) round($budMax * 0.8);
         $dest   = trim($this->manualTo ?: $this->mcTo ?: 'Unknown');
 
@@ -1137,12 +1714,17 @@ class TripPlannerWizard extends Component
             $departTime,
         ];
 
-        $result = null;
-        try { $result = (new \App\Services\GeminiService())->suggestAdditionalItinerary(...$args); } catch (\Throwable) {}
-        if (!$result) {
-            try { $result = (new \App\Services\GroqService())->suggestAdditionalItinerary(...$args); } catch (\Throwable) {}
-        }
+        $result = $this->suggestItinerary($args);
 
+        // Keep the options list in sync — this replaces whichever option was
+        // active, so the other generated choices are still there to pick if
+        // the regenerated one isn't better. Preserve its label since this
+        // constraint isn't one of the labeled ITINERARY_OPTION_CONSTRAINTS.
+        if ($result) {
+            $prevLabel = $this->aiItineraryOptions[$this->selectedItineraryIndex]['_optionLabel'] ?? null;
+            if ($prevLabel) $result['_optionLabel'] = $prevLabel;
+            $this->aiItineraryOptions[$this->selectedItineraryIndex] = $result;
+        }
         $this->aiItinerary = $result;
         $this->aiLoading   = false;
     }
@@ -1152,21 +1734,158 @@ class TripPlannerWizard extends Component
         $this->step = 9;
     }
 
+<<<<<<< HEAD
     // Lets the traveler revisit their food/attraction picks from the itinerary
     // preview without losing what they've already selected (search results and
     // selections are just left as-is — only the visible step changes).
     public function backToAttractions(): void
     {
         $this->step = 5;
+=======
+    // Buckets an AI-generated itinerary's activities by type into cost
+    // totals per category — shared by the step-9 preview, the PDF export,
+    // and the saved summary_data, so an AI-suggested hotel/food/attraction
+    // lands in that category's total instead of everything but transport
+    // getting dumped into "Attractions".
+    public function categorizeAiCost(array $days): array
+    {
+        $totals = ['accommodation' => 0.0, 'food' => 0.0, 'transport' => 0.0, 'attraction' => 0.0];
+        foreach ($days as $day) {
+            foreach ($day['activities'] ?? [] as $act) {
+                if (!isset($act['cost']) || !is_numeric($act['cost'])) continue;
+                $cost = (float) $act['cost'];
+                $type = strtolower($act['type'] ?? '');
+                if ($type === 'accommodation') {
+                    $totals['accommodation'] += $cost;
+                } elseif (in_array($type, ['food', 'restaurant'], true)) {
+                    $totals['food'] += $cost;
+                } elseif ($type === 'transport') {
+                    $totals['transport'] += $cost;
+                } else {
+                    $totals['attraction'] += $cost;
+                }
+            }
+        }
+        return $totals;
+    }
+
+    // Renders the same route/dates/cost-breakdown/itinerary/selection-summary
+    // shown on the step-9 preview into a PDF — the trip isn't saved to the
+    // DB yet at this point, so this reads straight off component state
+    // rather than a Trip model.
+    public function downloadPdf()
+    {
+        $dest = trim($this->manualTo ?: $this->mcTo ?: 'Unknown');
+        $from = trim($this->manualFrom ?: 'Manila');
+        $sd   = $this->startDate ?: now()->toDateString();
+        $ed   = $this->endDate   ?: now()->toDateString();
+
+        $pdfIsMultiCity = $this->flightTripType === 'multi_city' && $this->mcTo;
+
+        // Leg 1's AI days are stashed in $aiItineraryLeg1 once leg 2's
+        // options are generated (see generateItineraryLeg2()); $aiItinerary
+        // itself then holds leg 2's. For a single-city trip $aiItinerary is
+        // the only itinerary there is.
+        $leg1AiDays = $pdfIsMultiCity ? ($this->aiItineraryLeg1['days'] ?? []) : ($this->aiItinerary['days'] ?? []);
+        $leg2AiDays = $pdfIsMultiCity ? ($this->aiItinerary['days'] ?? []) : [];
+        $leg1AiTotals = $this->categorizeAiCost($leg1AiDays);
+        $leg2AiTotals = $this->categorizeAiCost($leg2AiDays);
+        $aiTotals = ['accommodation' => 0.0, 'food' => 0.0, 'transport' => 0.0, 'attraction' => 0.0];
+        foreach ($aiTotals as $k => $v) $aiTotals[$k] = $leg1AiTotals[$k] + $leg2AiTotals[$k];
+        $aiCost = array_sum($aiTotals);
+
+        // Base (own booking only, no AI activities mixed in) costs per leg —
+        // used for each Selection Summary line item so a pick's displayed
+        // price is just its own price.
+        $flightBase1 = (float) ($this->selectedFlight['price']   ?? 0);
+        $flightBase2 = (float) ($this->selectedMcFlight['price'] ?? 0);
+        $hotelBase1  = (float) ($this->selectedHotel['total']    ?? 0);
+        $hotelBase2  = (float) ($this->selectedMcHotel['total']  ?? 0);
+        $venueBase1  = (float) ($this->selectedVenue['priceMax']   ?? $this->selectedVenue['priceMin']   ?? 0);
+        $venueBase2  = (float) ($this->selectedMcVenue['priceMax'] ?? $this->selectedMcVenue['priceMin'] ?? 0);
+        $attrBase1   = $this->selectedAttraction['isFree']   ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $this->selectedAttraction['price']   ?? '0');
+        $attrBase2   = $this->selectedMcAttraction['isFree'] ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $this->selectedMcAttraction['price'] ?? '0');
+
+        $flightCost = $flightBase1 + $flightBase2;
+        $hotelCost  = $hotelBase1  + $hotelBase2;
+        $venueCost  = $venueBase1  + $venueBase2;
+        $attrCost   = $attrBase1   + $attrBase2;
+
+        $emergency = (float) $this->emergency;
+        $budget    = (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin);
+        $total     = $flightCost + $hotelCost + $venueCost + $attrCost + $aiCost + $emergency;
+
+        $picks = [];
+        if ($this->selectedFlight)     $picks[] = ['label' => 'Flight',        'val' => trim(($this->selectedFlight['airline']    ?? '') . ' ' . ($this->selectedFlight['number']    ?? '')), 'cost' => $flightBase1];
+        if ($this->selectedHotel)      $picks[] = ['label' => 'Accommodation', 'val' => $this->selectedHotel['name']     ?? 'Hotel',      'cost' => $hotelBase1];
+        if ($this->selectedVenue)      $picks[] = ['label' => 'Food & Dining', 'val' => $this->selectedVenue['name']     ?? 'Restaurant',  'cost' => $venueBase1];
+        if ($this->selectedAttraction) $picks[] = ['label' => 'Attraction',    'val' => $this->selectedAttraction['name'] ?? 'Attraction', 'cost' => $attrBase1];
+
+        $picksLeg2 = [];
+        if ($pdfIsMultiCity) {
+            if ($this->selectedMcFlight)     $picksLeg2[] = ['label' => 'Flight',        'val' => trim(($this->selectedMcFlight['airline']    ?? '') . ' ' . ($this->selectedMcFlight['number']    ?? '')), 'cost' => $flightBase2];
+            if ($this->selectedMcHotel)      $picksLeg2[] = ['label' => 'Accommodation', 'val' => $this->selectedMcHotel['name']     ?? 'Hotel',      'cost' => $hotelBase2];
+            if ($this->selectedMcVenue)      $picksLeg2[] = ['label' => 'Food & Dining', 'val' => $this->selectedMcVenue['name']     ?? 'Restaurant',  'cost' => $venueBase2];
+            if ($this->selectedMcAttraction) $picksLeg2[] = ['label' => 'Attraction',    'val' => $this->selectedMcAttraction['name'] ?? 'Attraction', 'cost' => $attrBase2];
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('traveler.reports.trip-plan-pdf', [
+            'dest'          => $dest,
+            'from'          => $from,
+            'startDate'     => $sd,
+            'endDate'       => $ed,
+            'isMultiCity'   => $pdfIsMultiCity,
+            'leg2Dest'      => trim($this->mcTo ?: ''),
+            'leg2StartDate' => $this->mcStartDate ?: null,
+            'leg2EndDate'   => $this->mcEndDate   ?: null,
+            'picks'         => $picks,
+            'picksLeg2'     => $picksLeg2,
+            'aiDays'        => $leg1AiDays,
+            'aiDaysLeg2'    => $leg2AiDays,
+            'emergency'     => $emergency,
+            'budget'        => $budget,
+            'total'         => $total,
+            'flightCost'    => $flightCost + $aiTotals['transport'],
+            'hotelCost'     => $hotelCost + $aiTotals['accommodation'],
+            'venueCost'     => $venueCost + $aiTotals['food'],
+            'attrCost'      => $attrCost + $aiTotals['attraction'],
+        ]);
+        $pdf->setPaper('a4', 'portrait');
+
+        return response()->streamDownload(
+            fn () => print($pdf->output()),
+            'Trip-Summary-' . str_replace(' ', '-', $dest) . '.pdf'
+        );
+    }
+
+    // The step-9 summary's "Edit" links jump back to an earlier step to
+    // change a selection. Just doing $set('step', N) left the previously
+    // generated AI itinerary (step 8) sitting in state, priced against the
+    // selection that's about to change — a user could edit their flight,
+    // then click straight back to the summary via browser/step navigation
+    // without regenerating, and see costs computed against the old pick.
+    // Clearing it forces a regenerate before the summary can be trusted again.
+    public function editFromSummary(int $step): void
+    {
+        $this->step        = $step;
+        $this->aiItinerary = null;
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
     }
 
     public function saveItinerary(): void
     {
+        // Guard against a fast double-click creating two Trip rows — the
+        // client-side wire:loading.attr="disabled" alone doesn't prevent a
+        // second request that lands before the first response comes back.
+        if ($this->isSaving) return;
+        $this->isSaving = true;
+
         $rawBudget = $this->manualBudgetMax ?: $this->manualBudgetMin;
         $budget    = (float) preg_replace('/[^\d.]/', '', $rawBudget);
         $tripStart = $this->startDate ?: now()->toDateString();
         $tripEnd   = $this->endDate   ?: now()->toDateString();
 
+<<<<<<< HEAD
         // Calculate total cost for saved trips display
         $flightCost  = (int) ($this->selectedFlight['price']   ?? $this->selectedMcFlight['price']   ?? 0);
         $hotelCost   = (int) ($this->selectedHotel['total']    ?? $this->selectedMcHotel['total']    ?? 0);
@@ -1184,6 +1903,45 @@ class TripPlannerWizard extends Component
 
         $selectedAttractionsList = $this->selectedAttractionsFlat();
         $selectedVenuesList      = $this->selectedVenuesFlat();
+=======
+        // Calculate total cost for saved trips display. Both legs are summed
+        // (not just the first one found) so a multi-city trip's second leg
+        // isn't silently dropped from the total.
+        $flightCost  = (int) ($this->selectedFlight['price']   ?? 0) + (int) ($this->selectedMcFlight['price'] ?? 0);
+        $hotelCost   = (int) ($this->selectedHotel['total']    ?? 0) + (int) ($this->selectedMcHotel['total']  ?? 0);
+        $venueCost   = (int) ($this->selectedVenue['priceMax']   ?? $this->selectedVenue['priceMin']   ?? 0)
+                     + (int) ($this->selectedMcVenue['priceMax'] ?? $this->selectedMcVenue['priceMin'] ?? 0);
+        $attrCost    = ($this->selectedAttraction['isFree']   ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $this->selectedAttraction['price']   ?? '0'))
+                     + ($this->selectedMcAttraction['isFree'] ?? false ? 0 : (int) preg_replace('/[^\d]/', '', $this->selectedMcAttraction['price'] ?? '0'));
+        // AI-suggested activities are bucketed by type so the summary can
+        // show how much of "Accommodation" / "Food & Dining" / "Attractions"
+        // came from the traveler's own pick vs. the AI-suggested itinerary.
+        // For multi-city trips, leg 1's options were generated and stashed
+        // first (see generateItineraryLeg2()) before leg 2's were generated
+        // into $this->aiItinerary — combine both so leg 1 isn't dropped.
+        $isMultiCitySave = $this->flightTripType === 'multi_city' && $this->mcTo;
+        $leg1AiDays = $isMultiCitySave ? ($this->aiItineraryLeg1['days'] ?? []) : ($this->aiItinerary['days'] ?? []);
+        $leg2AiDays = $isMultiCitySave ? ($this->aiItinerary['days'] ?? []) : [];
+        $aiDays = array_merge($leg1AiDays, $leg2AiDays);
+        $aiTotals = $this->categorizeAiCost($aiDays);
+        $aiAccommodationCost = $aiTotals['accommodation'];
+        $aiFoodCost          = $aiTotals['food'];
+        $aiAttrCost          = $aiTotals['attraction'];
+        $aiTransportCost     = $aiTotals['transport'];
+        $aiFoodCount = 0; $aiAttrCount = 0;
+        foreach ($aiDays as $day) {
+            foreach ($day['activities'] ?? [] as $act) {
+                $type = strtolower($act['type'] ?? '');
+                if (in_array($type, ['food', 'restaurant'], true)) {
+                    $aiFoodCount++;
+                } elseif ($type !== 'transport' && $type !== 'accommodation') {
+                    $aiAttrCount++;
+                }
+            }
+        }
+        $aiCost      = array_sum($aiTotals);
+        $totalCost   = $flightCost + $hotelCost + $venueCost + $attrCost + $aiCost + (float)($this->emergency ?? 0);
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
 
         $coverImage  = $this->selectedHotel['image']   ?? $this->selectedMcHotel['image']
                     ?? ($selectedAttractionsList[0]['image'] ?? null) ?? null;
@@ -1193,28 +1951,70 @@ class TripPlannerWizard extends Component
         $toCode   = $this->selectedFlight['arr_id'] ?? $this->selectedMcFlight['arr_id'] ?? '';
         $airline  = $this->selectedFlight['airline'] ?? $this->selectedMcFlight['airline'] ?? 'Flight';
         $flightDetail = $airline . ' · Round-trip flight (' . $fromCode . ' - ' . $toCode . ' | ' . $toCode . ' - ' . $fromCode . ')';
+        if ($this->selectedFlight && $this->selectedMcFlight) {
+            $flightDetail .= ' + ' . ($this->selectedMcFlight['airline'] ?? 'Flight') . ' (' . ($this->selectedMcFlight['dep_id'] ?? '') . ' - ' . ($this->selectedMcFlight['arr_id'] ?? '') . ')';
+        }
 
         $nights      = $this->selectedHotel ? (int)($this->selectedHotel['nights'] ?? 1) : (int)($this->selectedMcHotel['nights'] ?? 1);
         $hotelName   = $this->selectedHotel['name'] ?? $this->selectedMcHotel['name'] ?? null;
         $hotelDetail = $hotelName ? $nights . ' night' . ($nights !== 1 ? 's' : '') . ' at ' . $hotelName : null;
+        if ($this->selectedHotel && $this->selectedMcHotel) {
+            $mcNights = (int) ($this->selectedMcHotel['nights'] ?? 1);
+            $hotelDetail .= ' + ' . $mcNights . ' night' . ($mcNights !== 1 ? 's' : '') . ' at ' . ($this->selectedMcHotel['name'] ?? 'Hotel');
+        }
 
+<<<<<<< HEAD
         $venueNames  = array_column($selectedVenuesList, 'name');
         $venueDetail = $venueNames ? implode(', ', $venueNames) : null;
+=======
+        $venueName   = $this->selectedVenue['name'] ?? $this->selectedMcVenue['name'] ?? null;
+        $venueCuisine = $this->selectedVenue['cuisine'] ?? $this->selectedMcVenue['cuisine'] ?? null;
+        $venueDetail = $venueName ? ($venueCuisine ? $venueName . ' · ' . $venueCuisine : $venueName) : null;
+        if ($this->selectedVenue && $this->selectedMcVenue) {
+            $venueDetail .= ' + ' . ($this->selectedMcVenue['name'] ?? 'Restaurant');
+        }
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
 
         $attrNames  = array_column($selectedAttractionsList, 'name');
         $attrDetail = $attrNames ? implode(', ', $attrNames) : null;
 
+        // Neither the traveler nor a plain hotel search filled in
+        // accommodation — fall back to the AI-suggested one so the summary
+        // isn't left showing an empty ₱0 lodging line.
+        if (!$hotelDetail) {
+            foreach ($aiDays as $day) {
+                $aiHotel = collect($day['activities'] ?? [])->first(fn($a) => strtolower($a['type'] ?? '') === 'accommodation');
+                if ($aiHotel) { $hotelDetail = $aiHotel['title'] ?? 'AI-suggested stay'; break; }
+            }
+        }
+
         $summaryData = [
+<<<<<<< HEAD
             'transportation' => ['detail' => $flightDetail,                              'cost' => $flightCost],
             'accommodation'  => ['detail' => $hotelDetail,                               'cost' => $hotelCost],
             'food'           => ['detail' => $venueDetail,                               'cost' => $venueCost],
             'attractions'    => ['detail' => $attrDetail,                                'cost' => $attrCost + $aiCost + $customCost],
             'emergency_fund' => ['detail' => 'Safety buffer for unexpected costs',       'cost' => (int)($this->emergency ?? 0)],
+=======
+            'transportation' => ['detail' => $flightDetail,                        'cost' => $flightCost + $aiTransportCost],
+            'accommodation'  => ['detail' => $hotelDetail,                         'cost' => $hotelCost + $aiAccommodationCost],
+            'food'           => ['detail' => $venueDetail,                         'cost' => $venueCost + $aiFoodCost, 'extra' => $aiFoodCount],
+            'attractions'    => ['detail' => $attrDetail,                          'cost' => $attrCost + $aiAttrCost,  'extra' => $aiAttrCount],
+            'emergency_fund' => ['detail' => 'Safety buffer for unexpected costs', 'cost' => (int)($this->emergency ?? 0)],
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
         ];
+
+        $isMultiCitySaved = $this->flightTripType === 'multi_city' && $this->mcTo;
+        $leg1DestName = trim($this->manualTo ?: $this->mcTo ?: 'Unknown');
+        $leg2DestName = $isMultiCitySaved ? trim($this->mcTo) : null;
 
         $trip = Trip::create([
             'user_id'          => auth()->id(),
-            'destination'      => trim($this->manualTo ?: $this->mcTo ?: 'Unknown'),
+            'destination'      => $leg1DestName,
+            // Multi-city trips are named after both destinations so the
+            // trip is identifiable at a glance on the Saved Trips / Savings
+            // Goals cards instead of only showing leg 1's city.
+            'trip_name'        => $isMultiCitySaved ? "{$leg1DestName} & {$leg2DestName}" : null,
             'start_date'       => $tripStart,
             'end_date'         => $tripEnd,
             'budget_limit'     => $budget ?: 0,
@@ -1223,21 +2023,55 @@ class TripPlannerWizard extends Component
             'total_cost'       => $totalCost,
             'cover_image'      => $coverImage,
             'summary_data'     => $summaryData,
-            'origin'           => trim($this->manualFrom ?: $this->mcFrom ?: 'Manila'),
+            'origin'           => trim($this->manualFrom ?: 'Manila'),
             'origin_code'      => $fromCode,
             'destination_code' => $toCode,
+            'is_multi_city'         => $isMultiCitySaved,
+            'leg2_destination'      => $leg2DestName,
+            'leg2_destination_code' => $isMultiCitySaved ? ($this->selectedMcFlight['arr_id'] ?? $this->resolveCode($this->mcTo)) : null,
+            'leg2_start_date'       => $isMultiCitySaved ? ($this->mcStartDate ?: null) : null,
+            'leg2_end_date'         => $isMultiCitySaved ? ($this->mcEndDate   ?: null) : null,
         ]);
+
+        // autosaveDraft() silently saved a placeholder Trip (status=draft)
+        // as soon as Trip Details was filled in, tracked via $draftTripId.
+        // Now that the traveler has finished the whole flow and a real
+        // trip has been saved, that draft is a leftover duplicate — remove
+        // it instead of leaving it to linger in the Draft Trips group.
+        if ($this->draftTripId && $this->draftTripId !== $trip->id) {
+            Trip::where('id', $this->draftTripId)
+                ->where('user_id', auth()->id())
+                ->where('status', 'draft')
+                ->delete();
+            $this->draftTripId = null;
+        }
 
         // Spread traveler selections across travel dates
         $day1Date  = \Carbon\Carbon::parse($tripStart);
         $lastDate  = \Carbon\Carbon::parse($tripEnd);
         $totalDays = max(1, (int) $day1Date->diffInDays($lastDate) + 1);
-        $destLabel = trim($this->manualTo ?: $this->mcTo ?: '');
-        $origLabel = trim($this->manualFrom ?: $this->mcFrom ?: 'Manila');
+        $destLabel = trim($this->manualTo ?: '');
+        $origLabel = trim($this->manualFrom ?: 'Manila');
 
+<<<<<<< HEAD
         $flight  = $this->selectedFlight    ?? $this->selectedMcFlight    ?? null;
         $hotel   = $this->selectedHotel     ?? $this->selectedMcHotel     ?? null;
+=======
+        // Leg 1 (main destination) and leg 2 (multi-city second destination)
+        // are kept as separate variables now — previously `??` merged them,
+        // so if both existed only leg 1 was ever written to the itinerary
+        // and leg 2 was silently dropped.
+        $flight  = $this->selectedFlight;
+        $hotel   = $this->selectedHotel;
+        $venue   = $this->selectedVenue;
+        $attr1   = $this->selectedAttraction;
+        $flight2 = $this->selectedMcFlight;
+        $hotel2  = $this->selectedMcHotel;
+        $venue2  = $this->selectedMcVenue;
+        $attr2   = $this->selectedMcAttraction;
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
         $isRound = $flight && strtolower($flight['type'] ?? '') === 'round trip';
+        $hasLeg2 = $flight2 || $hotel2 || $venue2 || $attr2;
 
         // Day 1 — Arrival: flight in, hotel check-in
         if ($flight) {
@@ -1261,6 +2095,7 @@ class TripPlannerWizard extends Component
             ]);
         }
 
+<<<<<<< HEAD
         // Activity days — every day between arrival and departure (the last day
         // is reserved for checkout/return flight below, unless the trip is too
         // short to spare one, in which case activities share day 1 or the last day).
@@ -1309,19 +2144,93 @@ class TripPlannerWizard extends Component
                     'end_datetime'   => $day->copy()->setTimeFromTimeString($start)->addMinutes(90),
                     'location'       => $destLabel,
                     'notes'          => $venue['cuisine'] ?? null,
+=======
+        // Day 2 (or Day 1 if 1-day trip) — Leg 1's Venue & Attraction
+        $actDay = $totalDays >= 2 ? $day1Date->copy()->addDay() : $day1Date->copy();
+        if ($attr1) {
+            $trip->itinerary()->create([
+                'title'          => 'Visit ' . ($attr1['name'] ?? 'Attraction'),
+                'type'           => 'Activity',
+                'start_datetime' => $actDay->copy()->setTimeFromTimeString('09:00'),
+                'end_datetime'   => $actDay->copy()->setTimeFromTimeString('11:00'),
+                'location'       => $destLabel,
+                'notes'          => null,
+            ]);
+        }
+        if ($venue) {
+            $trip->itinerary()->create([
+                'title'          => 'Lunch at ' . ($venue['name'] ?? 'Restaurant'),
+                'type'           => 'Activity',
+                'start_datetime' => $actDay->copy()->setTimeFromTimeString('12:00'),
+                'end_datetime'   => $actDay->copy()->setTimeFromTimeString('13:30'),
+                'location'       => $destLabel,
+                'notes'          => $venue['cuisine'] ?? null,
+            ]);
+        }
+
+        // Leg 2 (multi-city second destination) — scheduled on the day
+        // after leg 1's hotel stay ends, so it doesn't collide with leg 1's
+        // own activities above.
+        $leg2Label = trim($this->mcTo ?: '');
+        $leg2Nights = $hotel ? max(1, (int) ($hotel['nights'] ?? 1)) : 1;
+        $leg2Day = $day1Date->copy()->addDays($leg2Nights);
+        if ($leg2Day->gt($lastDate)) $leg2Day = $lastDate->copy();
+
+        if ($hasLeg2) {
+            if ($flight2) {
+                $trip->itinerary()->create([
+                    'title'          => ($flight2['airline'] ?? 'Flight') . ' arrival to ' . $leg2Label,
+                    'type'           => 'Flight',
+                    'start_datetime' => $leg2Day->copy()->setTimeFromTimeString('10:00'),
+                    'end_datetime'   => $leg2Day->copy()->setTimeFromTimeString('12:00'),
+                    'location'       => $leg2Label,
+                    'notes'          => $flight2['number'] ?? null,
+                ]);
+            }
+            if ($hotel2) {
+                $trip->itinerary()->create([
+                    'title'          => 'Check-in at ' . ($hotel2['name'] ?? 'Hotel'),
+                    'type'           => 'Hotel',
+                    'start_datetime' => $leg2Day->copy()->setTimeFromTimeString('14:00'),
+                    'end_datetime'   => $leg2Day->copy()->setTimeFromTimeString('15:00'),
+                    'location'       => $leg2Label,
+                    'notes'          => null,
+                ]);
+            }
+            if ($attr2) {
+                $trip->itinerary()->create([
+                    'title'          => 'Visit ' . ($attr2['name'] ?? 'Attraction'),
+                    'type'           => 'Activity',
+                    'start_datetime' => $leg2Day->copy()->setTimeFromTimeString('16:00'),
+                    'end_datetime'   => $leg2Day->copy()->setTimeFromTimeString('18:00'),
+                    'location'       => $leg2Label,
+                    'notes'          => null,
+                ]);
+            }
+            if ($venue2) {
+                $trip->itinerary()->create([
+                    'title'          => 'Dinner at ' . ($venue2['name'] ?? 'Restaurant'),
+                    'type'           => 'Activity',
+                    'start_datetime' => $leg2Day->copy()->setTimeFromTimeString('19:00'),
+                    'end_datetime'   => $leg2Day->copy()->setTimeFromTimeString('20:30'),
+                    'location'       => $leg2Label,
+                    'notes'          => $venue2['cuisine'] ?? null,
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
                 ]);
             }
         }
 
         // Last day — Hotel checkout + return flight
         if ($totalDays >= 2) {
-            if ($hotel) {
+            $checkoutHotel = $hotel2 ?: $hotel;
+            $checkoutLabel = $hotel2 ? $leg2Label : $destLabel;
+            if ($checkoutHotel) {
                 $trip->itinerary()->create([
-                    'title'          => 'Check-out from ' . ($hotel['name'] ?? 'Hotel'),
+                    'title'          => 'Check-out from ' . ($checkoutHotel['name'] ?? 'Hotel'),
                     'type'           => 'Hotel',
                     'start_datetime' => $lastDate->copy()->setTimeFromTimeString('10:00'),
                     'end_datetime'   => $lastDate->copy()->setTimeFromTimeString('11:00'),
-                    'location'       => $destLabel,
+                    'location'       => $checkoutLabel,
                     'notes'          => null,
                 ]);
             }
@@ -1337,6 +2246,7 @@ class TripPlannerWizard extends Component
             }
         }
 
+<<<<<<< HEAD
         // Save AI-generated itinerary days
         // AI content starts right after however many days the traveler's own
         // selections actually consumed (clamped to the days we scheduled onto).
@@ -1347,6 +2257,17 @@ class TripPlannerWizard extends Component
             foreach ($this->aiItinerary['days'] as $i => $day) {
                 $dayDate = \Carbon\Carbon::parse($tripStart)->addDays($i + $aiDayOffset);
                 if ($dayDate->gt($lastDate)) break; // don't write past trip end
+=======
+        // Save AI-generated itinerary days.
+        // If selections took Day 2 (and leg 2, if any), leg 1's AI days start
+        // after that. Leg 1's AI days are capped so they never spill into
+        // leg 2's date range; leg 2's AI days start on/after leg2Day and are
+        // capped to the trip end.
+        $writeAiDays = function (array $days, string $location, \Carbon\Carbon $fromDate, \Carbon\Carbon $capDate) use ($trip) {
+            foreach ($days as $i => $day) {
+                $dayDate = $fromDate->copy()->addDays($i);
+                if ($dayDate->gt($capDate)) break; // don't write past the leg's own date range
+>>>>>>> 98d31976e07913f177859596af4a2c563634a4b3
                 foreach ($day['activities'] ?? [] as $act) {
                     $timeStr = $act['time'] ?? '09:00 AM';
                     try { $t = \Carbon\Carbon::parse($dayDate->toDateString() . ' ' . $timeStr); } catch (\Throwable) { $t = $dayDate->copy()->setTimeFromTimeString('09:00'); }
@@ -1360,11 +2281,24 @@ class TripPlannerWizard extends Component
                         'type'           => $actType,
                         'start_datetime' => $t,
                         'end_datetime'   => $t->copy()->addHour(),
-                        'location'       => trim($this->manualTo ?: $this->mcTo ?: ''),
+                        'location'       => $location,
                         'notes'          => $act['description'] ?? null,
                     ]);
                 }
             }
+        };
+
+        $aiDayOffset = 1;
+        if ($totalDays >= 2 && ($attr1 || $venue)) $aiDayOffset++;
+        if ($hasLeg2) $aiDayOffset++;
+        $leg1CapDate = $hasLeg2 ? $leg2Day->copy()->subDay() : $lastDate;
+        if (!empty($leg1AiDays)) {
+            $writeAiDays($leg1AiDays, $destLabel, \Carbon\Carbon::parse($tripStart)->addDays($aiDayOffset), $leg1CapDate);
+        }
+        if (!empty($leg2AiDays)) {
+            $leg2SelectionsUsedDay = $flight2 || $hotel2 || $attr2 || $venue2;
+            $leg2AiStart = $leg2SelectionsUsedDay ? $leg2Day->copy()->addDay() : $leg2Day->copy();
+            $writeAiDays($leg2AiDays, $leg2Label, $leg2AiStart, $lastDate);
         }
 
         // Custom activities the traveler added on the itinerary preview step,
@@ -1391,24 +2325,69 @@ class TripPlannerWizard extends Component
         $this->redirect(route('saved-trips'));
     }
 
-    public function saveDraft(): void
+    // Silently saves (or updates) a draft once all of From/To/Budget/Start
+    // Date/End Date are filled in — no button, no redirect. Called from the
+    // Step 1 form whenever those fields are complete and again when the
+    // traveler navigates away (sidebar link, new tab, tab switch), so
+    // whatever they filled in is never lost even without an explicit save.
+    public function autosaveDraft(): void
     {
-        Trip::create([
-            'user_id'      => auth()->id(),
-            'destination'  => $this->manualTo ?: 'Draft',
-            'start_date'   => $this->startDate ?: now()->toDateString(),
-            'end_date'     => $this->endDate   ?: now()->toDateString(),
-            'budget_limit' => $this->parseBudgetInput($this->manualBudgetMax ?: $this->manualBudgetMin),
-            'travel_type'  => 'Solo',
-            'num_travelers'=> 1,
-        ]);
-        session()->flash('success', 'Draft saved!');
-        $this->redirect(route('trips.plan'), navigate: true);
+        // Before "Next" is clicked, manualBudgetMin still holds the raw
+        // combined field value (e.g. "10,000 - 50,000") and manualBudgetMax
+        // is empty — parseBudgetInput() alone would strip the "-" and
+        // concatenate both numbers into one huge figure. Pull the real max
+        // out of the combined string in that case instead.
+        $budget = $this->manualBudgetMax !== ''
+            ? $this->parseBudgetInput($this->manualBudgetMax)
+            : $this->extractBudgetMax($this->manualBudgetMin);
+        $hasAllFields = trim($this->manualFrom) !== ''
+            && trim($this->manualTo) !== ''
+            && $budget > 0
+            && $this->startDate !== ''
+            && $this->endDate !== '';
+
+        if (!$hasAllFields) return;
+
+        $data = [
+            'user_id'          => auth()->id(),
+            'destination'      => $this->manualTo,
+            'origin'           => trim($this->manualFrom),
+            'origin_code'      => $this->resolveCode($this->manualFrom),
+            'destination_code' => $this->resolveCode($this->manualTo),
+            'start_date'       => $this->startDate,
+            'end_date'         => $this->endDate,
+            'budget_limit'     => $budget,
+            'travel_type'      => 'Solo',
+            'num_travelers'    => 1,
+            'status'           => 'draft',
+        ];
+
+        $existing = $this->draftTripId ? Trip::where('id', $this->draftTripId)
+            ->where('user_id', auth()->id())
+            ->where('status', 'draft')
+            ->first() : null;
+
+        if ($existing) {
+            $existing->update($data);
+        } else {
+            $this->draftTripId = Trip::create($data)->id;
+        }
     }
 
     private function parseBudgetInput(string $val): float
     {
         return (float) preg_replace('/[^\d.]/', '', $val);
+    }
+
+    // Same "min - max" / "min to max" / single-value parsing as
+    // proceedFromTripDetails(), but only pulls out the max — used by
+    // autosaveDraft() to read the still-unsplit raw budget field.
+    private function extractBudgetMax(string $raw): float
+    {
+        if (preg_match('/(\d[\d,]*)\s*(?:[-–to]+)\s*(\d[\d,]*)/i', $raw, $m)) {
+            return (float) preg_replace('/[^\d]/', '', $m[2]);
+        }
+        return $this->parseBudgetInput($raw);
     }
 
     public function selectScope(string $scope): void
@@ -1478,9 +2457,8 @@ class TripPlannerWizard extends Component
         }
         $this->groupType = $group;
         $this->travelers = match ($group) {
-            'Solo'   => 1,
-            'Couple' => 2,
-            default  => max($this->travelers, 2),
+            'Solo'  => 1,
+            default => max($this->travelers, 2),
         };
     }
 
@@ -1491,7 +2469,7 @@ class TripPlannerWizard extends Component
 
     public function decrementTravelers(): void
     {
-        $min = in_array($this->groupType, ['Family', 'Friends']) ? 2 : 1;
+        $min = $this->groupType === 'Group' ? 2 : 1;
         if ($this->travelers > $min) $this->travelers--;
     }
 
@@ -1536,14 +2514,19 @@ class TripPlannerWizard extends Component
     // ── Confirm ────────────────────────────────────────────
     public function confirm(): mixed
     {
+        if ($this->isSaving) return null;
+
         $this->validate([
             'destinationName' => 'required|string',
             'startDate'       => 'required|date',
             'endDate'         => 'required|date|after_or_equal:startDate',
-            'groupType'       => 'required|in:Solo,Couple,Family,Friends',
+            'groupType'       => 'required|in:Solo,Group',
             'budgetTier'      => 'required|in:Shoestring,Mid-range,Luxury',
             'budgetLimit'     => 'required|numeric|min:1',
+            'travelers'       => 'required|integer|min:1|max:20',
         ]);
+
+        $this->isSaving = true;
 
         $trip = Trip::create([
             'user_id'       => auth()->id(),
@@ -1657,10 +2640,8 @@ class TripPlannerWizard extends Component
     public function getTravelersLabelProperty(): string
     {
         return $this->travelers . ' ' . match ($this->groupType) {
-            'Family'  => ($this->travelers === 1 ? 'Person' : 'People'),
-            'Friends' => ($this->travelers === 1 ? 'Person' : 'People'),
-            'Couple'  => 'Adults',
-            default   => 'Adult',
+            'Group' => ($this->travelers === 1 ? 'Person' : 'People'),
+            default => 'Adult',
         };
     }
 

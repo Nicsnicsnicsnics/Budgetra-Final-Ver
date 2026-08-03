@@ -26,7 +26,17 @@ class SavingsGoalController extends Controller
             ]);
         }
 
-        $goals = auth()->user()->savingsGoals()->with('trip')->whereNotNull('trip_id')->latest()->get();
+        $goals = auth()->user()->savingsGoals()->with('trip')->whereNotNull('trip_id')->latest()->get()
+            // Two goals whose trips share the same start date usually means
+            // one is a single-leg duplicate of a multi-city trip's own leg
+            // — put the multi-city trip's goal first in that case, whether
+            // its flights were one-way or round-trip, instead of leaving it
+            // to arrival order.
+            ->sort(function (SavingsGoal $a, SavingsGoal $b) {
+                if (!$a->trip || !$b->trip || !$a->trip->start_date->eq($b->trip->start_date)) return 0;
+                return ((bool) $b->trip->is_multi_city <=> (bool) $a->trip->is_multi_city);
+            })
+            ->values();
         return view('traveler.savings.index', compact('goals'));
     }
 

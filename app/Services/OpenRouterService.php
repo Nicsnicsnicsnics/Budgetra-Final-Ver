@@ -3,34 +3,52 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 
-class GeminiService
+class OpenRouterService
 {
     private string $key;
-    private string $endpoint;
+    private string $endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+    private string $model    = 'nvidia/nemotron-3-super-120b-a12b:free';
 
     public function __construct()
     {
-        $this->key      = config('services.gemini.key');
-        $this->endpoint = config('services.gemini.endpoint');
+        $this->key = config('services.openrouter.key', '');
     }
 
     public function generate(string $prompt, int $timeout = 18): ?string
     {
-        $response = Http::timeout($timeout)->connectTimeout(min(10, $timeout))->post("{$this->endpoint}?key={$this->key}", [
-            'contents' => [
-                ['parts' => [['text' => $prompt]]],
-            ],
-            'generationConfig' => [
-                'temperature'     => round(0.7 + (mt_rand(-2, 3) * 0.1), 1), // 0.5–1.0 for variety
-                'maxOutputTokens' => 2048,
-            ],
-        ]);
+        if (!$this->key) return null;
 
-        if (!$response->successful()) {
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $response = Http::timeout($timeout)
+                ->connectTimeout(min(10, $timeout))
+                ->withToken($this->key)
+                ->withHeaders([
+                    'HTTP-Referer' => config('app.url'),
+                    'X-Title'      => config('app.name'),
+                ])
+                ->post($this->endpoint, [
+                    'model'       => $this->model,
+                    'temperature' => 0.7,
+                    'max_tokens'  => 2048,
+                    'messages'    => [
+                        ['role' => 'user', 'content' => $prompt],
+                    ],
+                ]);
+
+            if ($response->successful()) {
+                return data_get($response->json(), 'choices.0.message.content');
+            }
+
+            if ($response->status() === 429 && $attempt === 0) {
+                $retryAfter = (float) ($response->header('Retry-After') ?: 1.5);
+                usleep((int) min($retryAfter, 2) * 1_000_000);
+                continue;
+            }
+
             return null;
         }
 
-        return data_get($response->json(), 'candidates.0.content.parts.0.text');
+        return null;
     }
 
     public function planTrip(string $userPrompt): ?array
@@ -122,19 +140,8 @@ PROMPT;
         return is_array($decoded) ? $decoded : null;
     }
 
-    public function buildItinerary(string $destination, int $days, string $dateFrom, array $attractions = []): ?string
-    {
-        $attrList = implode(', ', array_column($attractions, 0));
-        $prompt = <<<PROMPT
-Create a {$days}-day itinerary for {$destination} starting {$dateFrom}.
-Include morning, afternoon, and evening activities each day.
-Attractions to include if possible: {$attrList}.
-Format as plain text with Day 1:, Day 2:, etc. headings. Keep it concise.
-PROMPT;
-
-        return $this->generate($prompt);
-    }
-
+    // Same contract as GeminiService/GroqService::suggestAdditionalItinerary
+    // — last fallback in the chain when the others are unavailable.
     public function suggestAdditionalItinerary(
         string  $destination,
         string  $startDate,
@@ -149,14 +156,14 @@ PROMPT;
         bool    $needsAccommodation = false,
         int     $timeout = 18
     ): ?array {
-        $days         = max(1, (int) round((strtotime($endDate) - strtotime($startDate)) / 86400) + 1);
+        $days         = max(1, (int) round((strtotime($endDate) - strtotime($startDate)) / 86400));
         $selected     = implode(', ', $alreadySelected) ?: 'none';
         $tags         = implode(', ', array_filter($interests, fn($i) => strlen($i) < 80)) ?: 'general travel';
         $minBudg      = $budgetMin ?: (int) round(($budgetMax ?: 0) * 0.7);
         $maxBudg      = $budgetMax ?: $budgetMin;
         $minPerDay    = (int) round($minBudg / max(1, $days));
         $maxPerDay    = (int) round($maxBudg / max(1, $days));
-        $extraRule      = $constraint ? "\n0. OVERRIDE CONSTRAINT: {$constraint}" : '';
+        $extraRule       = $constraint ? "\n0. OVERRIDE CONSTRAINT: {$constraint}" : '';
         $departTimeLabel = $departTime ?: '05:00 PM';
         // The traveler skipped picking a hotel — have the AI suggest one
         // instead of leaving the whole trip with no lodging at all.
@@ -213,30 +220,5 @@ PROMPT;
         $decoded = json_decode(trim($raw), true);
 
         return is_array($decoded) ? $decoded : null;
-    }
-
-    public function parseReceipt(string $ocrText): ?array
-    {
-        $prompt = <<<PROMPT
-Extract expense data from this OCR receipt text and return JSON only (no markdown):
-"{$ocrText}"
-
-Return:
-{
-  "merchant": "store/restaurant name or null",
-  "amount": number or null,
-  "date": "YYYY-MM-DD or null",
-  "category": "one of: Food, Transport, Accommodation, Entertainment, Shopping, Other",
-  "items": ["item1", "item2"] or []
-}
-PROMPT;
-
-        $raw = $this->generate($prompt);
-        if (!$raw) return null;
-
-        $raw = preg_replace('/```json\s*/i', '', $raw);
-        $raw = preg_replace('/```\s*/i', '', $raw);
-
-        return json_decode(trim($raw), true);
     }
 }

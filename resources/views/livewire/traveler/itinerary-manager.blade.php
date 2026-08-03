@@ -314,9 +314,9 @@
                 <i class="fa-solid fa-plane" style="color:#C8874A;font-size:11px;"></i>
                 <span style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9B8EA0;">Destination</span>
             </div>
-            <div style="flex:1;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
-                <span style="font-size:13px;font-weight:600;color:#1c1c19;">{{ $trip ? $tripLabel($trip) : '' }}</span>
-                <i class="fa-solid fa-chevron-down" style="font-size:10px;color:#9B8EA0;"></i>
+            <div style="flex:1;min-width:0;box-sizing:border-box;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <span style="font-size:13px;font-weight:600;color:#1c1c19;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $trip ? $tripLabel($trip) : '' }}</span>
+                <i class="fa-solid fa-chevron-down" style="font-size:10px;color:#9B8EA0;flex-shrink:0;"></i>
             </div>
         </div>
 
@@ -326,9 +326,9 @@
                 <i class="fa-regular fa-calendar" style="color:#C8874A;font-size:11px;"></i>
                 <span style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9B8EA0;">Travel Dates</span>
             </div>
-            <div style="flex:1;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
-                <span style="font-size:13px;font-weight:600;color:#1c1c19;">{{ $trip ? $trip->start_date->format('M j') : '' }} – {{ $trip ? $trip->end_date->format('M j, Y') : '' }}</span>
-                <i class="fa-regular fa-clock" style="font-size:12px;color:#C8874A;"></i>
+            <div style="flex:1;min-width:0;box-sizing:border-box;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <span style="font-size:13px;font-weight:600;color:#1c1c19;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $trip ? $trip->start_date->format('M j') : '' }} – {{ $trip ? $trip->end_date->format('M j, Y') : '' }}</span>
+                <i class="fa-regular fa-clock" style="font-size:12px;color:#C8874A;flex-shrink:0;"></i>
             </div>
         </div>
 
@@ -338,9 +338,9 @@
                 <i class="fa-solid fa-wallet" style="color:#C8874A;font-size:11px;"></i>
                 <span style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9B8EA0;">Budget Range</span>
             </div>
-            <div style="flex:1;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
-                <span style="font-size:13px;font-weight:600;color:#1c1c19;">{{ $budgetLow }} – {{ $budgetHigh }}</span>
-                <i class="fa-solid fa-coins" style="font-size:12px;color:#C8874A;"></i>
+            <div style="flex:1;min-width:0;box-sizing:border-box;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <span style="font-size:13px;font-weight:600;color:#1c1c19;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $budgetLow }} – {{ $budgetHigh }}</span>
+                <i class="fa-solid fa-coins" style="font-size:12px;color:#C8874A;flex-shrink:0;"></i>
             </div>
         </div>
 

@@ -257,6 +257,74 @@ class ItineraryManagerTest extends TestCase
             ->assertSet('pinPlaceName', '');
     }
 
+    // selectedTripId is a public property, settable directly by a client
+    // request without ever going through selectTrip()'s ownership check —
+    // Livewire::set() is the standard way to simulate exactly that (it's
+    // the same mechanism a wire:model binding or a hand-crafted request
+    // uses). Confirms getEventsProperty()/getDayItemsProperty() can't be
+    // used to read another traveler's itinerary this way.
+    public function test_tampering_selected_trip_id_does_not_leak_another_users_itinerary(): void
+    {
+        $attacker = User::factory()->create();
+        $victim   = User::factory()->create();
+        $victimTrip = $this->makeTrip($victim);
+        Itinerary::create([
+            'trip_id' => $victimTrip->id, 'title' => 'VICTIM SECRET PLAN',
+            'type' => 'Activity', 'start_datetime' => now()->addDay()->toDateString() . ' 19:00:00',
+        ]);
+
+        $component = Livewire::actingAs($attacker)
+            ->test(ItineraryManager::class, ['tab' => 'itinerary'])
+            ->set('selectedTripId', $victimTrip->id)
+            ->set('showDayModal', true)
+            ->set('selectedDate', now()->addDay()->toDateString());
+
+        $component->assertDontSee('VICTIM SECRET PLAN');
+        $this->assertEmpty($component->get('events'));
+        $this->assertCount(0, $component->get('dayItems'));
+    }
+
+    // Same tampering vector as above, but against the destructive action —
+    // confirms deleteItem() can't be used to delete another traveler's
+    // itinerary item just by pointing selectedTripId at their trip.
+    public function test_tampering_selected_trip_id_cannot_delete_another_users_itinerary_item(): void
+    {
+        $attacker = User::factory()->create();
+        $victim   = User::factory()->create();
+        $victimTrip = $this->makeTrip($victim);
+        $victimItem = Itinerary::create([
+            'trip_id' => $victimTrip->id, 'title' => 'Victim item',
+            'type' => 'Activity', 'start_datetime' => now()->addDay()->toDateString() . ' 19:00:00',
+        ]);
+
+        Livewire::actingAs($attacker)
+            ->test(ItineraryManager::class, ['tab' => 'itinerary'])
+            ->set('selectedTripId', $victimTrip->id)
+            ->call('deleteItem', $victimItem->id);
+
+        $this->assertDatabaseHas('itinerary', ['id' => $victimItem->id]);
+    }
+
+    // Same tampering vector, against getInitialPinsProperty() (the trip
+    // map's Moment pins) instead of the itinerary calendar.
+    public function test_tampering_selected_trip_id_does_not_leak_another_users_moments(): void
+    {
+        $attacker = User::factory()->create();
+        $victim   = User::factory()->create();
+        $victimTrip = $this->makeTrip($victim);
+        Moment::create([
+            'trip_id' => $victimTrip->id, 'place_name' => 'Victim secret spot',
+            'visited_date' => '2026-08-01', 'lat' => 1, 'lng' => 1,
+        ]);
+
+        $component = Livewire::actingAs($attacker)
+            ->test(ItineraryManager::class, ['tab' => 'moments'])
+            ->set('selectedTripId', $victimTrip->id)
+            ->set('momentsMode', 'trip');
+
+        $this->assertEmpty($component->get('initialPins'));
+    }
+
     // ── Moments: destination overview map ───────────────────
 
     public function test_moments_tab_defaults_to_overview_mode(): void

@@ -1,4 +1,6 @@
-<div style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;width:420px;flex-shrink:0;">
+<div style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 18px rgba(45,27,20,0.08);display:flex;flex-direction:column;width:420px;flex-shrink:0;transition:box-shadow .2s;"
+     onmouseenter="this.style.boxShadow='0 14px 36px rgba(45,27,20,0.14)'"
+     onmouseleave="this.style.boxShadow='0 4px 18px rgba(45,27,20,0.08)'">
 
     @php
         $trip       = $goal->trip;
@@ -35,17 +37,27 @@
         <div style="position:absolute;bottom:14px;left:18px;right:18px;">
             <div style="font-size:19px;font-weight:700;color:#fff;margin-bottom:6px;line-height:1.3;">{{ $dest }}</div>
             @if($trip)
+            @php
+                $leg2From = $trip->is_multi_city && $trip->leg2_destination ? $toCode : null;
+                $leg2To   = $trip->is_multi_city && $trip->leg2_destination ? ($trip->leg2_destination_code ?? '') : null;
+                $leg2Sd   = $trip->is_multi_city && $trip->leg2_destination ? $trip->leg2_start_date?->format('M j') : null;
+                $leg2Ed   = $trip->is_multi_city && $trip->leg2_destination ? $trip->leg2_end_date?->format('M j, Y') : null;
+            @endphp
             <div style="display:flex;flex-direction:column;gap:4px;">
                 @if($fromCode)
-                <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.9);">
-                    <i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>
-                    <span>{{ $fromCode }}{{ $toCode ? ' to '.$toCode : '' }}</span>
+                <div style="display:flex;align-items:center;gap:14px;font-size:13px;color:rgba(255,255,255,0.9);flex-wrap:wrap;">
+                    <span style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>{{ $fromCode }}{{ $toCode ? ' to '.$toCode : '' }}</span>
+                    @if($leg2From && $leg2To)
+                    <span style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>{{ $leg2From }} to {{ $leg2To }}</span>
+                    @endif
                 </div>
                 @endif
                 @if($dateFrom)
-                <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.9);">
-                    <i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>
-                    <span>{{ $dateFrom }} – {{ $dateTo }}</span>
+                <div style="display:flex;align-items:center;gap:14px;font-size:13px;color:rgba(255,255,255,0.9);flex-wrap:wrap;">
+                    <span style="display:flex;align-items:center;gap:6px;"><i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>{{ $dateFrom }} – {{ $dateTo }}</span>
+                    @if($leg2Sd && $leg2Ed)
+                    <span style="display:flex;align-items:center;gap:6px;"><i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>{{ $leg2Sd }} – {{ $leg2Ed }}</span>
+                    @endif
                 </div>
                 @endif
             </div>
@@ -89,13 +101,13 @@
         {{-- Button --}}
         <div style="margin-top:auto;">
             @if($cardDone)
-            <div style="width:100%;padding:14px;border-radius:10px;background:#F0FDF4;color:#16A34A;font-size:14px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;">
+            <div style="width:100%;padding:14px;border-radius:12px;background:#F0FDF4;color:#16A34A;font-size:14px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(22,163,74,0.08);">
                 <i class="fa-solid fa-check"></i> Goal Reached!
             </div>
             @else
             <button wire:click="openDeposit"
-                    style="width:100%;background:#934B19;color:#fff;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:'Hanken Grotesk',sans-serif;"
-                    onmouseenter="this.style.background='#783603'" onmouseleave="this.style.background='#934B19'">
+                    style="width:100%;background:#934B19;color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:'Hanken Grotesk',sans-serif;box-shadow:0 4px 14px rgba(147,75,25,0.22);transition:background .18s,gap .18s;"
+                    onmouseenter="this.style.background='#6A3500';this.style.gap='9px'" onmouseleave="this.style.background='#934B19';this.style.gap='7px'">
                 <i class="fa-solid fa-circle-plus" style="font-size:15px;"></i> Add Savings
             </button>
             @endif
@@ -104,10 +116,15 @@
 
     {{-- Deposit modal --}}
     @if ($showDeposit)
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closeDeposit">
-        <div style="background:#FDFAF7;border-radius:20px;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(0,0,0,.2);padding:28px;">
+    <div style="position:fixed;inset:0;background:rgba(20,10,4,0.55);backdrop-filter:blur(3px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closeDeposit">
+        <div style="background:#FDFAF7;border-radius:22px;width:100%;max-width:380px;box-shadow:0 24px 70px rgba(0,0,0,.28);padding:28px;">
 
-            <div style="font-size:18px;font-weight:700;color:#1A0A00;margin-bottom:22px;">Add Savings</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;">
+                <div style="width:40px;height:40px;border-radius:12px;background:#934B19;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(147,75,25,0.22);">
+                    <i class="fa-solid fa-piggy-bank" style="color:#fff;font-size:16px;"></i>
+                </div>
+                <span style="font-size:18px;font-weight:700;color:#1A0A00;">Add Savings</span>
+            </div>
 
             <div style="margin-bottom:6px;">
                 <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9B8EA0;margin-bottom:8px;">Amount to Save</div>
@@ -121,8 +138,8 @@
                             $wire.set('depositAmount', parseFloat(raw) || 0);
                         }
                     }"
-                     style="display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #d3c3be;border-radius:12px;padding:12px 16px;"
-                     onfocusin="this.style.borderColor='#934B19'" onfocusout="this.style.borderColor='#d3c3be'">
+                     style="display:flex;align-items:center;gap:10px;background:#FBF8F5;border:1.5px solid #d3c3be;border-radius:14px;padding:14px 16px;transition:border-color .18s,background .18s,box-shadow .18s;"
+                     onfocusin="this.style.borderColor='#934B19';this.style.background='#fff';this.style.boxShadow='0 0 0 4px rgba(147,75,25,0.08)'" onfocusout="this.style.borderColor='#d3c3be';this.style.background='#FBF8F5';this.style.boxShadow='none'">
                     <span style="font-size:14px;font-weight:600;color:#9B8EA0;flex-shrink:0;">PHP</span>
                     <input type="text" inputmode="decimal"
                            x-model="display" @input="update($event)"
@@ -133,17 +150,18 @@
             </div>
 
             <div style="font-size:12px;color:#9B8EA0;margin-bottom:24px;">
-                This will be added to your '{{ $goal->goal_name }}' goal.
+                This will be added to your '{{ $dest }}' goal.
             </div>
 
             <button wire:click="submitDeposit"
-                    style="width:100%;background:#934B19;color:#fff;border:none;border-radius:10px;padding:14px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;margin-bottom:12px;"
-                    onmouseenter="this.style.background='#783603'" onmouseleave="this.style.background='#934B19'">
+                    style="width:100%;background:#934B19;color:#fff;border:none;border-radius:12px;padding:14px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;margin-bottom:12px;box-shadow:0 4px 14px rgba(147,75,25,0.22);transition:background .18s;"
+                    onmouseenter="this.style.background='#6A3500'" onmouseleave="this.style.background='#934B19'">
                 Confirm Savings
             </button>
 
             <button wire:click="closeDeposit"
-                    style="width:100%;background:transparent;border:none;font-size:13px;font-weight:600;color:#6B7280;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;padding:4px;">
+                    style="width:100%;background:transparent;border:none;font-size:13px;font-weight:600;color:#6B7280;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;padding:8px;border-radius:8px;transition:background .18s;"
+                    onmouseenter="this.style.background='#F5F0EB'" onmouseleave="this.style.background='transparent'">
                 Cancel
             </button>
 

@@ -37,10 +37,18 @@
     </div>
 
     {{-- Heading --}}
-    <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0 0 20px;display:flex;align-items:center;gap:10px;">
-        <span style="width:32px;height:32px;background:#F5F0EB;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✦</span>
-        Your trip package for {{ $aiTo }}
-    </h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;">
+        <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0;display:flex;align-items:center;gap:10px;">
+            <span style="width:32px;height:32px;background:#F5F0EB;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✦</span>
+            Your trip package for {{ $aiTo }}
+        </h2>
+        <button wire:click="editWithWizard" wire:loading.attr="disabled" wire:target="editWithWizard"
+                style="background:#fff;border:1.5px solid var(--border);color:#934B19;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;"
+                onmouseenter="this.style.background='#F5F0EB'"
+                onmouseleave="this.style.background='#fff'">
+            <i class="fa-solid fa-pen"></i> Edit
+        </button>
+    </div>
 
     {{-- Package cards --}}
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:32px;">
@@ -132,12 +140,12 @@
         <span wire:loading.remove wire:target="regeneratePackage"><i class="fa-solid fa-rotate"></i> Regenerate</span>
         <span wire:loading wire:target="regeneratePackage"><i class="fa-solid fa-spinner fa-spin"></i> Regenerating…</span>
     </button>
-    <button wire:click="saveAiTrip" wire:loading.attr="disabled" wire:target="saveAiTrip"
+    <button wire:click="proceedToWizardItinerary" wire:loading.attr="disabled" wire:target="proceedToWizardItinerary"
             style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:11px 28px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;"
             onmouseenter="this.style.background='#7A3C12'"
             onmouseleave="this.style.background='#934B19'">
-        <span wire:loading.remove wire:target="saveAiTrip">Next</span>
-        <span wire:loading wire:target="saveAiTrip"><i class="fa-solid fa-spinner fa-spin"></i> Saving…</span>
+        <span wire:loading.remove wire:target="proceedToWizardItinerary">Next</span>
+        <span wire:loading wire:target="proceedToWizardItinerary"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</span>
     </button>
 </div>
 @endif
@@ -209,14 +217,15 @@
         .llm-fade-up{animation:llmFadeUp .5s ease both;}
         .llm-back-link{display:inline-flex;align-items:center;gap:6px;color:#934B19;font-size:13px;font-weight:600;text-decoration:none;}
         .llm-greeting{font-size:clamp(24px,3.2vw,32px);font-weight:600;color:var(--dark);margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;letter-spacing:-.01em;}
-        .llm-interest-pill{display:inline-block;background:#F5F0EB;color:#934B19;border-radius:999px;padding:5px 14px;font-size:12px;font-weight:700;}
-        .llm-interest-edit{color:#934B19;font-size:12px;font-weight:700;text-decoration:none;}
+        .llm-interest-pill{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #F0DCC5;color:#934B19;border-radius:999px;padding:6px 15px;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(147,75,25,0.06);transition:border-color .18s,box-shadow .18s,transform .18s;}
+        .llm-interest-pill:hover{border-color:#934B19;box-shadow:0 4px 12px rgba(147,75,25,0.12);transform:translateY(-1px);}
+        .llm-interest-edit{color:#934B19;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
         .llm-interest-edit:hover{text-decoration:underline;}
-        .llm-composer{width:100%;max-width:600px;background:#fff;border:1.5px solid var(--border);border-radius:22px;box-shadow:0 4px 24px rgba(0,0,0,.06);padding:18px 20px;transition:box-shadow .2s ease,border-color .2s ease;}
-        .llm-composer:focus-within{border-color:#934B19;box-shadow:0 8px 32px rgba(147,75,25,.12);}
+        .llm-composer{width:100%;max-width:600px;background:#fff;border:1.5px solid var(--border);border-radius:24px;box-shadow:0 8px 32px rgba(45,27,20,.07);padding:20px 22px;transition:box-shadow .2s ease,border-color .2s ease;}
+        .llm-composer:focus-within{border-color:#934B19;box-shadow:0 12px 40px rgba(147,75,25,.14);}
         .llm-composer textarea{width:100%;border:none;outline:none;resize:none;font-family:inherit;font-size:15px;color:var(--dark);background:transparent;line-height:1.5;max-height:120px;}
-        .llm-composer-footer{display:flex;align-items:center;justify-content:flex-end;margin-top:10px;}
-        .llm-send-btn{width:36px;height:36px;border-radius:50%;background:#934B19;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s ease,background .15s ease;}
+        .llm-composer-footer{display:flex;align-items:center;justify-content:flex-end;margin-top:12px;}
+        .llm-send-btn{width:40px;height:40px;border-radius:50%;background:#934B19;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 16px rgba(147,75,25,0.28);transition:transform .15s ease,background .15s ease;}
         .llm-send-btn:hover{background:#6A3500;transform:scale(1.08);}
         .llm-send-btn:active{transform:scale(.92);}
         .llm-thread{width:100%;max-width:600px;margin:0 auto;flex:1;overflow-y:auto;padding:80px 4px 16px;display:flex;flex-direction:column;gap:12px;}
@@ -236,21 +245,21 @@
             <p style="font-size:14px;color:var(--muted);margin:0 0 20px;">Plan your trip with TARA</p>
 
             @if (!empty($this->profileInterests))
-                <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin-bottom:24px;">
+                <div style="display:flex;flex-wrap:wrap;gap:9px;justify-content:center;align-items:center;margin-bottom:28px;">
                     @foreach (array_slice($this->profileInterests, 0, 4) as $interest)
-                        <span class="llm-interest-pill">{{ $interest }}</span>
+                        <span class="llm-interest-pill"><i class="fa-solid fa-tag" style="font-size:9px;"></i>{{ $interest }}</span>
                     @endforeach
-                    <a href="{{ route('profile.setup', ['step' => 4, 'return' => 'trips.plan.ai']) }}" wire:navigate class="llm-interest-edit">Edit</a>
+                    <a href="{{ route('profile.setup', ['step' => 4, 'return' => 'trips.plan.ai']) }}" wire:navigate class="llm-interest-edit"><i class="fa-regular fa-pen-to-square" style="font-size:11px;"></i>Edit</a>
                 </div>
             @else
-                <div style="margin-bottom:24px;">
+                <div style="margin-bottom:28px;">
                     <a href="{{ route('profile.setup', ['step' => 4, 'return' => 'trips.plan.ai']) }}" wire:navigate class="llm-interest-edit">+ Add your travel interests</a>
                 </div>
             @endif
 
             <div class="llm-composer">
                 <style>#llm-ai-prompt::placeholder{color:#B7A99B;opacity:1;}</style>
-                <textarea id="llm-ai-prompt" wire:model.live="aiPrompt"
+                <textarea id="llm-ai-prompt" wire:model="aiPrompt"
                           placeholder="Describe your dream trip... destination, budget, travel dates, or interests."
                           rows="2"
                           x-data
@@ -277,7 +286,7 @@
 
             <div class="llm-composer" style="margin-top:auto;">
                 <style>#llm-ai-prompt::placeholder{color:#B7A99B;opacity:1;}</style>
-                <textarea id="llm-ai-prompt" wire:model.live="aiPrompt"
+                <textarea id="llm-ai-prompt" wire:model="aiPrompt"
                           placeholder="Type your reply…"
                           rows="1"
                           x-data

@@ -48,7 +48,7 @@ class SavedTrips extends Component
         if (!$trip) return;
         $this->editNameTripId = $id;
         $this->editNameValue = $trip->trip_name ?? $trip->destination ?? '';
-        $this->editType      = ucfirst(strtolower($trip->travel_type ?? 'Solo'));
+        $this->editType      = strcasecmp($trip->travel_type ?? 'Solo', 'Solo') === 0 ? 'Solo' : 'Group';
         $today = \Carbon\Carbon::today();
         $computed = $trip->start_date->gt($today) ? 'upcoming' : ($trip->end_date->lt($today) ? 'past' : 'active');
         $this->editStatus     = $trip->getRawOriginal('status') ?? $computed;
@@ -209,7 +209,18 @@ class SavedTrips extends Component
                 $trip->setAttribute('spend_pct', $budget > 0 ? min(100, round($actualSpent / $budget * 100)) : 0);
 
                 return $trip;
-            });
+            })
+            // Two trips that share the same start date most often means one
+            // is a single-leg duplicate of a multi-city trip's own leg (e.g.
+            // a separate "Davao City" card alongside "Cebu City & Davao
+            // City" that both start Aug 24) — put the multi-city trip first
+            // in that case instead of leaving it to arrival order, whether
+            // the flights involved were one-way or round-trip.
+            ->sort(function (Trip $a, Trip $b) {
+                if (!$a->start_date->eq($b->start_date)) return 0;
+                return ($b->is_multi_city <=> $a->is_multi_city);
+            })
+            ->values();
     }
 
     public function render()

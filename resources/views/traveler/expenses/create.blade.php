@@ -18,9 +18,6 @@
     #dropZone { animation: expenseCardIn .3s ease both; }
     .expense-form-card { animation: expenseCardIn .35s ease both; }
     @keyframes expenseCardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-    @media (max-width: 640px) {
-        .scan-page-grid { gap: 16px; }
-    }
 </style>
 @endpush
 
@@ -39,16 +36,12 @@
 </div>
 @else
 
-<div style="display:flex;align-items:center;justify-content:space-between;" class="mb-24">
-    <div>
-        <h1>Scan Your Receipt</h1>
-        <p class="text-muted">Upload a photo of your receipt to automatically extract and track expenses.</p>
-    </div>
-    <a href="{{ route('expenses.index') }}" class="btn btn-outline">← Back</a>
+<div class="mb-24" style="max-width:1100px;margin-left:auto;margin-right:auto;text-align:center;">
+    <h1>Scan Your Receipt</h1>
+    <p class="text-muted">Upload a photo of your receipt to automatically extract and track expenses.</p>
 </div>
 
-<div class="scan-page-grid">
-    {{-- Left: drop zone + form --}}
+<div style="max-width:1100px;margin:0 auto;">
     <div>
         {{-- Drop zone --}}
         <div class="dropzone" id="dropZone">
@@ -85,9 +78,6 @@
             <h3 class="mb-4">Expense Details</h3>
             <p class="text-muted mb-16" style="font-size:13px;">Fill in details below or let OCR auto-fill after scanning.</p>
 
-            @if (session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
             @if ($errors->any())
             <div class="alert alert-danger">{{ $errors->first() }}</div>
             @endif
@@ -156,37 +146,6 @@
                 </button>
             </form>
         </div></div>
-    </div>
-
-    {{-- Right sidebar --}}
-    <div>
-        {{-- Recent Scans --}}
-        <div class="scan-sidebar-card">
-            <div class="scan-header">
-                <span class="scan-header-title">Recent Scans</span>
-                <a href="{{ route('expenses.index') }}" class="scan-header-link">View All</a>
-            </div>
-            @php $recentExpenses = auth()->user()->expenses()->with('trip')->latest('expense_date')->limit(3)->get(); @endphp
-            @forelse ($recentExpenses as $exp)
-            <div class="scan-item">
-                <div class="scan-item-icon"><i class="fa-solid fa-receipt"></i></div>
-                <div>
-                    <div class="scan-item-name">{{ $exp->description ?: $exp->category }}</div>
-                    <div class="scan-item-date">{{ $exp->expense_date->format('M j') }}{{ $exp->receipt_path ? ' · Receipt attached' : '' }}</div>
-                </div>
-                <div class="scan-item-right">
-                    <div class="scan-item-amt">₱{{ number_format($exp->amount, 2) }}</div>
-                </div>
-            </div>
-            @empty
-            <p class="text-muted" style="font-size:13px;">No expenses yet. Add one above.</p>
-            <div class="scan-tags">
-                <span class="scan-tag">#Travel</span>
-                <span class="scan-tag">#Budget</span>
-                <span class="scan-tag">#Expenses</span>
-            </div>
-            @endforelse
-        </div>
     </div>
 </div>
 

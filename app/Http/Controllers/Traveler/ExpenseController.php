@@ -16,14 +16,26 @@ class ExpenseController extends Controller
         $trips = $user->trips()->latest()->get();
         $query = $user->expenses()->with('trip')->latest('expense_date');
 
-        // Auto-filter to the only trip when there's just one
-        $tripId = $request->filled('trip_id') ? $request->trip_id
-                : ($trips->count() === 1 ? $trips->first()->id : null);
+        // The page is built around viewing one trip's expenses at a time
+        // (destination selector, single-trip "Add Expense" link) — default
+        // to the first trip whenever none is specified, not just when
+        // there's exactly one. Matches the same default the view already
+        // assumes for which destination looks "selected".
+        $tripId = $request->filled('trip_id') ? $request->trip_id : $trips->first()?->id;
 
         if ($tripId)                       $query->where('trip_id', $tripId);
         if ($request->filled('category'))  $query->where('category', $request->category);
-        if ($request->filled('date_from')) $query->where('expense_date', '>=', $request->date_from);
-        if ($request->filled('date_to'))   $query->where('expense_date', '<=', $request->date_to);
+        // strtotime() guards against a malformed date reaching the query —
+        // on Postgres (the real database), comparing a date column against
+        // a string that isn't a valid date throws a QueryException instead
+        // of just matching nothing, crashing the whole page over what
+        // should just be an ignorable bad filter value.
+        if ($request->filled('date_from') && strtotime($request->date_from) !== false) {
+            $query->where('expense_date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to') && strtotime($request->date_to) !== false) {
+            $query->where('expense_date', '<=', $request->date_to);
+        }
 
         $expenses   = $query->paginate(20)->withQueryString();
         $categories = self::CATEGORIES;
@@ -85,6 +97,14 @@ class ExpenseController extends Controller
             'description'  => 'nullable|string|max:500',
             'expense_date' => 'required|date',
         ]);
+
+        // exists:trips,id above only checks the trip is real, not that it's
+        // this traveler's — same check store() already applies, needed here
+        // too since trip_id can be changed on edit, not just set once.
+        abort_if(
+            !auth()->user()->trips()->where('id', $validated['trip_id'])->exists(),
+            403
+        );
 
         $expense->update($validated);
 

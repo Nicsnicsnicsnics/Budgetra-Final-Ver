@@ -56,7 +56,7 @@ class SerpApiService
         DB::table('serpapi_usage')->upsert(
             ['usage_date' => $today, 'request_count' => $usage + 1],
             ['usage_date'],
-            ['request_count' => DB::raw('request_count + 1')]
+            ['request_count' => DB::raw('serpapi_usage.request_count + 1')]
         );
 
         if (!$response->successful()) return null;
@@ -289,6 +289,7 @@ class SerpApiService
         $typeLabel = match($type) {
             'apartment' => 'Apartment',
             'inn'       => 'Inn',
+            'resort'    => 'Resort',
             default     => 'Hotel',
         };
         $params = [
@@ -348,6 +349,8 @@ class SerpApiService
                 $typeKey = 'apartment';
             } elseif (str_contains($rawType, 'inn') || str_contains($rawType, 'lodge') || str_contains($rawType, 'hostel') || str_contains($rawType, 'guesthouse') || str_contains($rawType, 'guest house') || str_contains($rawType, 'bed') || str_contains($rawType, 'motel') || str_contains($rawType, 'pension')) {
                 $typeKey = 'inn';
+            } elseif (str_contains($rawType, 'resort')) {
+                $typeKey = 'resort';
             } else {
                 // Default to whatever type was searched so results always show
                 $typeKey = $type;
