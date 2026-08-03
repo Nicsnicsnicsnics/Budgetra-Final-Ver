@@ -1,5 +1,15 @@
 <div>
 
+{{-- History button — floats above every screen state (landing, active
+     chat, loading, results), since a past conversation should always be
+     reachable regardless of where the current one is at. --}}
+<button type="button" wire:click="openHistory" title="Past conversations"
+        style="position:fixed;top:20px;right:24px;z-index:900;width:38px;height:38px;border-radius:50%;background:#fff;border:1.5px solid var(--border);color:#934B19;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(45,27,20,.08);transition:border-color .15s ease,box-shadow .15s ease;"
+        onmouseenter="this.style.borderColor='#934B19';this.style.boxShadow='0 4px 12px rgba(147,75,25,.14)';"
+        onmouseleave="this.style.borderColor='var(--border)';this.style.boxShadow='0 2px 8px rgba(45,27,20,.08)';">
+    <i class="fa-solid fa-clock-rotate-left" style="font-size:14px;"></i>
+</button>
+
 {{-- ═══════════════════════════════════════════════════════════════
      AI PLANNER — results
 ═══════════════════════════════════════════════════════════════ --}}
@@ -308,6 +318,84 @@
     scrollThread();
 </script>
 @endscript
+@endif
+
+{{-- History panel — view-only browsing of past conversations. Self-
+     contained styles (not reusing .llm-msg etc.) since this can be opened
+     from any aiStep, including ones whose own <style> block never rendered. --}}
+@if ($showHistory)
+<div style="position:fixed;inset:0;background:rgba(26,10,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;" wire:click.self="closeHistory">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;">
+
+        @php $entry = $this->viewingHistoryEntry; @endphp
+
+        <div style="padding:18px 20px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:10px;">
+            @if ($entry)
+            <button type="button" wire:click="backToHistoryList" title="Back to list"
+                    style="background:none;border:none;color:#934B19;cursor:pointer;padding:4px;display:flex;">
+                <i class="fa-solid fa-arrow-left" style="font-size:14px;"></i>
+            </button>
+            @endif
+            <div style="font-size:15px;font-weight:700;color:var(--dark);flex:1;">
+                {{ $entry ? ($entry->ai_from . ' to ' . $entry->ai_to) : 'Past Conversations' }}
+            </div>
+            <button type="button" wire:click="closeHistory" title="Close"
+                    style="background:none;border:none;color:#9B8EA0;cursor:pointer;padding:4px;display:flex;">
+                <i class="fa-solid fa-xmark" style="font-size:16px;"></i>
+            </button>
+        </div>
+
+        <div style="overflow-y:auto;padding:16px 20px;flex:1;">
+            @if ($entry)
+                {{-- Read-only transcript of one past conversation --}}
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    @foreach ($entry->messages as $msg)
+                    <div style="max-width:85%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;
+                                {{ $msg['role'] === 'user'
+                                    ? 'align-self:flex-end;background:#934B19;color:#fff;border-bottom-right-radius:4px;'
+                                    : 'align-self:flex-start;background:#F8F5F2;color:var(--dark);border-bottom-left-radius:4px;' }}">
+                        {{ $msg['text'] }}
+                    </div>
+                    @endforeach
+                </div>
+                @if ($entry->ai_date_from && $entry->ai_date_to)
+                <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);font-size:12px;color:var(--muted);">
+                    <i class="fa-regular fa-calendar" style="margin-right:5px;"></i>{{ $entry->ai_date_from }} – {{ $entry->ai_date_to }}
+                    @if ($entry->ai_budget_min || $entry->ai_budget_max)
+                        &nbsp;·&nbsp;₱{{ number_format($entry->ai_budget_max ?: $entry->ai_budget_min) }}
+                    @endif
+                </div>
+                @endif
+            @else
+                {{-- List of past conversations --}}
+                @if ($this->conversationHistory->isEmpty())
+                <div style="text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;">
+                    <i class="fa-regular fa-comments" style="font-size:28px;display:block;margin-bottom:10px;color:#D8CABB;"></i>
+                    No past conversations yet — once you finish planning a trip with TARA, it'll show up here.
+                </div>
+                @else
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    @foreach ($this->conversationHistory as $past)
+                    <button type="button" wire:click="viewHistoryEntry({{ $past->id }})"
+                            style="text-align:left;width:100%;background:#F8F5F2;border:1.5px solid transparent;border-radius:12px;padding:12px 14px;cursor:pointer;transition:border-color .15s ease;font-family:inherit;"
+                            onmouseenter="this.style.borderColor='#934B19'" onmouseleave="this.style.borderColor='transparent'">
+                        <div style="font-size:13px;font-weight:700;color:var(--dark);margin-bottom:3px;">
+                            {{ $past->ai_from ?: '—' }} to {{ $past->ai_to ?: '—' }}
+                        </div>
+                        <div style="font-size:11px;color:var(--muted);">
+                            {{ $past->created_at->format('M j, Y · g:i A') }}
+                            @if ($past->ai_date_from && $past->ai_date_to)
+                                &nbsp;·&nbsp;{{ $past->ai_date_from }} – {{ $past->ai_date_to }}
+                            @endif
+                        </div>
+                    </button>
+                    @endforeach
+                </div>
+                @endif
+            @endif
+        </div>
+    </div>
+</div>
 @endif
 
 </div>

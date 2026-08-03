@@ -1020,18 +1020,39 @@
             });
 
             var bounds = new maplibregl.LngLatBounds();
+            var seenCoords = [];
+            function trackCoord(lng, lat) {
+                var isDup = seenCoords.some(function (c) {
+                    return Math.abs(c[0] - lng) < 1e-9 && Math.abs(c[1] - lat) < 1e-9;
+                });
+                if (!isDup) seenCoords.push([lng, lat]);
+            }
+
             (pins || []).forEach(function (pin) {
                 new maplibregl.Marker({ element: buildTripMarkerElement(pin) })
                     .setLngLat([pin.lng, pin.lat])
                     .addTo(map);
                 bounds.extend([pin.lng, pin.lat]);
+                trackCoord(pin.lng, pin.lat);
             });
             (allMoments || []).forEach(function (pin) {
                 renderMemory(pin);
                 bounds.extend([pin.lng, pin.lat]);
+                trackCoord(pin.lng, pin.lat);
             });
 
-            if (pins && pins.length) {
+            if (seenCoords.length === 1) {
+                // fitBounds() on a zero-area bounds (every pin at the exact
+                // same spot — the common case being just one trip with no
+                // photos logged yet) is unreliable across MapLibre versions:
+                // it can leave the view at whatever the map's initial
+                // center/zoom was instead of actually moving to the pin,
+                // which is what made a brand-new single-trip overview show
+                // a random default location instead of that trip's own
+                // destination. Jumping straight to the one known point
+                // sidesteps the degenerate-bounds case entirely.
+                map.jumpTo({ center: seenCoords[0], zoom: 8 });
+            } else if (pins && pins.length) {
                 map.fitBounds(bounds, { padding: 60, maxZoom: 8 });
             }
 

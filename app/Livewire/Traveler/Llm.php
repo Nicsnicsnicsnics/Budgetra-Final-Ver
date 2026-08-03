@@ -2,6 +2,7 @@
 namespace App\Livewire\Traveler;
 
 use App\Models\AiConversationDraft;
+use App\Models\AiConversationHistory;
 use App\Services\CerebrasService;
 use App\Services\GeminiService;
 use App\Services\GroqService;
@@ -52,6 +53,10 @@ class Llm extends Component
     // whichever place the regex happened to capture first.
     private ?string $ambiguityNotice = null;
 
+    // ── Conversation history (view-only browsing of past chats) ────────
+    public bool $showHistory       = false;
+    public ?int $viewingHistoryId  = null;
+
     // Read-only summary of the traveler's saved interests (from onboarding),
     // shown as a quick reminder on the landing screen and folded into trip
     // generation below — editing happens on the actual profile screen, not
@@ -59,6 +64,55 @@ class Llm extends Component
     public function getProfileInterestsProperty(): array
     {
         return auth()->user()->userProfile?->interests ?? [];
+    }
+
+    // Every past conversation that's been handed off to the wizard so far
+    // (see proceedToWizardItinerary(), the only place one gets archived),
+    // newest first.
+    public function getConversationHistoryProperty()
+    {
+        return AiConversationHistory::where('user_id', auth()->id())
+            ->latest()
+            ->get();
+    }
+
+    // The specific past conversation currently being read, or null while
+    // just browsing the list. Re-fetched fresh each render rather than
+    // cached — this is a rarely-opened panel, not a hot path.
+    public function getViewingHistoryEntryProperty()
+    {
+        if ($this->viewingHistoryId === null) return null;
+
+        // Scoped to the current user the same way every other lookup in
+        // this component is — a tampered id in the request must never be
+        // able to read another traveler's conversation.
+        return AiConversationHistory::where('user_id', auth()->id())
+            ->find($this->viewingHistoryId);
+    }
+
+    public function openHistory(): void
+    {
+        $this->showHistory = true;
+    }
+
+    public function closeHistory(): void
+    {
+        $this->showHistory      = false;
+        $this->viewingHistoryId = null;
+    }
+
+    public function viewHistoryEntry(int $id): void
+    {
+        // Kept independent of openHistory() rather than assumed to always
+        // run after it — this way the method is correct on its own no
+        // matter what ends up calling it.
+        $this->showHistory      = true;
+        $this->viewingHistoryId = $id;
+    }
+
+    public function backToHistoryList(): void
+    {
+        $this->viewingHistoryId = null;
     }
 
     // Restores an in-progress conversation from the last visit — a page
@@ -709,17 +763,37 @@ PROMPT;
         if ($package && !empty($package['to'])) {
             $this->aiFrom      = $this->cleanCityName($package['from']      ?? $this->aiFrom);
             $this->aiTo        = $this->cleanCityName($package['to']        ?? $this->aiTo);
+            // The AI free-generates transport.from_code/to_code as part of
+            // the same JSON response, independently of the from/to fields
+            // just resolved above — it can (and does) end up inconsistent
+            // with them, e.g. correctly naming "Cebu City" as the origin
+            // but still defaulting the flight route to Manila (MNL), since
+            // the prompt's own "default Manila if not mentioned" instruction
+            // bleeds into the transport leg even when a different origin
+            // was clearly given. Overwrite with codes derived from the
+            // already-resolved cities instead of trusting the AI's own,
+            // the same way buildSerpApiPackage() (Layer 2) already does.
+            if (isset($package['transport']) && is_array($package['transport'])) {
+                $package['transport']['from_code'] = $this->resolveCode($this->aiFrom ?: 'Manila');
+                $package['transport']['to_code']   = $this->resolveCode($this->aiTo);
+            }
             $this->aiBudgetMin = (int)($package['budget_min'] ?? $this->aiBudgetMin);
             $this->aiBudgetMax = (int)($package['budget_max'] ?? $this->aiBudgetMax ?: $this->aiBudgetMin);
             // Same sanity check extractWithAi() already applies before
-            // accepting an AI-supplied date: the model can return a non-date
-            // placeholder ("TBD", "Flexible") when the conversation never
-            // actually pinned down real dates, and strtotime() on that
-            // silently returns false rather than throwing — every later
-            // date('Y-m-d', false) then casts to 0 and produces "1970-01-01"
-            // with no error to catch. Reject anything that doesn't parse
-            // instead of storing it.
-            if (!empty($package['date_from']) && strtotime($package['date_from']) !== false) {
+            // accepting an AI-supplied date. Two things to guard against:
+            // 1. A non-date placeholder ("TBD", "Flexible") when the
+            //    conversation never actually pinned down real dates —
+            //    strtotime() on that silently returns false rather than
+            //    throwing, and every later date('Y-m-d', false) then casts
+            //    to 0 and produces "1970-01-01" with no error to catch.
+            // 2. A syntactically valid but wrong date the AI's own date
+            //    arithmetic hallucinated for a relative phrase ("1 week") —
+            //    date_from has no year in this format, so strtotime()
+            //    assumes the current one; reject anything landing before
+            //    today rather than silently building a trip in the past.
+            if (!empty($package['date_from'])
+                && ($tsFrom = strtotime($package['date_from'])) !== false
+                && $tsFrom >= strtotime('today')) {
                 $this->aiDateFrom = $package['date_from'];
             }
             if (!empty($package['date_to']) && strtotime($package['date_to']) !== false) {
@@ -1180,6 +1254,23 @@ PROMPT;
             'attraction' => $selectedAttraction,
         ]]);
 
+        // Snapshot the finished conversation into history before it's
+        // cleared below — this is the only point a conversation ever
+        // actually ends (there's no "start a new chat" reset elsewhere), so
+        // it's the one reliable place to archive it.
+        AiConversationHistory::create([
+            'user_id'       => auth()->id(),
+            'messages'      => $this->messages,
+            'ai_from'       => $this->aiFrom,
+            'ai_to'         => $this->aiTo,
+            'ai_budget_min' => $this->aiBudgetMin,
+            'ai_budget_max' => $this->aiBudgetMax,
+            'ai_date_from'  => $this->aiDateFrom,
+            'ai_date_to'    => $this->aiDateTo,
+            'ai_days'       => $this->aiDays,
+            'ai_package'    => $this->aiPackage,
+        ]);
+
         // Same reasoning as saveAiTrip() previously had: the conversation's
         // being handed off to become a real trip via the wizard now, so
         // clear the draft instead of leaving a stale one to restore later.
@@ -1558,7 +1649,7 @@ PROMPT;
         $totalEst      = $transport + $accommodation + $foodTotal + $attrTotal;
 
         $this->aiPackage = [
-            'transport'     => ['label'=>'TRANSPORTATION','icon'=>'fa-solid fa-plane','from_code'=>'MNL','to_code'=>$data['code'],'detail'=>$data['airline'].' · Direct Flight · Round Trip','cost'=>$transport],
+            'transport'     => ['label'=>'TRANSPORTATION','icon'=>'fa-solid fa-plane','from_code'=>$this->resolveCode($this->aiFrom ?: 'Manila'),'to_code'=>$data['code'],'detail'=>$data['airline'].' · Direct Flight · Round Trip','cost'=>$transport],
             'accommodation' => ['label'=>'ACCOMMODATION','icon'=>'fa-solid fa-bed','name'=>$data['hotel'],'stars'=>$data['hotel_stars'],'detail'=>$days.' Nights · '.$data['hotel_type'].' · '.$data['hotel_city'],'cost'=>$accommodation],
             'food'          => ['label'=>'FOOD & DINING','icon'=>'fa-solid fa-utensils','name'=>$data['restaurant'],'detail'=>$days.' Days · '.$data['meal_plan'].' · '.$data['meal_city'],'cost'=>$foodTotal],
             'attractions'   => ['label'=>'ATTRACTIONS','icon'=>'fa-solid fa-landmark','items'=>$data['attractions'],'cost'=>$attrTotal],

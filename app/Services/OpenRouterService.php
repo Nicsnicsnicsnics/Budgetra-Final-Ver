@@ -53,8 +53,17 @@ class OpenRouterService
 
     public function planTrip(string $userPrompt): ?array
     {
+        // Without an explicit "today" anchor, a relative duration ("1 week",
+        // "next month") has nothing to be relative TO — the model falls back
+        // to whatever date it associates with "now" from its own training
+        // data, which is routinely in the past relative to the server's
+        // actual today.
+        $today = date('l, M j, Y');
+
         $prompt = <<<PROMPT
 You are a Philippine travel planner AI. Read the traveler's input, extract all details, then generate a realistic trip package. Return JSON only — no markdown, no explanation, no extra text.
+
+Today's date is {$today}.
 
 Traveler's input: "{$userPrompt}"
 
@@ -64,7 +73,7 @@ Instructions:
 3. ALL costs combined must NOT exceed the budget_max.
 4. Budget split suggestion: transport 18%, accommodation 50%, food 28%, attractions 4%.
 5. Use correct Philippine IATA airport codes (MNL=Manila, CEB=Cebu City, DVO=Davao, BCD=Bacolod, ILO=Iloilo, ZAM=Zamboanga, KLO=Kalibo/Boracay, MPH=Malay/Boracay, TAG=Tagbilaran/Bohol, PPS=Puerto Princesa, CGY=Cagayan de Oro, GES=General Santos, etc.).
-6. Dates: date_from format "Mon D" (e.g. "Jul 16"), date_to format "Mon D, YYYY" (e.g. "Jul 21, 2026").
+6. Dates: date_from format "Mon D" (e.g. "Jul 16"), date_to format "Mon D, YYYY" (e.g. "Jul 21, 2026"). If the traveler gave a relative time frame ("next week", "in 3 days") or a duration instead of an end date ("for 5 days", "for a week"), compute the actual calendar dates using today's date above as the reference point — the resulting date_from must never be earlier than today.
 
 Return ONLY this JSON:
 {
