@@ -12,14 +12,14 @@
         <h3>Estimated Budget Breakdown</h3>
         <table style="width:100%;border-collapse:collapse;">
             <thead><tr>
-                <th style="text-align:left;padding:8px;border-bottom:2px solid #eee;">Category</th>
-                <th style="text-align:right;padding:8px;border-bottom:2px solid #eee;">Estimated (₱)</th>
+                <th style="text-align:left;padding:8px;border-bottom:2px solid var(--border-light);">Category</th>
+                <th style="text-align:right;padding:8px;border-bottom:2px solid var(--border-light);">Estimated (₱)</th>
             </tr></thead>
             <tbody>
             @foreach($categories as $cat => $amount)
                 <tr>
-                    <td style="padding:8px;border-bottom:1px solid #f0f0f0;">{{ $cat }}</td>
-                    <td style="padding:8px;border-bottom:1px solid #f0f0f0;text-align:right;">{{ number_format($amount, 2) }}</td>
+                    <td style="padding:8px;border-bottom:1px solid var(--border-light);">{{ $cat }}</td>
+                    <td style="padding:8px;border-bottom:1px solid var(--border-light);text-align:right;">{{ number_format($amount, 2) }}</td>
                 </tr>
             @endforeach
             <tr style="font-weight:800;">
@@ -40,9 +40,9 @@
 
 <div class="card">
     <div class="card-body">
-        <h3>Suggested Activities via Klook <span style="font-size:.8rem;font-weight:400;color:#999;">(estimated prices)</span></h3>
+        <h3>Suggested Activities via Klook <span style="font-size:.8rem;font-weight:400;color:var(--muted);">(estimated prices)</span></h3>
         @foreach($activities as $activity)
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-light);">
                 <div>{{ $activity['name'] }} <span style="color:#f5a623;">⭐ {{ $activity['rating'] }}</span></div>
                 <div>₱{{ number_format($activity['price'], 0) }}</div>
             </div>

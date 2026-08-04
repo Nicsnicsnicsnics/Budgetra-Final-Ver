@@ -15,7 +15,16 @@
     @livewireStyles
     @stack('styles')
 </head>
-<body class="dashboard-body">
+@php
+    $userTheme = auth()->user()->theme ?? 'daylight';
+@endphp
+<body class="dashboard-body" data-theme="{{ $userTheme }}">
+    @if ($userTheme === 'auto')
+    <script>
+        document.body.setAttribute('data-theme',
+            window.matchMedia('(prefers-color-scheme: dark)').matches ? 'nightflight' : 'daylight');
+    </script>
+    @endif
     <div class="dashboard-wrapper" id="dashWrapper">
         <x-sidebar :active="$active ?? ''" />
         <div class="dash-main">

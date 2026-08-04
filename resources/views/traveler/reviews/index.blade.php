@@ -25,7 +25,7 @@
                     <strong>{{ $review->destination }}</strong>
                     <span style="color:#f5a623;margin-left:8px;">{{ str_repeat('★',$review->rating) }}{{ str_repeat('☆',5-$review->rating) }}</span>
                 </div>
-                <small style="color:#999;">{{ $review->user->full_name }} &bull; {{ $review->created_at->diffForHumans() }}</small>
+                <small style="color:var(--muted);">{{ $review->user->full_name }} &bull; {{ $review->created_at->diffForHumans() }}</small>
             </div>
             <p style="margin-top:.5rem;">{{ $review->body }}</p>
         </div>

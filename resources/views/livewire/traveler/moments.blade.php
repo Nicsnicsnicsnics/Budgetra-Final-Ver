@@ -24,7 +24,7 @@
     .timeline-entry .timeline-card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
     .timeline-entry:hover .timeline-card { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(45,27,20,.10); border-color: #934B19; }
     .moments-share-trip-btn { transition: background .15s ease, border-color .15s ease; }
-    .moments-share-trip-btn:hover { background: #FDF3EB; border-color: #934B19; }
+    .moments-share-trip-btn:hover { background: var(--primary-light); border-color: var(--primary); }
     .moments-float-chip {
         position: absolute; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.14); max-width: calc(100% - 32px);
@@ -43,11 +43,11 @@
     }
     .moments-segment {
         display: inline-flex; align-items: center; gap: 7px; border: none; background: transparent;
-        color: #817470; font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 999px;
+        color: var(--muted); font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 999px;
         cursor: pointer; transition: background .2s ease, color .2s ease, box-shadow .2s ease;
     }
-    .moments-segment.is-active { background: #fff; color: #934B19; box-shadow: 0 2px 8px rgba(45,27,20,.10); }
-    .moments-segment:not(.is-active):hover { color: #4f4441; }
+    .moments-segment.is-active { background: var(--bg-white); color: var(--primary); box-shadow: 0 2px 8px rgba(45,27,20,.10); }
+    .moments-segment:not(.is-active):hover { color: var(--dark); }
 </style>
 
 {{-- Map View / Timeline View toggle for the overview page itself — a
@@ -76,10 +76,10 @@
             ></div>
 
             <div class="moments-float-chip moments-float-legend">
-                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#4f4441;font-weight:600;"><span style="width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block;"></span> Ongoing</span>
-                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#4f4441;font-weight:600;"><span style="width:8px;height:8px;border-radius:50%;background:#3B82F6;display:inline-block;"></span> Upcoming</span>
-                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#4f4441;font-weight:600;"><span style="width:8px;height:8px;border-radius:50%;background:#6B7280;display:inline-block;"></span> Completed</span>
-                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#4f4441;font-weight:600;"><i class="fa-solid fa-camera" style="font-size:9px;color:#934B19;"></i> Memory</span>
+                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#1A1A2E;font-weight:600;"><span style="width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block;"></span> Ongoing</span>
+                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#1A1A2E;font-weight:600;"><span style="width:8px;height:8px;border-radius:50%;background:#3B82F6;display:inline-block;"></span> Upcoming</span>
+                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#1A1A2E;font-weight:600;"><span style="width:8px;height:8px;border-radius:50%;background:#6B7280;display:inline-block;"></span> Completed</span>
+                <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#1A1A2E;font-weight:600;"><i class="fa-solid fa-camera" style="font-size:9px;color:var(--primary);"></i> Memory</span>
             </div>
 
             <div class="moments-float-chip moments-float-hint">
@@ -92,26 +92,26 @@
     {{-- All-trips Travel Story Timeline --}}
     <div x-show="$store.overviewMoments.view === 'timeline'" x-transition.opacity.duration.200ms x-cloak>
         @php $overviewTimelineGrouped = collect($this->allMomentsTimeline)->groupBy('trip_destination'); @endphp
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:20px;padding:20px 24px;box-shadow:0 6px 28px rgba(45,27,20,.10);max-height:640px;overflow-y:auto;">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;padding:20px 24px;box-shadow:0 6px 28px rgba(45,27,20,.10);max-height:640px;overflow-y:auto;">
             @if ($overviewTimelineGrouped->isEmpty())
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 24px;text-align:center;">
                 <div style="width:64px;height:64px;border-radius:16px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-                    <i class="fa-solid fa-book-open-reader" style="font-size:26px;color:#934B19;"></i>
+                    <i class="fa-solid fa-book-open-reader" style="font-size:26px;color:var(--primary);"></i>
                 </div>
-                <div style="font-size:16px;font-weight:700;color:#1c1c19;margin-bottom:8px;">Your travel diary starts here</div>
-                <div style="font-size:13px;color:#9B8EA0;max-width:320px;line-height:1.6;margin-bottom:18px;">
+                <div style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:8px;">Your travel diary starts here</div>
+                <div style="font-size:13px;color:var(--muted);max-width:320px;line-height:1.6;margin-bottom:18px;">
                     Switch to Map View and click anywhere to post your first Moment — it'll show up here as a timeline entry.
                 </div>
                 <button type="button" @click="$store.overviewMoments.view = 'map'" class="moments-btn-primary"
-                        style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;">
+                        style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;">
                     <i class="fa-solid fa-map-location-dot"></i> Go to Map View
                 </button>
             </div>
             @else
             @foreach ($overviewTimelineGrouped as $destination => $destMoments)
             <div style="margin-bottom:28px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid #F0E8DF;">
-                    <div style="font-size:14px;font-weight:800;color:#934B19;text-transform:uppercase;letter-spacing:.04em;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid var(--border-light);">
+                    <div style="font-size:14px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.04em;">
                         <i class="fa-solid fa-plane"></i> {{ $destination }}
                     </div>
                     {{-- Grouped by destination name, so if the same place was
@@ -119,7 +119,7 @@
                          one the first moment in the group belongs to — same
                          limitation the grouping itself already has. --}}
                     <button type="button" wire:click="openSharePicker({{ $destMoments->first()['trip_id'] }})" class="moments-share-trip-btn"
-                            style="flex-shrink:0;display:inline-flex;align-items:center;gap:6px;background:#fff;color:#934B19;border:1.5px solid #F0E8DF;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">
+                            style="flex-shrink:0;display:inline-flex;align-items:center;gap:6px;background:var(--bg-white);color:var(--primary);border:1.5px solid var(--border-light);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">
                         <i class="fa-solid fa-share-nodes"></i> Share
                     </button>
                 </div>
@@ -135,18 +135,18 @@
                                      style="width:76px;height:76px;border-radius:10px;object-fit:cover;flex-shrink:0;">
                                 @else
                                 <div style="width:76px;height:76px;border-radius:10px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                    <i class="fa-solid fa-camera" style="color:#934B19;font-size:20px;"></i>
+                                    <i class="fa-solid fa-camera" style="color:var(--primary);font-size:20px;"></i>
                                 </div>
                                 @endif
                                 <div style="flex:1;min-width:0;">
                                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
-                                        <span style="font-size:14px;font-weight:700;color:#1c1c19;">{{ $moment['place_name'] }}</span>
-                                        <span style="font-size:10px;font-weight:700;color:#934B19;background:#FDF3EB;padding:2px 8px;border-radius:20px;">Day {{ $moment['day_number'] }}</span>
+                                        <span style="font-size:14px;font-weight:700;color:var(--dark);">{{ $moment['place_name'] }}</span>
+                                        <span style="font-size:10px;font-weight:700;color:var(--primary);background:#FDF3EB;padding:2px 8px;border-radius:20px;">Day {{ $moment['day_number'] }}</span>
                                     </div>
                                     @if ($moment['description'])
-                                    <div style="font-size:12.5px;color:#4f4441;line-height:1.5;margin-bottom:6px;">{{ $moment['description'] }}</div>
+                                    <div style="font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:6px;">{{ $moment['description'] }}</div>
                                     @endif
-                                    <div style="font-size:11px;color:#9B8EA0;">
+                                    <div style="font-size:11px;color:var(--muted);">
                                         <i class="fa-regular fa-clock" style="font-size:10px;"></i> Posted {{ $moment['posted_at'] }}
                                     </div>
                                 </div>
@@ -164,7 +164,7 @@
 
 @else
 <button wire:click="backToOverview" type="button" class="moments-back-btn"
-        style="display:flex;align-items:center;gap:8px;background:none;border:none;padding:0 0 16px;font-size:13px;font-weight:600;color:#934B19;cursor:pointer;">
+        style="display:flex;align-items:center;gap:8px;background:none;border:none;padding:0 0 16px;font-size:13px;font-weight:600;color:var(--primary);cursor:pointer;">
     <i class="fa-solid fa-arrow-left" style="font-size:11px;transition:transform .15s ease;"></i> All Destinations
 </button>
 <style>
@@ -182,8 +182,8 @@
 
 <style>
     .timeline-entry .timeline-card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
-    .timeline-entry:hover .timeline-card { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(45,27,20,.10); border-color: #934B19; }
-    .timeline-entry.is-highlighted .timeline-card { animation: timelinePulse 1.4s ease; border-color: #934B19; }
+    .timeline-entry:hover .timeline-card { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(45,27,20,.10); border-color: var(--primary); }
+    .timeline-entry.is-highlighted .timeline-card { animation: timelinePulse 1.4s ease; border-color: var(--primary); }
     @keyframes timelinePulse {
         0%   { box-shadow: 0 0 0 0 rgba(147,75,25,.45); }
         70%  { box-shadow: 0 0 0 12px rgba(147,75,25,0); }
@@ -201,11 +201,11 @@
     }
     .moments-segment {
         display: inline-flex; align-items: center; gap: 7px; border: none; background: transparent;
-        color: #817470; font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 999px;
+        color: var(--muted); font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 999px;
         cursor: pointer; transition: background .2s ease, color .2s ease, box-shadow .2s ease;
     }
-    .moments-segment.is-active { background: #fff; color: #934B19; box-shadow: 0 2px 8px rgba(45,27,20,.10); }
-    .moments-segment:not(.is-active):hover { color: #4f4441; }
+    .moments-segment.is-active { background: var(--bg-white); color: var(--primary); box-shadow: 0 2px 8px rgba(45,27,20,.10); }
+    .moments-segment:not(.is-active):hover { color: var(--dark); }
     @media (max-width: 640px) {
         .timeline-card-inner { flex-direction: column; }
     }
@@ -229,8 +229,8 @@
     {{-- Single trip's personal travel-pin map — unchanged, just now shown/hidden
          via Alpine instead of always rendered. --}}
     <div x-show="$store.moments.view === 'map'" x-transition.opacity.duration.200ms>
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);">
-            <p style="margin:0 0 12px;font-size:12px;color:#9B8EA0;display:flex;align-items:center;gap:6px;">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);">
+            <p style="margin:0 0 12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
                 <i class="fa-solid fa-circle-info" style="color:#C8874A;"></i>
                 Click anywhere on the map to drop a pin for a place you visited.
             </p>
@@ -246,19 +246,19 @@
 
     {{-- Travel Story Timeline --}}
     <div x-show="$store.moments.view === 'timeline'" x-transition.opacity.duration.200ms x-cloak>
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:20px 24px;box-shadow:0 2px 10px rgba(0,0,0,.04);max-height:620px;overflow-y:auto;">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;padding:20px 24px;box-shadow:0 2px 10px rgba(0,0,0,.04);max-height:620px;overflow-y:auto;">
             @if ($timelineGrouped->isEmpty())
             {{-- Empty state --}}
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 24px;text-align:center;">
                 <div style="width:64px;height:64px;border-radius:16px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-                    <i class="fa-solid fa-book-open-reader" style="font-size:26px;color:#934B19;"></i>
+                    <i class="fa-solid fa-book-open-reader" style="font-size:26px;color:var(--primary);"></i>
                 </div>
-                <div style="font-size:16px;font-weight:700;color:#1c1c19;margin-bottom:8px;">Your travel diary starts here</div>
-                <div style="font-size:13px;color:#9B8EA0;max-width:320px;line-height:1.6;margin-bottom:18px;">
+                <div style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:8px;">Your travel diary starts here</div>
+                <div style="font-size:13px;color:var(--muted);max-width:320px;line-height:1.6;margin-bottom:18px;">
                     Switch to Map View and click anywhere to post your first Moment — it'll show up here as a timeline entry.
                 </div>
                 <button type="button" @click="$store.moments.view = 'map'" class="moments-btn-primary"
-                        style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;">
+                        style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;">
                     <i class="fa-solid fa-map-location-dot"></i> Go to Map View
                 </button>
             </div>
@@ -270,10 +270,10 @@
                 @foreach ($timelineGrouped as $dayNumber => $dayMoments)
                 <div style="margin-bottom:28px;">
                     <div style="position:relative;margin-bottom:14px;">
-                        <div style="position:absolute;left:-28px;top:2px;width:20px;height:20px;border-radius:50%;background:#934B19;border:3px solid #fff;box-shadow:0 0 0 2px #934B19;"></div>
-                        <div style="font-size:13px;font-weight:800;color:#934B19;text-transform:uppercase;letter-spacing:.04em;">
+                        <div style="position:absolute;left:-28px;top:2px;width:20px;height:20px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 0 0 2px var(--primary);"></div>
+                        <div style="font-size:13px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.04em;">
                             Day {{ $dayNumber }}
-                            <span style="font-weight:500;color:#9B8EA0;text-transform:none;">— {{ \Carbon\Carbon::parse($dayMoments->first()['visited_date'])->format('l, M j') }}</span>
+                            <span style="font-weight:500;color:var(--muted);text-transform:none;">— {{ \Carbon\Carbon::parse($dayMoments->first()['visited_date'])->format('l, M j') }}</span>
                         </div>
                     </div>
 
@@ -289,15 +289,15 @@
                                      style="width:76px;height:76px;border-radius:10px;object-fit:cover;flex-shrink:0;">
                                 @else
                                 <div style="width:76px;height:76px;border-radius:10px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                    <i class="fa-solid fa-camera" style="color:#934B19;font-size:20px;"></i>
+                                    <i class="fa-solid fa-camera" style="color:var(--primary);font-size:20px;"></i>
                                 </div>
                                 @endif
                                 <div style="flex:1;min-width:0;">
-                                    <div style="font-size:14px;font-weight:700;color:#1c1c19;margin-bottom:2px;">{{ $moment['place_name'] }}</div>
+                                    <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:2px;">{{ $moment['place_name'] }}</div>
                                     @if ($moment['description'])
-                                    <div style="font-size:12.5px;color:#4f4441;line-height:1.5;margin-bottom:6px;">{{ $moment['description'] }}</div>
+                                    <div style="font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:6px;">{{ $moment['description'] }}</div>
                                     @endif
-                                    <div style="font-size:11px;color:#9B8EA0;">
+                                    <div style="font-size:11px;color:var(--muted);">
                                         <i class="fa-regular fa-clock" style="font-size:10px;"></i> Posted {{ $moment['posted_at'] }}
                                     </div>
                                 </div>
@@ -325,11 +325,11 @@
     .moments-modal-backdrop { animation: momentsModalBackdropIn .18s ease both; }
     .moments-modal-card { animation: momentsModalCardIn .22s cubic-bezier(.2,.9,.3,1.1) both; }
     .moments-input { transition: border-color .15s ease, box-shadow .15s ease; }
-    .moments-input:focus { outline: none; border-color: #934B19 !important; box-shadow: 0 0 0 3px rgba(147,75,25,.12); }
+    .moments-input:focus { outline: none; border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(147,75,25,.12); }
     .moments-btn-primary { transition: background .15s ease, transform .12s ease, box-shadow .15s ease; }
-    .moments-btn-primary:hover:not(:disabled) { background: #7A3C12; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(147,75,25,.25); }
+    .moments-btn-primary:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(147,75,25,.25); }
     .moments-btn-outline { transition: background .15s ease, border-color .15s ease, color .15s ease; }
-    .moments-btn-outline:hover:not(:disabled) { background: #F9FAFB; border-color: #D1D5DB; color: #374151; }
+    .moments-btn-outline:hover:not(:disabled) { background: var(--border-light); border-color: var(--muted); color: var(--dark); }
     .moments-btn-danger { transition: background .15s ease, transform .12s ease, box-shadow .15s ease; }
     .moments-btn-danger:hover:not(:disabled) { background: #B91C1C; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(220,38,38,.25); }
 </style>
@@ -337,25 +337,25 @@
 {{-- ── Add/Edit Travel Pin modal ──────────────────────── --}}
 @if ($showPinModal)
 <div class="moments-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closePinModal">
-    <div class="moments-modal-card" style="background:#fff;border-radius:20px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(45,27,20,.18);padding:24px 24px 20px;">
+    <div class="moments-modal-card" style="background:var(--bg-white);border-radius:20px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(45,27,20,.18);padding:24px 24px 20px;">
 
         {{-- Header --}}
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
             <div style="width:36px;height:36px;border-radius:10px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fa-solid fa-map-pin" style="color:#934B19;font-size:15px;"></i>
+                <i class="fa-solid fa-map-pin" style="color:var(--primary);font-size:15px;"></i>
             </div>
-            <span style="font-size:17px;font-weight:800;color:#1c1c19;font-family:'Hanken Grotesk',sans-serif;">
+            <span style="font-size:17px;font-weight:800;color:var(--dark);font-family:'Hanken Grotesk',sans-serif;">
                 {{ $pinModalMode === 'edit' ? 'Edit Travel Pin' : 'Add Travel Pin' }}
             </span>
         </div>
-        <p style="margin:0 0 6px;font-size:11px;color:#9B8EA0;">
+        <p style="margin:0 0 6px;font-size:11px;color:var(--muted);">
             <i class="fa-solid fa-location-dot" style="color:#C8874A;"></i>
             {{ number_format((float) $pinLat, 5) }}, {{ number_format((float) $pinLng, 5) }}
         </p>
         @if ($momentsMode === 'overview' && $this->selectedTrip)
         {{-- Posted from the overview map, which spans every trip — make the
              auto-resolved (nearest-destination) trip assignment explicit. --}}
-        <p style="margin:0 0 12px;font-size:11px;color:#934B19;font-weight:600;">
+        <p style="margin:0 0 12px;font-size:11px;color:var(--primary);font-weight:600;">
             <i class="fa-solid fa-suitcase-rolling"></i> For: {{ $this->selectedTrip->destination }}
         </p>
         @else
@@ -364,31 +364,31 @@
 
         {{-- Place Name --}}
         <div style="margin-bottom:14px;">
-            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9B8EA0;margin-bottom:6px;">Place Name</label>
+            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Place Name</label>
             <input type="text" wire:model="pinPlaceName" placeholder="e.g. Magellan's Cross" class="moments-input"
-                   style="width:100%;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#1c1c19;box-sizing:border-box;">
+                   style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:var(--dark);box-sizing:border-box;">
             @error('pinPlaceName') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
 
         {{-- Description / memory --}}
         <div style="margin-bottom:14px;">
-            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9B8EA0;margin-bottom:6px;">Description / Memory</label>
+            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Description / Memory</label>
             <textarea wire:model="pinDescription" rows="3" placeholder="What happened here?" class="moments-input"
-                      style="width:100%;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:11px 14px;font-size:13px;color:#1c1c19;box-sizing:border-box;resize:vertical;font-family:inherit;"></textarea>
+                      style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:13px;color:var(--dark);box-sizing:border-box;resize:vertical;font-family:inherit;"></textarea>
             @error('pinDescription') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
 
         {{-- Date visited --}}
         <div style="margin-bottom:14px;">
-            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9B8EA0;margin-bottom:6px;">Date Visited</label>
+            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Date Visited</label>
             <input type="date" wire:model="pinVisitedDate" class="moments-input"
-                   style="width:100%;background:#FAF6F2;border:1.5px solid #EDE5DC;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#1c1c19;box-sizing:border-box;">
+                   style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:var(--dark);box-sizing:border-box;">
             @error('pinVisitedDate') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
 
         {{-- Photos --}}
         <div style="margin-bottom:20px;">
-            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9B8EA0;margin-bottom:6px;">Photos (optional, up to 6)</label>
+            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Photos (optional, up to 6)</label>
 
             @if (count($pinExistingPhotos))
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">
@@ -418,8 +418,8 @@
             </div>
             @endif
 
-            <input type="file" wire:model="pinPhotos" accept="image/*" multiple style="width:100%;font-size:12px;color:#4f4441;">
-            <div wire:loading wire:target="pinPhotos" style="font-size:11px;color:#9B8EA0;margin-top:4px;"><i class="fa-solid fa-spinner fa-spin"></i> Uploading…</div>
+            <input type="file" wire:model="pinPhotos" accept="image/*" multiple style="width:100%;font-size:12px;color:var(--text);">
+            <div wire:loading wire:target="pinPhotos" style="font-size:11px;color:var(--muted);margin-top:4px;"><i class="fa-solid fa-spinner fa-spin"></i> Uploading…</div>
             @error('pinPhotos') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
             @error('pinPhotos.*') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
@@ -427,11 +427,11 @@
         {{-- Actions --}}
         <div style="display:flex;gap:10px;">
             <button wire:click="closePinModal" type="button" class="moments-btn-outline"
-                    style="flex:1;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:12px;padding:12px 0;font-size:13px;font-weight:600;cursor:pointer;">
+                    style="flex:1;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:12px;padding:12px 0;font-size:13px;font-weight:600;cursor:pointer;">
                 Cancel
             </button>
             <button wire:click="savePin" class="moments-btn-primary"
-                    style="flex:2;background:#934B19;color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;"
+                    style="flex:2;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;"
                     wire:loading.attr="disabled" wire:target="savePin">
                 <span wire:loading.remove wire:target="savePin">{{ $pinModalMode === 'edit' ? 'Save Changes' : 'Add Pin' }}</span>
                 <span wire:loading wire:target="savePin"><i class="fa-solid fa-spinner fa-spin"></i> Saving…</span>
@@ -445,21 +445,21 @@
 {{-- ── Delete Pin confirmation modal ─────────────────────── --}}
 @if ($pinToDelete)
 <div class="moments-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
-    <div class="moments-modal-card" style="background:#fff;border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
+    <div class="moments-modal-card" style="background:var(--bg-white);border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
         {{-- Icon header --}}
         <div style="background:#FEF2F2;padding:28px 24px 20px;text-align:center;">
             <div style="width:52px;height:52px;border-radius:50%;background:#FEE2E2;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
                 <i class="fa-solid fa-trash-can" style="font-size:22px;color:#DC2626;"></i>
             </div>
-            <div style="font-size:17px;font-weight:700;color:#1A0A00;margin-bottom:6px;">Delete This Pin?</div>
-            <div style="font-size:13px;color:#6B7280;line-height:1.5;">
+            <div style="font-size:17px;font-weight:700;color:var(--dark);margin-bottom:6px;">Delete This Pin?</div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.5;">
                 This travel pin and its photo will be permanently deleted.<br>This action cannot be undone.
             </div>
         </div>
         {{-- Actions --}}
         <div style="display:flex;gap:10px;padding:18px 20px;">
             <button wire:click="cancelDeletePin" class="moments-btn-outline"
-                    style="flex:1;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:10px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
+                    style="flex:1;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:10px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
                 Cancel
             </button>
             <button wire:click="deletePin" class="moments-btn-danger"
@@ -702,24 +702,24 @@
             } else {
                 var noPhoto = document.createElement('div');
                 noPhoto.style.cssText = 'width:70px;height:70px;border-radius:6px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:8px;';
-                noPhoto.innerHTML = '<i class="fa-solid fa-camera" style="font-size:18px;color:#934B19;"></i>';
+                noPhoto.innerHTML = '<i class="fa-solid fa-camera" style="font-size:18px;color:var(--primary);"></i>';
                 wrap.appendChild(noPhoto);
             }
 
             var title = document.createElement('div');
             title.textContent = pin.place_name;
-            title.style.cssText = 'font-size:14px;font-weight:700;color:#1c1c19;margin-bottom:2px;';
+            title.style.cssText = 'font-size:14px;font-weight:700;color:var(--dark);margin-bottom:2px;';
             wrap.appendChild(title);
 
             var date = document.createElement('div');
             date.textContent = pin.visited_date;
-            date.style.cssText = 'font-size:11px;color:#9B8EA0;margin-bottom:4px;';
+            date.style.cssText = 'font-size:11px;color:var(--muted);margin-bottom:4px;';
             wrap.appendChild(date);
 
             if (pin.description) {
                 var desc = document.createElement('div');
                 desc.textContent = pin.description;
-                desc.style.cssText = 'font-size:12px;color:#4f4441;margin:4px 0 8px;line-height:1.5;';
+                desc.style.cssText = 'font-size:12px;color:var(--text);margin:4px 0 8px;line-height:1.5;';
                 wrap.appendChild(desc);
             }
 
@@ -729,7 +729,7 @@
             var editBtn = document.createElement('button');
             editBtn.type = 'button';
             editBtn.textContent = 'Edit';
-            editBtn.style.cssText = 'flex:1;background:#FDF3EB;color:#934B19;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:700;cursor:pointer;';
+            editBtn.style.cssText = 'flex:1;background:#FDF3EB;color:var(--primary);border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:700;cursor:pointer;';
             editBtn.addEventListener('click', function () { wire.call('openEditPinModal', pin.id); });
 
             var delBtn = document.createElement('button');
@@ -764,7 +764,7 @@
                 map.addSource(ROUTE_ID, { type: 'geojson', data: geojson });
                 map.addLayer({
                     id: ROUTE_ID, type: 'line', source: ROUTE_ID,
-                    paint: { 'line-color': '#934B19', 'line-width': 3, 'line-opacity': 0.7, 'line-dasharray': [2, 2] },
+                    paint: { 'line-color': 'var(--primary)', 'line-width': 3, 'line-opacity': 0.7, 'line-dasharray': [2, 2] },
                 });
             }
         }
@@ -880,10 +880,10 @@
         function buildMemoryMarkerElement(pin) {
             var hasPhoto = pin.photo_urls && pin.photo_urls.length > 0;
             var el = document.createElement('div');
-            el.style.cssText = 'width:30px;height:30px;border-radius:50%;border:3px solid #934B19;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer;background-color:#FDF3EB;background-size:cover;background-position:center;'
+            el.style.cssText = 'width:30px;height:30px;border-radius:50%;border:3px solid var(--primary);box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer;background-color:#FDF3EB;background-size:cover;background-position:center;'
                 + (hasPhoto ? "background-image:url('" + pin.photo_urls[0] + "');" : '');
             if (!hasPhoto) {
-                el.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-camera" style="font-size:12px;color:#934B19;"></i></div>';
+                el.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-camera" style="font-size:12px;color:var(--primary);"></i></div>';
             }
             return el;
         }
@@ -907,24 +907,24 @@
             } else {
                 var noPhoto = document.createElement('div');
                 noPhoto.style.cssText = 'width:70px;height:70px;border-radius:6px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:8px;';
-                noPhoto.innerHTML = '<i class="fa-solid fa-camera" style="font-size:18px;color:#934B19;"></i>';
+                noPhoto.innerHTML = '<i class="fa-solid fa-camera" style="font-size:18px;color:var(--primary);"></i>';
                 wrap.appendChild(noPhoto);
             }
 
             var title = document.createElement('div');
             title.textContent = pin.place_name;
-            title.style.cssText = 'font-size:14px;font-weight:700;color:#1c1c19;margin-bottom:2px;';
+            title.style.cssText = 'font-size:14px;font-weight:700;color:var(--dark);margin-bottom:2px;';
             wrap.appendChild(title);
 
             var date = document.createElement('div');
             date.textContent = pin.visited_date;
-            date.style.cssText = 'font-size:11px;color:#9B8EA0;margin-bottom:4px;';
+            date.style.cssText = 'font-size:11px;color:var(--muted);margin-bottom:4px;';
             wrap.appendChild(date);
 
             if (pin.description) {
                 var desc = document.createElement('div');
                 desc.textContent = pin.description;
-                desc.style.cssText = 'font-size:12px;color:#4f4441;margin:4px 0 8px;line-height:1.5;';
+                desc.style.cssText = 'font-size:12px;color:var(--text);margin:4px 0 8px;line-height:1.5;';
                 wrap.appendChild(desc);
             }
 
@@ -934,7 +934,7 @@
             var editBtn = document.createElement('button');
             editBtn.type = 'button';
             editBtn.textContent = 'Edit';
-            editBtn.style.cssText = 'flex:1;background:#FDF3EB;color:#934B19;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:700;cursor:pointer;';
+            editBtn.style.cssText = 'flex:1;background:#FDF3EB;color:var(--primary);border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:700;cursor:pointer;';
             editBtn.addEventListener('click', function () { wire.call('openEditPinModalFromOverview', pin.id); });
 
             var delBtn = document.createElement('button');
@@ -982,7 +982,7 @@
                 map.addSource(ROUTES_ID, { type: 'geojson', data: geojson });
                 map.addLayer({
                     id: ROUTES_ID, type: 'line', source: ROUTES_ID,
-                    paint: { 'line-color': '#934B19', 'line-width': 3, 'line-opacity': 0.7, 'line-dasharray': [2, 2] },
+                    paint: { 'line-color': 'var(--primary)', 'line-width': 3, 'line-opacity': 0.7, 'line-dasharray': [2, 2] },
                 });
             }
         }

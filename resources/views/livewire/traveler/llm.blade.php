@@ -26,11 +26,11 @@
     <div style="margin-bottom:24px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
             <div style="width:28px;height:28px;border-radius:50%;background:#F5F0EB;display:flex;align-items:center;justify-content:center;">
-                <i class="fa-solid fa-user" style="font-size:11px;color:#934B19;"></i>
+                <i class="fa-solid fa-user" style="font-size:11px;color:var(--primary);"></i>
             </div>
             <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);">Your Request</span>
         </div>
-        <div style="background:#934B19;color:#fff;border-radius:12px;padding:16px 22px;font-size:14px;font-weight:600;line-height:1.5;">
+        <div style="background:var(--primary);color:#fff;border-radius:12px;padding:16px 22px;font-size:14px;font-weight:600;line-height:1.5;">
             {{ $aiFrom }} to {{ $aiTo }}
             @if ($aiBudgetMin || $aiBudgetMax)
                 &nbsp;·&nbsp;
@@ -49,7 +49,7 @@
     {{-- Heading --}}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;">
         <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0;display:flex;align-items:center;gap:10px;">
-            <span style="width:28px;height:28px;background:#F5F0EB;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:#934B19;flex-shrink:0;">✦</span>
+            <span style="width:28px;height:28px;background:#F5F0EB;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:var(--primary);flex-shrink:0;">✦</span>
             Your trip package for {{ $aiTo }}
         </h2>
         <button wire:click="editWithWizard" wire:loading.attr="disabled" wire:target="editWithWizard"
@@ -75,11 +75,11 @@
         @foreach ($cards as $card)
         @php $sec = $pkg[$card['key']] ?? []; @endphp
         @if (!empty($sec))
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:20px 22px;display:flex;align-items:flex-start;gap:16px;">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:14px;padding:20px 22px;display:flex;align-items:flex-start;gap:16px;">
 
             {{-- Icon --}}
             <div style="width:44px;height:44px;border-radius:10px;background:#F5F0EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
-                <i class="{{ $card['icon'] }}" style="color:#934B19;font-size:17px;"></i>
+                <i class="{{ $card['icon'] }}" style="color:var(--primary);font-size:17px;"></i>
             </div>
 
             {{-- Content --}}
@@ -108,7 +108,7 @@
                 @elseif ($card['key'] === 'attractions')
                     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">
                         @foreach ($sec['items'] ?? [] as $att)
-                        <span style="display:inline-flex;align-items:center;background:#F5F0EB;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;color:#934B19;">
+                        <span style="display:inline-flex;align-items:center;background:#F5F0EB;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;color:var(--primary);">
                             {{ $att[0] }} ({{ $att[1] }})
                         </span>
                         @endforeach
@@ -130,7 +130,7 @@
 </div>
 
 {{-- ── Bottom bar ── --}}
-<div style="position:fixed;bottom:0;left:var(--sidebar-width,220px);right:0;background:#fff;border-top:1.5px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:20px;z-index:100;">
+<div style="position:fixed;bottom:0;left:var(--sidebar-width,220px);right:0;background:var(--bg-white);border-top:1.5px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:20px;z-index:100;">
     <div style="flex:1;min-width:0;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:5px;">Estimated Cost (Total)</div>
         <div style="font-size:18px;font-weight:800;color:var(--dark);margin-bottom:6px;">
@@ -138,22 +138,22 @@
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
             <div style="flex:1;height:6px;background:#EDE8E3;border-radius:99px;overflow:hidden;">
-                <div style="height:100%;background:#934B19;border-radius:99px;width:{{ $pct }}%;"></div>
+                <div style="height:100%;background:var(--primary);border-radius:99px;width:{{ $pct }}%;"></div>
             </div>
             <span style="font-size:12px;font-weight:600;color:var(--muted);">{{ $pct }}%</span>
         </div>
     </div>
     <button wire:click="regeneratePackage" wire:loading.attr="disabled" wire:target="regeneratePackage"
-            style="background:#fff;border:1.5px solid var(--border);color:var(--dark);border-radius:10px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;"
-            onmouseenter="this.style.background='#F5F0EB'"
-            onmouseleave="this.style.background='#fff'">
+            style="background:var(--bg-white);border:1.5px solid var(--border);color:var(--dark);border-radius:10px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;"
+            onmouseenter="this.style.background='var(--border-light)'"
+            onmouseleave="this.style.background='var(--bg-white)'">
         <span wire:loading.remove wire:target="regeneratePackage"><i class="fa-solid fa-rotate"></i> Regenerate</span>
         <span wire:loading wire:target="regeneratePackage"><i class="fa-solid fa-spinner fa-spin"></i> Regenerating…</span>
     </button>
     <button wire:click="proceedToWizardItinerary" wire:loading.attr="disabled" wire:target="proceedToWizardItinerary"
-            style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:11px 28px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;"
-            onmouseenter="this.style.background='#7A3C12'"
-            onmouseleave="this.style.background='#934B19'">
+            style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:11px 28px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;"
+            onmouseenter="this.style.background='var(--primary-dark)'"
+            onmouseleave="this.style.background='var(--primary)'">
         <span wire:loading.remove wire:target="proceedToWizardItinerary">Next</span>
         <span wire:loading wire:target="proceedToWizardItinerary"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</span>
     </button>
@@ -171,23 +171,23 @@
     .llm-skel{background:linear-gradient(90deg,#F0EBE4 0%,#FAF7F3 50%,#F0EBE4 100%);background-size:800px 100%;animation:llmShimmer 1.4s ease-in-out infinite;border-radius:10px;}
 </style>
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;text-align:center;padding:40px 24px;">
-    <svg style="width:44px;height:44px;animation:aiSpin 1s linear infinite;margin-bottom:20px;" viewBox="0 0 24 24" fill="none" stroke="#934B19" stroke-width="2.5" stroke-linecap="round">
+    <svg style="width:44px;height:44px;animation:aiSpin 1s linear infinite;margin-bottom:20px;" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round">
         <path d="M12 2a10 10 0 1 0 10 10" />
     </svg>
     <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0 0 8px;">Building your trip package…</h2>
     <p style="font-size:14px;color:var(--muted);margin:0 0 6px;display:flex;align-items:center;gap:6px;">
         TARA is thinking
         <span style="display:inline-flex;gap:3px;">
-            <span style="width:5px;height:5px;border-radius:50%;background:#934B19;display:inline-block;animation:llmTypingDot 1.2s ease-in-out infinite;animation-delay:0s;"></span>
-            <span style="width:5px;height:5px;border-radius:50%;background:#934B19;display:inline-block;animation:llmTypingDot 1.2s ease-in-out infinite;animation-delay:.2s;"></span>
-            <span style="width:5px;height:5px;border-radius:50%;background:#934B19;display:inline-block;animation:llmTypingDot 1.2s ease-in-out infinite;animation-delay:.4s;"></span>
+            <span style="width:5px;height:5px;border-radius:50%;background:var(--primary);display:inline-block;animation:llmTypingDot 1.2s ease-in-out infinite;animation-delay:0s;"></span>
+            <span style="width:5px;height:5px;border-radius:50%;background:var(--primary);display:inline-block;animation:llmTypingDot 1.2s ease-in-out infinite;animation-delay:.2s;"></span>
+            <span style="width:5px;height:5px;border-radius:50%;background:var(--primary);display:inline-block;animation:llmTypingDot 1.2s ease-in-out infinite;animation-delay:.4s;"></span>
         </span>
     </p>
 
     {{-- Skeleton preview of the results cards about to appear --}}
     <div style="width:100%;max-width:520px;margin-top:28px;display:flex;flex-direction:column;gap:12px;">
         @for ($i = 0; $i < 4; $i++)
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:20px 22px;display:flex;align-items:center;gap:16px;">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:14px;padding:20px 22px;display:flex;align-items:center;gap:16px;">
             <div class="llm-skel" style="width:44px;height:44px;border-radius:10px;flex-shrink:0;"></div>
             <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
                 <div class="llm-skel" style="height:10px;width:35%;"></div>
@@ -225,22 +225,22 @@
         @keyframes llmFadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
         @keyframes llmMsgIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
         .llm-fade-up{animation:llmFadeUp .5s ease both;}
-        .llm-back-link{display:inline-flex;align-items:center;gap:6px;color:#934B19;font-size:13px;font-weight:600;text-decoration:none;}
+        .llm-back-link{display:inline-flex;align-items:center;gap:6px;color:var(--primary);font-size:13px;font-weight:600;text-decoration:none;}
         .llm-greeting{font-size:clamp(24px,3.2vw,32px);font-weight:600;color:var(--dark);margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;letter-spacing:-.01em;}
-        .llm-interest-pill{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #F0DCC5;color:#934B19;border-radius:999px;padding:6px 15px;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(147,75,25,0.06);transition:border-color .18s,box-shadow .18s,transform .18s;}
-        .llm-interest-pill:hover{border-color:#934B19;box-shadow:0 4px 12px rgba(147,75,25,0.12);transform:translateY(-1px);}
-        .llm-interest-edit{color:#934B19;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+        .llm-interest-pill{display:inline-flex;align-items:center;gap:6px;background:var(--bg-white);border:1.5px solid #F0DCC5;color:var(--primary);border-radius:999px;padding:6px 15px;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(147,75,25,0.06);transition:border-color .18s,box-shadow .18s,transform .18s;}
+        .llm-interest-pill:hover{border-color:var(--primary);box-shadow:0 4px 12px rgba(147,75,25,0.12);transform:translateY(-1px);}
+        .llm-interest-edit{color:var(--primary);font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
         .llm-interest-edit:hover{text-decoration:underline;}
-        .llm-composer{width:100%;max-width:520px;margin:0 auto;background:#fff;border:1.5px solid var(--border);border-radius:999px;box-shadow:0 8px 32px rgba(45,27,20,.07);padding:8px 8px 8px 22px;display:flex;align-items:center;gap:10px;transition:box-shadow .2s ease,border-color .2s ease;}
-        .llm-composer:focus-within{border-color:#934B19;box-shadow:0 12px 40px rgba(147,75,25,.14);}
-        .llm-composer textarea{flex:1;min-width:0;border:none;outline:none;resize:none;font-family:inherit;font-size:14px;color:var(--dark);background:transparent;line-height:1.4;max-height:100px;padding:8px 0;}
-        .llm-send-btn{width:38px;height:38px;border-radius:50%;background:#934B19;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 16px rgba(147,75,25,0.28);transition:transform .15s ease,background .15s ease;}
-        .llm-send-btn:hover{background:#6A3500;transform:scale(1.08);}
+        .llm-composer{width:100%;max-width:520px;margin:0 auto;background:var(--bg-white);border:1.5px solid var(--border);border-radius:999px;box-shadow:0 8px 32px rgba(45,27,20,.07);padding:8px 8px 8px 22px;display:flex;align-items:center;gap:10px;transition:box-shadow .2s ease,border-color .2s ease;}
+        .llm-composer:focus-within{border-color:var(--primary);box-shadow:0 12px 40px rgba(147,75,25,.14);}
+        .llm-composer textarea{flex:1;min-width:0;border:none;outline:none;resize:none;font-family:inherit;font-size:14px;color:var(--dark);background:transparent;line-height:1.4;max-height:100px;padding:8px 0;overflow:hidden;}
+        .llm-send-btn{width:38px;height:38px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 16px rgba(147,75,25,0.28);transition:transform .15s ease,background .15s ease;}
+        .llm-send-btn:hover{background:var(--primary-dark);transform:scale(1.08);}
         .llm-send-btn:active{transform:scale(.92);}
         .llm-thread{width:100%;max-width:600px;margin:0 auto;flex:1;overflow-y:auto;padding:80px 4px 16px;display:flex;flex-direction:column;gap:12px;}
         .llm-msg{max-width:80%;padding:11px 16px;border-radius:16px;font-size:14px;line-height:1.5;animation:llmMsgIn .3s ease both;}
-        .llm-msg-user{align-self:flex-end;background:#934B19;color:#fff;border-bottom-right-radius:4px;}
-        .llm-msg-assistant{align-self:flex-start;background:#fff;border:1.5px solid var(--border);color:var(--dark);border-bottom-left-radius:4px;}
+        .llm-msg-user{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:4px;}
+        .llm-msg-assistant{align-self:flex-start;background:var(--bg-white);border:1.5px solid var(--border);color:var(--dark);border-bottom-left-radius:4px;}
         @media (max-width:640px){
             .llm-composer{padding:6px 6px 6px 16px;}
         }
@@ -269,7 +269,7 @@
             <div class="llm-composer">
                 <style>#llm-ai-prompt::placeholder{color:#B7A99B;opacity:1;}</style>
                 <textarea id="llm-ai-prompt" wire:model="aiPrompt"
-                          placeholder="Describe your dream trip... destination, budget, travel dates, or interests."
+                          placeholder="Describe your trip details"
                           rows="1"
                           x-data
                           x-on:input="$el.style.height='auto';$el.style.height=$el.scrollHeight+'px'"

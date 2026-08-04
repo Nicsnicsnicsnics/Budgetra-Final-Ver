@@ -34,7 +34,7 @@
         @foreach ($this->attractions as $attraction)
         <a href="{{ route('attractions.show', $attraction) }}" style="text-decoration:none;color:inherit;">
             <div class="card">
-                <div style="height:160px;background:#F3F4F6;border-radius:10px 10px 0 0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:40px;">
+                <div style="height:160px;background:var(--border-light);border-radius:10px 10px 0 0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:40px;">
                     @if ($attraction->image)
                     <img src="{{ asset('storage/' . $attraction->image) }}"
                          style="width:100%;height:100%;object-fit:cover;" alt="{{ $attraction->name }}">

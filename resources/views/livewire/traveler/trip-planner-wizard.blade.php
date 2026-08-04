@@ -5,25 +5,25 @@
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($planningMode === 'manual' && $step === 1 && !$manualCodeGateDone)
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 120px);padding:20px;">
-    <div style="width:100%;max-width:520px;background:#fff;border:1.5px solid var(--border);border-radius:26px;padding:48px 44px;text-align:center;">
+    <div style="width:100%;max-width:520px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:26px;padding:48px 44px;text-align:center;">
         <div style="width:72px;height:72px;border-radius:20px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
-            <i class="fa-solid fa-key" style="font-size:28px;color:#934B19;"></i>
+            <i class="fa-solid fa-key" style="font-size:28px;color:var(--primary);"></i>
         </div>
         <h2 style="font-size:26px;font-weight:800;color:var(--dark);margin:0 0 10px;">Have a trip code?</h2>
         <p style="font-size:15px;color:var(--muted);line-height:1.6;margin:0 0 28px;">
             Enter it here to copy another traveler's flight, accommodation, food & dining, and attraction picks into your own trip.
         </p>
         <input type="text" wire:model="importCodeInput" wire:keydown.enter="importCode" maxlength="8" placeholder="e.g. AB1C2D3E"
-               style="width:100%;box-sizing:border-box;border:1.5px solid #d3c3be;border-radius:12px;padding:16px 18px;font-size:18px;font-family:inherit;text-align:center;margin-bottom:16px;">
+               style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:12px;padding:16px 18px;font-size:18px;font-family:inherit;text-align:center;margin-bottom:16px;">
         @if($importCodeError)
         <div style="font-size:13px;color:#ba1a1a;margin-bottom:16px;">{{ $importCodeError }}</div>
         @endif
         <button wire:click="importCode" wire:loading.attr="disabled" wire:target="importCode"
-                style="width:100%;background:#934B19;color:#fff;border:none;border-radius:12px;padding:16px 0;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px;">
+                style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:16px 0;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px;">
             <span wire:loading.remove wire:target="importCode">Import Trip</span>
             <span wire:loading wire:target="importCode"><i class="fa-solid fa-spinner fa-spin"></i></span>
         </button>
-        <a href="#" wire:click.prevent="skipCode" style="font-size:14px;color:#9B8EA0;text-decoration:underline;">
+        <a href="#" wire:click.prevent="skipCode" style="font-size:14px;color:var(--muted);text-decoration:underline;">
             Skip, I don't have a code
         </a>
     </div>
@@ -65,31 +65,31 @@ $allCities = array_merge(
 
 <style>
 [x-cloak]{display:none!important;}
-.pyt-field{background:#FBF8F5;border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:border-color .18s,background .18s,box-shadow .18s;}
+.pyt-field{background:var(--bg-white);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:border-color .18s,background .18s,box-shadow .18s;}
 .pyt-field:hover{border-color:#D9C4AE;}
-.pyt-field:focus-within{border-color:#934B19;background:#fff;box-shadow:0 0 0 4px rgba(147,75,25,0.08);}
+.pyt-field:focus-within{border-color:var(--primary);background:var(--bg-white);box-shadow:0 0 0 4px rgba(147,75,25,0.08);}
 .pyt-icon{width:32px;height:32px;border-radius:9px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pyt-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:8px;}
 .pyt-value{font-size:16px;font-weight:600;color:var(--dark);}
 .pyt-placeholder{font-size:16px;color:#C4B8AC;}
-.city-drop{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.10);z-index:200;max-height:320px;overflow:hidden;display:flex;flex-direction:column;}
+.city-drop{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.10);z-index:200;max-height:320px;overflow:hidden;display:flex;flex-direction:column;}
 .city-search{padding:10px 14px;border-bottom:1px solid var(--border);}
 .city-search input{width:100%;border:none;outline:none;font-size:13px;color:var(--dark);background:transparent;}
 .city-list{overflow-y:auto;flex:1;}
 .city-group-label{padding:8px 14px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);}
 .city-item{padding:10px 14px;font-size:13px;font-weight:500;color:var(--dark);cursor:pointer;display:flex;align-items:center;gap:10px;}
-.city-item:hover{background:#F5F0EB;}
-.city-item .code{font-size:11px;font-weight:700;color:var(--muted);background:#F0EDE8;border-radius:4px;padding:2px 6px;width:36px;text-align:center;flex-shrink:0;}
-.mini-cal{position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.10);z-index:200;padding:16px;min-width:260px;}
+.city-item:hover{background:var(--bg);}
+.city-item .code{font-size:11px;font-weight:700;color:var(--muted);background:var(--bg);border-radius:4px;padding:2px 6px;width:36px;text-align:center;flex-shrink:0;}
+.mini-cal{position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.10);z-index:200;padding:16px;min-width:260px;}
 .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .cal-nav{background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:4px 8px;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;}
 .cal-day-name{font-size:10px;font-weight:700;color:var(--muted);padding:4px 0;}
 .cal-day{font-size:12px;font-weight:500;padding:6px 4px;border-radius:6px;cursor:pointer;}
-.cal-day:hover{background:#F5F0EB;}
-.cal-day.selected{background:#934B19;color:#fff;}
+.cal-day:hover{background:var(--bg);}
+.cal-day.selected{background:var(--primary);color:#fff;}
 .cal-day.empty{cursor:default;}
-.cal-day.in-range{background:#F5EDE7;color:#934B19;}
+.cal-day.in-range{background:#F5EDE7;color:var(--primary);}
 .cal-day.past{color:#D1C8C0;cursor:not-allowed;}
 .pyt-budget-input::placeholder{color:#C4B8AC;font-weight:400;}
 </style>
@@ -109,7 +109,7 @@ $allCities = array_merge(
          x-init — which is what actually re-seeds fromLabel/toLabel/dates/
          budget from the still-intact server-side values. --}}
     <div wire:key="pyt-manual-card-{{ $step }}" x-data="pytManual()" x-init="init()"
-         style="background:#fff;border:1.5px solid var(--border);border-radius:24px;width:100%;max-width:720px;box-shadow:0 8px 36px rgba(45,27,20,.08);">
+         style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:24px;width:100%;max-width:720px;box-shadow:0 8px 36px rgba(45,27,20,.08);">
 
         <div style="padding:36px 36px 0;">
 
@@ -145,9 +145,9 @@ $allCities = array_merge(
                 {{-- Swap button — floats between the two fields --}}
                 <div style="flex-shrink:0;display:flex;align-items:flex-end;padding-bottom:12px;">
                     <button @click="swapCities()" type="button"
-                            style="width:40px;height:40px;border-radius:50%;background:#fff;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.10);transition:transform .18s,border-color .18s;"
-                            onmouseenter="this.style.transform='rotate(180deg)';this.style.borderColor='#934B19'" onmouseleave="this.style.transform='rotate(0deg)';this.style.borderColor='var(--border)'">
-                        <i class="fa-solid fa-arrow-right-arrow-left" style="font-size:13px;color:#934B19;"></i>
+                            style="width:40px;height:40px;border-radius:50%;background:var(--bg-white);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.10);transition:transform .18s,border-color .18s;"
+                            onmouseenter="this.style.transform='rotate(180deg)';this.style.borderColor='var(--primary)'" onmouseleave="this.style.transform='rotate(0deg)';this.style.borderColor='var(--border)'">
+                        <i class="fa-solid fa-arrow-right-arrow-left" style="font-size:13px;color:var(--primary);"></i>
                     </button>
                 </div>
 
@@ -206,7 +206,7 @@ $allCities = array_merge(
                     <div class="pyt-label">Start Date</div>
                     <div style="position:relative;">
                         <div class="pyt-field" @click.stop="toggleCal('start')" style="display:flex;align-items:center;gap:12px;">
-                            <div class="pyt-icon"><i class="fa-regular fa-calendar" style="color:#934B19;font-size:14px;"></i></div>
+                            <div class="pyt-icon"><i class="fa-regular fa-calendar" style="color:var(--primary);font-size:14px;"></i></div>
                             <span x-show="!startLabel" class="pyt-placeholder" style="font-size:16px;">Select date</span>
                             <span x-show="startLabel" x-text="startLabel" class="pyt-value" style="font-size:16px;"></span>
                         </div>
@@ -235,7 +235,7 @@ $allCities = array_merge(
                     <div class="pyt-label">End Date</div>
                     <div style="position:relative;">
                         <div class="pyt-field" @click.stop="toggleCal('end')" style="display:flex;align-items:center;gap:12px;">
-                            <div class="pyt-icon"><i class="fa-regular fa-calendar" style="color:#934B19;font-size:14px;"></i></div>
+                            <div class="pyt-icon"><i class="fa-regular fa-calendar" style="color:var(--primary);font-size:14px;"></i></div>
                             <span x-show="!endLabel" class="pyt-placeholder" style="font-size:16px;">Select date</span>
                             <span x-show="endLabel" x-text="endLabel" class="pyt-value" style="font-size:16px;"></span>
                         </div>
@@ -264,14 +264,14 @@ $allCities = array_merge(
         </div>
 
         {{-- Card footer / bottom bar --}}
-        <div style="border-top:1.5px solid var(--border);padding:20px 32px;display:flex;align-items:center;gap:14px;background:#FCFAF8;border-radius:0 0 24px 24px;">
+        <div style="border-top:1.5px solid var(--border);padding:20px 32px;display:flex;align-items:center;gap:14px;background:var(--bg-white);border-radius:0 0 24px 24px;">
             <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                 <i class="fa-solid fa-circle-info" style="color:var(--muted);font-size:13px;flex-shrink:0;"></i>
                 <span style="font-size:13px;color:var(--muted);">Fill the required details for your trip estimates.</span>
             </div>
             <button wire:click="proceedFromTripDetails" wire:loading.attr="disabled" wire:target="proceedFromTripDetails"
-                    style="background:#934B19;color:#fff;border:none;border-radius:12px;padding:13px 30px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;box-shadow:0 6px 16px rgba(147,75,25,0.22);transition:background .18s,gap .18s;"
-                    onmouseenter="this.style.background='#6A3500';this.style.gap='11px'" onmouseleave="this.style.background='#934B19';this.style.gap='8px'">
+                    style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px 30px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;box-shadow:0 6px 16px rgba(147,75,25,0.22);transition:background .18s,gap .18s;"
+                    onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='11px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='8px'">
                 <span wire:loading.remove wire:target="proceedFromTripDetails" style="display:inline-flex;align-items:center;gap:8px;">Next <i class="fa-solid fa-arrow-right" style="font-size:12px;"></i></span>
                 <span wire:loading wire:target="proceedFromTripDetails"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
@@ -286,43 +286,43 @@ $allCities = array_merge(
             'From'                     => ['icon' => 'fa-plane-departure', 'color' => '#F1A53D'],
             'To'                       => ['icon' => 'fa-plane-arrival',   'color' => '#F1A53D'],
             'Preferred Budget Range'   => ['icon' => 'fa-money-bill-wave', 'color' => '#22A06B'],
-            'Start Date'               => ['icon' => 'fa-calendar-days',  'color' => '#934B19'],
-            'End Date'                 => ['icon' => 'fa-calendar-days',  'color' => '#934B19'],
+            'Start Date'               => ['icon' => 'fa-calendar-days',  'color' => 'var(--primary)'],
+            'End Date'                 => ['icon' => 'fa-calendar-days',  'color' => 'var(--primary)'],
         ];
         $fieldMeta = function (string $field) use ($missingFieldMeta) {
             foreach ($missingFieldMeta as $prefix => $meta) {
                 if (str_starts_with($field, $prefix)) return $meta;
             }
-            return ['icon' => 'fa-circle-exclamation', 'color' => '#934B19'];
+            return ['icon' => 'fa-circle-exclamation', 'color' => 'var(--primary)'];
         };
     @endphp
     <div x-data="{ show: false }" x-init="requestAnimationFrame(() => show = true)"
          style="position:fixed;inset:0;background:rgba(26,10,0,0.55);backdrop-filter:blur(2px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
         <div x-show="show" x-transition.scale.95
-             style="background:#fff;border-radius:24px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(26,10,0,0.35);overflow:hidden;">
+             style="background:var(--bg-white);border-radius:24px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(26,10,0,0.35);overflow:hidden;">
 
             {{-- Header --}}
             <div style="position:relative;padding:36px 28px 28px;text-align:center;background:linear-gradient(160deg,#FFF6EE 0%,#FDEDE3 100%);overflow:hidden;">
                 <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(241,165,61,0.12);"></div>
                 <div style="position:absolute;bottom:-40px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(147,75,25,0.08);"></div>
-                <div style="position:relative;width:64px;height:64px;border-radius:50%;background:#fff;box-shadow:0 8px 20px rgba(220,38,38,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-                    <i class="fa-solid fa-triangle-exclamation" style="font-size:26px;color:#DC2626;"></i>
+                <div style="position:relative;width:64px;height:64px;border-radius:50%;background:var(--bg-white);box-shadow:0 8px 20px rgba(220,38,38,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size:26px;color:var(--danger);"></i>
                 </div>
-                <div style="position:relative;font-size:19px;font-weight:800;color:#1A0A00;letter-spacing:-.01em;">Missing Trip Details</div>
+                <div style="position:relative;font-size:19px;font-weight:800;color:var(--dark);letter-spacing:-.01em;">Missing Trip Details</div>
                 <div style="position:relative;font-size:13px;color:#8A7A6E;margin-top:4px;">A few things need your attention</div>
             </div>
 
             {{-- Field list --}}
             <div style="padding:20px 20px 4px;">
-                <div style="font-size:11px;font-weight:700;color:#9B8EA0;text-transform:uppercase;letter-spacing:.06em;margin:0 6px 10px;">Please fill up the following</div>
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 6px 10px;">Please fill up the following</div>
                 <div style="display:flex;flex-direction:column;gap:8px;">
                     @foreach ($missingTripFields as $field)
                     @php $meta = $fieldMeta($field); @endphp
-                    <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:#FBF8F5;border:1px solid #F0E8DF;border-radius:14px;">
+                    <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg-white);border:1px solid #F0E8DF;border-radius:14px;">
                         <div style="width:34px;height:34px;border-radius:10px;background:{{ $meta['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                             <i class="fa-solid {{ $meta['icon'] }}" style="font-size:14px;color:{{ $meta['color'] }};"></i>
                         </div>
-                        <span style="font-size:13.5px;font-weight:600;color:#1A0A00;">{{ $field }}</span>
+                        <span style="font-size:13.5px;font-weight:600;color:var(--dark);">{{ $field }}</span>
                     </div>
                     @endforeach
                 </div>
@@ -331,7 +331,7 @@ $allCities = array_merge(
             {{-- Action --}}
             <div style="padding:22px 20px 24px;">
                 <button type="button" wire:click="$set('showTripDetailsModal', false)"
-                        style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#A85A20,#6A3500);color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 16px rgba(106,53,0,0.3);transition:transform .12s ease;"
+                        style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#A85A20,var(--primary-dark));color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 16px rgba(106,53,0,0.3);transition:transform .12s ease;"
                         onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform='translateY(0)'">
                     Got It
                 </button>
@@ -457,11 +457,18 @@ window.pytManual = function() {
             return y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
         },
 
+        // "Sep" is the standard 3-letter abbreviation, but "Sept" is the
+        // more common/readable one — match the PHP-side fmtDate() fallback.
+        abbrevMonth(m) {
+            const abbr = months[m-1].slice(0,3);
+            return abbr === 'Sep' ? 'Sept' : abbr;
+        },
+
         pickDate(which, d) {
             const y = which === 'start' ? this.startYear : this.endYear;
             const m = which === 'start' ? this.startMonth : this.endMonth;
             const val = y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-            const label = months[m-1].slice(0,3) + ' ' + String(d).padStart(2,'0') + ', ' + y;
+            const label = this.abbrevMonth(m) + ' ' + String(d).padStart(2,'0') + ', ' + y;
             if (which === 'start') {
                 this.startVal = val; this.startLabel = label;
                 if (this.endVal && this.endVal < val) { this.endVal = ''; this.endLabel = ''; $wire.set('endDate', ''); }
@@ -476,7 +483,7 @@ window.pytManual = function() {
 
         pickRangeDate(y, m, d) {
             const val   = this.formatDate(y, m, d);
-            const label = months[m-1].slice(0,3) + ' ' + String(d).padStart(2,'0') + ', ' + y;
+            const label = this.abbrevMonth(m) + ' ' + String(d).padStart(2,'0') + ', ' + y;
             if (!this.startVal || (this.startVal && this.endVal)) {
                 // First pick — reset range
                 this.startVal = val; this.startLabel = label;
@@ -565,24 +572,24 @@ $allCities2 = array_merge(
 
 <style>
 [x-cloak]{display:none!important;}
-.city-drop{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:500;max-height:320px;overflow:hidden;display:flex;flex-direction:column;}
+.city-drop{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:500;max-height:320px;overflow:hidden;display:flex;flex-direction:column;}
 .city-search{padding:10px 14px;border-bottom:1px solid var(--border);}
 .city-search input{width:100%;border:none;outline:none;font-size:13px;color:var(--dark);background:transparent;}
 .city-list{overflow-y:auto;flex:1;}
 .city-group-label{padding:8px 14px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);}
 .city-item{padding:10px 14px;font-size:13px;font-weight:500;color:var(--dark);cursor:pointer;display:flex;align-items:center;gap:10px;}
-.city-item:hover{background:#F5F0EB;}
-.city-item .code{font-size:11px;font-weight:700;color:#934B19;background:#F5F0EB;border-radius:4px;padding:2px 7px;width:36px;text-align:center;flex-shrink:0;}
-.mini-cal{position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:500;padding:16px;min-width:260px;}
+.city-item:hover{background:var(--bg);}
+.city-item .code{font-size:11px;font-weight:700;color:var(--primary);background:var(--bg);border-radius:4px;padding:2px 7px;width:36px;text-align:center;flex-shrink:0;}
+.mini-cal{position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:500;padding:16px;min-width:260px;}
 .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .cal-nav{background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:4px 8px;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;}
 .cal-day-name{font-size:10px;font-weight:700;color:var(--muted);padding:4px 0;}
 .cal-day{font-size:12px;font-weight:500;padding:6px 4px;border-radius:6px;cursor:pointer;}
-.cal-day:hover:not(.past):not(.empty){background:#F5F0EB;}
-.cal-day.selected{background:#934B19;color:#fff;}
+.cal-day:hover:not(.past):not(.empty){background:var(--bg);}
+.cal-day.selected{background:var(--primary);color:#fff;}
 .cal-day.empty{cursor:default;}
-.cal-day.in-range{background:#F5EDE7;color:#934B19;}
+.cal-day.in-range{background:#F5EDE7;color:var(--primary);}
 .cal-day.past{color:#D1C8C0;cursor:not-allowed;}
 </style>
 
@@ -592,7 +599,7 @@ $allCities2 = array_merge(
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px;flex-wrap:wrap;">
         <div>
             <button wire:click="$set('step', 1)"
-                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
+                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
                 <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Trip Details
             </button>
             <h1 style="font-size:26px;font-weight:800;color:var(--dark);margin:0 0 6px;">Select Flight</h1>
@@ -605,7 +612,7 @@ $allCities2 = array_merge(
             </p>
         </div>
         {{-- Route + Date badge(s) --}}
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;flex-shrink:0;">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;flex-shrink:0;">
             <div style="display:inline-flex;align-items:stretch;">
                 <div style="padding:8px 12px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;">
                     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;">Route @if($mcSearched && $mcTo)(Leg 1)@endif</div>
@@ -653,7 +660,7 @@ $allCities2 = array_merge(
     </div>
 
     {{-- Search panel --}}
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:visible;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:14px;width:100%;">
+    <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:visible;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:14px;width:100%;">
 
         {{-- LEG 1: FROM | TO | START DATE | END DATE --}}
         <div style="display:flex;align-items:stretch;border-bottom:1px solid var(--border);min-width:0;">
@@ -662,7 +669,7 @@ $allCities2 = array_merge(
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);position:relative;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">From</div>
                 <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="toggleDrop2('from')">
-                    <i class="fa-solid fa-plane-departure" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-solid fa-plane-departure" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span style="font-size:14px;font-weight:600;color:var(--dark);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="(fromLabel||'{{ $manualFrom }}').replace(/\s*\([^)]+\)$/,'')"></span>
                     <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
                 </div>
@@ -685,7 +692,7 @@ $allCities2 = array_merge(
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);position:relative;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">To</div>
                 <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="toggleDrop2('to')">
-                    <i class="fa-solid fa-plane-arrival" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-solid fa-plane-arrival" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span style="font-size:14px;font-weight:600;color:var(--dark);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="(toLabel||'{{ $manualTo }}').replace(/\s*\([^)]+\)$/,'')"></span>
                     <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
                 </div>
@@ -708,7 +715,7 @@ $allCities2 = array_merge(
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);position:relative;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
                 <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="toggleCal2('start')">
-                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-regular fa-calendar" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span x-show="!(startLabel2||'{{ $startDate }}')" style="font-size:14px;color:#C4B8AC;flex:1;">Select date</span>
                     <span x-show="startLabel2||'{{ $startDate }}'" style="font-size:14px;font-weight:600;color:var(--dark);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
                           x-text="startLabel2||'{{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($startDate) }}'"></span>
@@ -734,7 +741,7 @@ $allCities2 = array_merge(
             <div style="flex:1;min-width:0;padding:16px 20px;position:relative;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
                 <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="toggleCal2('end')">
-                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-regular fa-calendar" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span x-show="!(endLabel2||'{{ $endDate }}')" style="font-size:14px;color:#C4B8AC;flex:1;">Select date</span>
                     <span x-show="endLabel2||'{{ $endDate }}'" style="font-size:14px;font-weight:600;color:var(--dark);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
                           x-text="endLabel2||'{{ \App\Livewire\Traveler\TripPlannerWizard::fmtDate($endDate) }}'"></span>
@@ -764,7 +771,7 @@ $allCities2 = array_merge(
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">From</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-solid fa-plane-departure" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-solid fa-plane-departure" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span style="font-size:14px;font-weight:600;color:var(--dark);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
                           x-text="toLabel ? toLabel.replace(/\s*\([^)]+\)$/,'') : '{{ $manualTo }}'"></span>
                 </div>
@@ -774,7 +781,7 @@ $allCities2 = array_merge(
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);position:relative;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">To</div>
                 <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="toggleDrop2('mc')">
-                    <i class="fa-solid fa-plane-arrival" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-solid fa-plane-arrival" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span x-show="!mcLabel" style="font-size:14px;color:#C4B8AC;flex:1;">Where to?</span>
                     <span x-show="mcLabel" x-text="mcLabel" style="font-size:14px;font-weight:600;color:var(--dark);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
                     <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
@@ -798,7 +805,7 @@ $allCities2 = array_merge(
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);position:relative;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
                 <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="toggleCal2('mc-start')">
-                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-regular fa-calendar" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span x-show="!mcStartLabel" style="font-size:14px;color:#C4B8AC;flex:1;">Select date</span>
                     <span x-show="mcStartLabel" x-text="mcStartLabel" style="font-size:14px;font-weight:600;color:var(--dark);flex:1;"></span>
                     <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
@@ -823,7 +830,7 @@ $allCities2 = array_merge(
             <div style="flex:1;min-width:0;padding:16px 20px;position:relative;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
                 <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="toggleCal2('mc-end')">
-                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-regular fa-calendar" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span x-show="!mcEndLabel" style="font-size:14px;color:#C4B8AC;flex:1;">Select date</span>
                     <span x-show="mcEndLabel" x-text="mcEndLabel" style="font-size:14px;font-weight:600;color:var(--dark);flex:1;"></span>
                     <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
@@ -848,9 +855,9 @@ $allCities2 = array_merge(
         {{-- Search Flights button --}}
         <div style="display:flex;justify-content:flex-end;padding:14px 20px;">
             <button wire:click="searchManualFlights" wire:loading.attr="disabled" wire:target="searchManualFlights"
-                    style="background:#934B19;color:#fff;border:none;border-radius:12px;padding:11px 26px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(147,75,25,0.22);transition:background .18s;"
-                    onmouseenter="this.style.background='#6A3500'"
-                    onmouseleave="this.style.background='#934B19'">
+                    style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:11px 26px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(147,75,25,0.22);transition:background .18s;"
+                    onmouseenter="this.style.background='var(--primary-dark)'"
+                    onmouseleave="this.style.background='var(--primary)'">
                 <span wire:loading.remove wire:target="searchManualFlights"><i class="fa-solid fa-magnifying-glass"></i> Search Flights</span>
                 <span wire:loading wire:target="searchManualFlights"><i class="fa-solid fa-spinner fa-spin"></i> Searching</span>
             </button>
@@ -863,22 +870,22 @@ $allCities2 = array_merge(
         {{-- Price dropdown --}}
         <div style="position:relative;">
             <button @click="priceOpen=!priceOpen"
-                    style="display:inline-flex;align-items:center;gap:10px;background:#fff;color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:border-color .15s;"
+                    style="display:inline-flex;align-items:center;gap:10px;background:var(--bg-white);color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:border-color .15s;"
                     onmouseenter="this.style.borderColor='#D9C4AE'" onmouseleave="this.style.borderColor='var(--border)'">
                 <span x-text="priceDir==='asc'?'Price: Low to High':'Price: High to Low'"></span>
                 <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);transition:transform .15s;" :style="priceOpen?'transform:rotate(180deg)':''"></i>
             </button>
             <div x-show="priceOpen" @click.outside="priceOpen=false" x-cloak
-                 style="position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
+                 style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
                 <button @click="priceDir='asc';priceOpen=false;sortFlights()"
                         style="width:100%;text-align:left;padding:13px 18px;border:none;background:none;font-size:13px;font-weight:500;color:var(--dark);cursor:pointer;display:block;"
-                        onmouseenter="this.style.background='#F8F5F2'" onmouseleave="this.style.background='transparent'">
+                        onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
                     Price: Low to High
                 </button>
                 <div style="height:1px;background:var(--border);"></div>
                 <button @click="priceDir='desc';priceOpen=false;sortFlights()"
                         style="width:100%;text-align:left;padding:13px 18px;border:none;background:none;font-size:13px;font-weight:500;color:var(--dark);cursor:pointer;display:block;"
-                        onmouseenter="this.style.background='#F8F5F2'" onmouseleave="this.style.background='transparent'">
+                        onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
                     Price: High to Low
                 </button>
             </div>
@@ -892,7 +899,7 @@ $allCities2 = array_merge(
                        wire:model.live="flightTripType"
                        @change="tripType='{{ $val }}'"
                        {{ $flightTripType === $val ? 'checked' : '' }}
-                       style="accent-color:#934B19;width:15px;height:15px;cursor:pointer;">
+                       style="accent-color:var(--primary);width:15px;height:15px;cursor:pointer;">
                 {{ $label }}
             </label>
             @endforeach
@@ -901,23 +908,23 @@ $allCities2 = array_merge(
 
     {{-- Loading --}}
     @if ($flightLoading)
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-            <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:#934B19;"></i>
+            <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--dark);font-size:15px;font-weight:600;margin:0;">Searching for flights…</p>
     </div>
     @elseif ($flightError)
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-            <i class="fa-solid fa-triangle-exclamation" style="font-size:22px;color:#DC2626;"></i>
+            <i class="fa-solid fa-triangle-exclamation" style="font-size:22px;color:var(--danger);"></i>
         </div>
-        <p style="color:#DC2626;font-size:15px;font-weight:600;margin:0;">{{ $flightError }}</p>
+        <p style="color:var(--danger);font-size:15px;font-weight:600;margin:0;">{{ $flightError }}</p>
     </div>
     @elseif (empty($flightResults))
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-            <i class="fa-solid fa-plane-slash" style="font-size:22px;color:#934B19;"></i>
+            <i class="fa-solid fa-plane-slash" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--muted);font-size:15px;margin:0;">No flights found. Try searching above.</p>
     </div>
@@ -936,7 +943,7 @@ $allCities2 = array_merge(
             $arr    = $flight['arrive'] ?? '';
             $fmtTime = fn($t) => $t ? date('g:i A', strtotime($t)) : '';
         @endphp
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:hidden;transition:box-shadow .2s,transform .2s,border-color .2s;"
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;transition:box-shadow .2s,transform .2s,border-color .2s;"
              onmouseenter="this.style.boxShadow='0 10px 30px rgba(45,27,20,0.10)';this.style.transform='translateY(-2px)';this.style.borderColor='#E7D4C4'"
              onmouseleave="this.style.boxShadow='none';this.style.transform='none';this.style.borderColor='var(--border)'">
             @if(!empty($flight['bags']))
@@ -957,8 +964,8 @@ $allCities2 = array_merge(
                 <div style="text-align:center;padding:0 16px;">
                     <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">{{ $durStr }}</div>
                     <div style="position:relative;height:1px;background:var(--border);">
-                        <span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;padding:0 6px;">
-                            <i class="fa-solid fa-plane" style="font-size:13px;color:#934B19;"></i>
+                        <span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--bg-white);padding:0 6px;">
+                            <i class="fa-solid fa-plane" style="font-size:13px;color:var(--primary);"></i>
                         </span>
                     </div>
                     <div style="font-size:11px;color:var(--muted);margin-top:6px;">Nonstop</div>
@@ -968,12 +975,12 @@ $allCities2 = array_merge(
                     <div style="font-size:12px;color:var(--muted);margin-top:3px;">{{ $flight['arr_id'] ?? '' }}</div>
                 </div>
                 <div style="text-align:right;">
-                    <div style="font-size:20px;font-weight:800;color:#934B19;line-height:1;">PHP {{ number_format($flight['price'] ?? 0) }}</div>
+                    <div style="font-size:20px;font-weight:800;color:var(--primary);line-height:1;">PHP {{ number_format($flight['price'] ?? 0) }}</div>
                     <div style="font-size:11px;color:var(--muted);margin-top:3px;margin-bottom:10px;">{{ $flight['type'] ?? 'One-way' }}</div>
                     <button wire:click="selectMcFlight({{ $idx }})" wire:loading.attr="disabled" wire:target="selectMcFlight({{ $idx }})"
-                            style="background:#934B19;color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
-                            onmouseenter="this.style.background='#6A3500';this.style.gap='9px'"
-                            onmouseleave="this.style.background='#934B19';this.style.gap='6px'">
+                            style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
+                            onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'"
+                            onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
                         <span wire:loading.remove wire:target="selectMcFlight({{ $idx }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
                         <span wire:loading wire:target="selectMcFlight({{ $idx }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
                     </button>
@@ -997,7 +1004,7 @@ $allCities2 = array_merge(
             $fmtTime = fn($t) => $t ? date('g:i A', strtotime($t)) : '';
         @endphp
         <div class="flight-card" data-price="{{ $flight['price'] ?? 0 }}"
-             style="background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:hidden;transition:box-shadow .2s,transform .2s,border-color .2s;"
+             style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;transition:box-shadow .2s,transform .2s,border-color .2s;"
              onmouseenter="this.style.boxShadow='0 10px 30px rgba(45,27,20,0.10)';this.style.transform='translateY(-2px)';this.style.borderColor='#E7D4C4'"
              onmouseleave="this.style.boxShadow='none';this.style.transform='none';this.style.borderColor='var(--border)'">
             {{-- Baggage strip --}}
@@ -1024,8 +1031,8 @@ $allCities2 = array_merge(
                 <div style="text-align:center;padding:0 16px;">
                     <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">{{ $durStr }}</div>
                     <div style="position:relative;height:1px;background:var(--border);">
-                        <span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;padding:0 6px;">
-                            <i class="fa-solid fa-plane" style="font-size:13px;color:#934B19;"></i>
+                        <span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--bg-white);padding:0 6px;">
+                            <i class="fa-solid fa-plane" style="font-size:13px;color:var(--primary);"></i>
                         </span>
                     </div>
                     <div style="font-size:11px;color:var(--muted);margin-top:6px;">Nonstop</div>
@@ -1037,12 +1044,12 @@ $allCities2 = array_merge(
                 </div>
                 {{-- Price + Select --}}
                 <div style="text-align:right;">
-                    <div style="font-size:20px;font-weight:800;color:#934B19;line-height:1;">PHP {{ number_format($flight['price'] ?? 0) }}</div>
+                    <div style="font-size:20px;font-weight:800;color:var(--primary);line-height:1;">PHP {{ number_format($flight['price'] ?? 0) }}</div>
                     <div style="font-size:11px;color:var(--muted);margin-top:3px;margin-bottom:10px;">{{ $flight['type'] ?? 'One-way' }}</div>
                     <button wire:click="selectFlight({{ $idx }})" wire:loading.attr="disabled" wire:target="selectFlight({{ $idx }})"
-                            style="background:#934B19;color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
-                            onmouseenter="this.style.background='#6A3500';this.style.gap='9px'"
-                            onmouseleave="this.style.background='#934B19';this.style.gap='6px'">
+                            style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
+                            onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'"
+                            onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
                         <span wire:loading.remove wire:target="selectFlight({{ $idx }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
                         <span wire:loading wire:target="selectFlight({{ $idx }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
                     </button>
@@ -1124,7 +1131,8 @@ window.pytFlight = function() {
             else if (which==='mc-start') { y=this.mcY;  m=this.mcM; }
             else                         { y=this.mc2Y; m=this.mc2M; }
             const val   = this.fmt2(y,m,d);
-            const label = months[m-1].slice(0,3)+' '+String(d).padStart(2,'0')+', '+y;
+            const mAbbr = months[m-1].slice(0,3);
+            const label = (mAbbr==='Sep'?'Sept':mAbbr)+' '+String(d).padStart(2,'0')+', '+y;
             if (which==='start') {
                 this.startVal2=val; this.startLabel2=label; $wire.set('startDate',val);
                 // A start date picked after the existing end date leaves an
@@ -1240,7 +1248,7 @@ window.sortVenues = function(dir) {
 @if ($planningMode !== '' && $step === 3)
 <style>
 [x-cloak]{display:none!important;}
-.acc-card{background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;transition:box-shadow .2s,transform .2s,border-color .2s;}
+.acc-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;transition:box-shadow .2s,transform .2s,border-color .2s;}
 .acc-card:hover{box-shadow:0 10px 30px rgba(45,27,20,0.10);transform:translateY(-2px);border-color:#E7D4C4;}
 .acc-img{width:140px;flex-shrink:0;object-fit:cover;}
 .acc-body{flex:1;padding:16px 20px;display:flex;flex-direction:column;justify-content:center;gap:4px;}
@@ -1253,14 +1261,14 @@ window.sortVenues = function(dir) {
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px;flex-wrap:wrap;">
         <div>
             <button wire:click="backToFlights"
-                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
+                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
                 <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Flights
             </button>
             <h1 style="font-size:26px;font-weight:800;color:var(--dark);margin:0 0 6px;">Select Accommodation</h1>
             <p style="font-size:14px;color:var(--muted);margin:0;">Showing the best stays within 15 km of {{ $mcHotelStep ? $mcTo : $manualTo }}.</p>
         </div>
         {{-- Destination + Date badge --}}
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;display:inline-flex;align-items:stretch;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;display:inline-flex;align-items:stretch;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
             <div style="padding:12px 20px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;">
                 <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;">Destination</div>
                 <div style="font-size:15px;font-weight:800;color:var(--dark);">{{ $mcHotelStep ? $mcTo : $manualTo }}</div>
@@ -1281,14 +1289,14 @@ window.sortVenues = function(dir) {
     </div>
 
     {{-- Search panel --}}
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:visible;box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:14px;width:100%;">
+    <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:visible;box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:14px;width:100%;">
         <div style="display:flex;align-items:stretch;border-bottom:1px solid var(--border);min-width:0;">
 
             {{-- LOCATION --}}
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Location</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-solid fa-plane-arrival" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-solid fa-plane-arrival" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $mcHotelStep ? $mcTo : $manualTo }}</span>
                 </div>
             </div>
@@ -1297,7 +1305,7 @@ window.sortVenues = function(dir) {
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);position:relative;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Guests</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-solid fa-user-group" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                    <i class="fa-solid fa-user-group" style="color:var(--primary);font-size:12px;flex-shrink:0;"></i>
                     <span style="font-size:14px;font-weight:600;color:var(--dark);flex:1;">1 Adult</span>
                 </div>
             </div>
@@ -1307,14 +1315,14 @@ window.sortVenues = function(dir) {
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-regular fa-calendar" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accSd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($accSd) : '—' }}</span>
                 </div>
             </div>
             <div style="flex:1;min-width:0;padding:16px 20px;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-regular fa-calendar" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $accEd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($accEd) : '—' }}</span>
                 </div>
             </div>
@@ -1323,9 +1331,9 @@ window.sortVenues = function(dir) {
         {{-- Search Stays button --}}
         <div style="display:flex;justify-content:flex-end;padding:14px 20px;">
             <button wire:click="searchAccommodations" wire:loading.attr="disabled" wire:target="searchAccommodations"
-                    style="background:#934B19;color:#fff;border:none;border-radius:12px;padding:11px 26px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(147,75,25,0.22);transition:background .18s;"
-                    onmouseenter="this.style.background='#6A3500'"
-                    onmouseleave="this.style.background='#934B19'">
+                    style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:11px 26px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(147,75,25,0.22);transition:background .18s;"
+                    onmouseenter="this.style.background='var(--primary-dark)'"
+                    onmouseleave="this.style.background='var(--primary)'">
                 <span wire:loading.remove wire:target="searchAccommodations"><i class="fa-solid fa-magnifying-glass"></i> Search Accommodations</span>
                 <span wire:loading wire:target="searchAccommodations"><i class="fa-solid fa-spinner fa-spin"></i> Searching</span>
             </button>
@@ -1337,21 +1345,21 @@ window.sortVenues = function(dir) {
         <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
         <div style="position:relative;" x-data="{accPriceOpen:false,accPriceDir:'asc'}">
             <button @click="accPriceOpen=!accPriceOpen"
-                    style="display:inline-flex;align-items:center;gap:10px;background:#fff;color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                    style="display:inline-flex;align-items:center;gap:10px;background:var(--bg-white);color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
                 <span x-text="accPriceDir==='asc'?'Price: Low to High':'Price: High to Low'"></span>
                 <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);transition:transform .15s;" :style="accPriceOpen?'transform:rotate(180deg)':''"></i>
             </button>
             <div x-show="accPriceOpen" @click.outside="accPriceOpen=false" x-cloak
-                 style="position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
+                 style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
                 <button @click="accPriceDir='asc';accPriceOpen=false;sortAccommodations('asc')"
                         style="width:100%;text-align:left;padding:13px 18px;border:none;background:none;font-size:13px;font-weight:500;color:var(--dark);cursor:pointer;display:block;"
-                        onmouseenter="this.style.background='#F8F5F2'" onmouseleave="this.style.background='transparent'">
+                        onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
                     Price: Low to High
                 </button>
                 <div style="height:1px;background:var(--border);"></div>
                 <button @click="accPriceDir='desc';accPriceOpen=false;sortAccommodations('desc')"
                         style="width:100%;text-align:left;padding:13px 18px;border:none;background:none;font-size:13px;font-weight:500;color:var(--dark);cursor:pointer;display:block;"
-                        onmouseenter="this.style.background='#F8F5F2'" onmouseleave="this.style.background='transparent'">
+                        onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
                     Price: High to Low
                 </button>
             </div>
@@ -1361,15 +1369,15 @@ window.sortVenues = function(dir) {
             <input type="radio" name="acc_type" value="{{ $val }}"
                    x-model="filterType"
                    @change="$wire.set('hotelType', filterType)"
-                   style="accent-color:#934B19;width:15px;height:15px;cursor:pointer;">
+                   style="accent-color:var(--primary);width:15px;height:15px;cursor:pointer;">
             {{ $label }}
         </label>
         @endforeach
         </div>
 
         <button wire:click="skipAccommodation" wire:loading.attr="disabled" wire:target="skipAccommodation"
-                style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
-                onmouseenter="this.style.background='#6A3500';this.style.gap='9px'" onmouseleave="this.style.background='#934B19';this.style.gap='6px'">
+                style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
+                onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
             <span wire:loading.remove wire:target="skipAccommodation">Skip this step <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
             <span wire:loading wire:target="skipAccommodation"><i class="fa-solid fa-spinner fa-spin"></i></span>
         </button>
@@ -1377,9 +1385,9 @@ window.sortVenues = function(dir) {
 
     {{-- Results --}}
     @if ($hotelLoading || ($mcHotelStep && $mcHotelLoading))
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-            <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:#934B19;"></i>
+            <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--dark);font-size:15px;font-weight:600;margin:0;">Searching for accommodations…</p>
     </div>
@@ -1391,9 +1399,9 @@ window.sortVenues = function(dir) {
     @endphp
 
     @if (!$hasHotels)
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-            <i class="fa-solid fa-hotel" style="font-size:22px;color:#934B19;"></i>
+            <i class="fa-solid fa-hotel" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--muted);font-size:15px;margin:0;">No stays found. Try searching above.</p>
     </div>
@@ -1404,7 +1412,7 @@ window.sortVenues = function(dir) {
                 @if(!empty($hotel['image']))
                 <img src="{{ $hotel['image'] }}" alt="{{ $hotel['name'] }}" class="acc-img">
                 @else
-                <div class="acc-img" style="background:#F5F0EB;display:flex;align-items:center;justify-content:center;">
+                <div class="acc-img" style="background:var(--bg);display:flex;align-items:center;justify-content:center;">
                     <i class="fa-solid fa-hotel" style="font-size:28px;color:var(--muted);"></i>
                 </div>
                 @endif
@@ -1414,12 +1422,12 @@ window.sortVenues = function(dir) {
                     </div>
                     @if(!empty($hotel['dist']))
                     <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-bottom:2px;">
-                        <i class="fa-solid fa-location-dot" style="font-size:10px;color:#934B19;"></i>
+                        <i class="fa-solid fa-location-dot" style="font-size:10px;color:var(--primary);"></i>
                         {{ $hotel['dist'] }}
                     </div>
                     @else
                     <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-bottom:2px;">
-                        <i class="fa-solid fa-location-dot" style="font-size:10px;color:#934B19;"></i>
+                        <i class="fa-solid fa-location-dot" style="font-size:10px;color:var(--primary);"></i>
                         {{ $mcHotelStep ? $mcTo : $manualTo }}
                     </div>
                     @endif
@@ -1439,15 +1447,15 @@ window.sortVenues = function(dir) {
                 <div class="acc-action">
                     @if($isMcHotel)
                     <button wire:click="selectMcAccommodation({{ $idx }})" wire:loading.attr="disabled" wire:target="selectMcAccommodation({{ $idx }})"
-                            style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
-                            onmouseenter="this.style.background='#6A3500';this.style.gap='9px'" onmouseleave="this.style.background='#934B19';this.style.gap='6px'">
+                            style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
+                            onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
                         <span wire:loading.remove wire:target="selectMcAccommodation({{ $idx }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
                         <span wire:loading wire:target="selectMcAccommodation({{ $idx }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
                     </button>
                     @else
                     <button wire:click="selectAccommodation({{ $idx }})" wire:loading.attr="disabled" wire:target="selectAccommodation({{ $idx }})"
-                            style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
-                            onmouseenter="this.style.background='#6A3500';this.style.gap='9px'" onmouseleave="this.style.background='#934B19';this.style.gap='6px'">
+                            style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
+                            onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
                         <span wire:loading.remove wire:target="selectAccommodation({{ $idx }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
                         <span wire:loading wire:target="selectAccommodation({{ $idx }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
                     </button>
@@ -1468,7 +1476,7 @@ window.sortVenues = function(dir) {
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($planningMode !== '' && $step === 4)
 <style>
-.venue-card{background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s,border-color .2s;}
+.venue-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s,border-color .2s;}
 .venue-card:hover{box-shadow:0 10px 30px rgba(45,27,20,0.10);transform:translateY(-2px);border-color:#E7D4C4;}
 .venue-img{width:130px;flex-shrink:0;object-fit:cover;}
 .venue-body{flex:1;padding:14px 18px;min-width:0;}
@@ -1481,14 +1489,14 @@ window.sortVenues = function(dir) {
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px;flex-wrap:wrap;">
         <div>
             <button wire:click="$set('step', 3)"
-                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
+                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
                 <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Accommodations
             </button>
             <h1 style="font-size:26px;font-weight:800;color:var(--dark);margin:0 0 6px;">Select Food &amp; Dining</h1>
             <p style="font-size:14px;color:var(--muted);margin:0;">Showing the best dining options within 15 km of {{ $mcVenueStep ? $mcTo : ($manualTo ?: $mcTo) }}.</p>
         </div>
         {{-- Destination + Date badge --}}
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;display:inline-flex;align-items:stretch;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;display:inline-flex;align-items:stretch;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
             <div style="padding:12px 20px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;">
                 <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;">Destination</div>
                 <div style="font-size:15px;font-weight:800;color:var(--dark);">{{ $mcVenueStep ? $mcTo : ($manualTo ?: $mcTo) }}</div>
@@ -1509,13 +1517,13 @@ window.sortVenues = function(dir) {
     </div>
 
     {{-- Search bar --}}
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:visible;box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:16px;width:100%;">
+    <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:visible;box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:16px;width:100%;">
         <div style="display:flex;align-items:stretch;border-bottom:1px solid var(--border);min-width:0;">
             {{-- Location --}}
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Location</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-solid fa-location-dot" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-solid fa-location-dot" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $mcVenueStep ? $mcTo : ($manualTo ?: $mcTo) }}</span>
                 </div>
             </div>
@@ -1523,15 +1531,15 @@ window.sortVenues = function(dir) {
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);position:relative;" x-data="{ catOpen:false }">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Category</div>
                 <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="catOpen=!catOpen">
-                    <i class="fa-solid fa-utensils" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                    <i class="fa-solid fa-utensils" style="color:var(--primary);font-size:12px;flex-shrink:0;"></i>
                     <span style="font-size:14px;font-weight:600;color:var(--dark);flex:1;">{{ $venueCategory }}</span>
                     <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
                 </div>
                 <div x-show="catOpen" @click.outside="catOpen=false" x-cloak
-                     style="position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:200;min-width:180px;overflow:hidden;">
+                     style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:200;min-width:180px;overflow:hidden;">
                     @foreach(['All Cuisines','Filipino','Asian','International','Seafood','BBQ','Fast Food','Cafe','Bakery'] as $cat)
                     <button type="button" wire:click="$set('venueCategory', '{{ $cat }}')" @click="catOpen=false"
-                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;cursor:pointer;{{ $venueCategory === $cat ? 'color:#934B19;font-weight:700;background:#FDF8F4;' : '' }}">
+                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;cursor:pointer;{{ $venueCategory === $cat ? 'color:var(--primary);font-weight:700;background:#FDF8F4;' : '' }}">
                         {{ $cat }}
                     </button>
                     @endforeach
@@ -1542,22 +1550,22 @@ window.sortVenues = function(dir) {
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                    <i class="fa-regular fa-calendar" style="color:var(--primary);font-size:12px;flex-shrink:0;"></i>
                     <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueSd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($venueSd) : '—' }}</span>
                 </div>
             </div>
             <div style="flex:1;min-width:0;padding:16px 20px;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                    <i class="fa-regular fa-calendar" style="color:var(--primary);font-size:12px;flex-shrink:0;"></i>
                     <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $venueEd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($venueEd) : '—' }}</span>
                 </div>
             </div>
         </div>
         <div style="display:flex;justify-content:flex-end;padding:14px 20px;">
             <button wire:click="searchVenues" wire:loading.attr="disabled" wire:target="searchVenues"
-                    style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;"
-                    onmouseenter="this.style.background='#7A3C12'" onmouseleave="this.style.background='#934B19'">
+                    style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;"
+                    onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
                 <span wire:loading.remove wire:target="searchVenues"><i class="fa-solid fa-magnifying-glass" style="font-size:12px;"></i> Search Food & Dining</span>
                 <span wire:loading wire:target="searchVenues"><i class="fa-solid fa-spinner fa-spin"></i> Searching</span>
             </button>
@@ -1569,29 +1577,29 @@ window.sortVenues = function(dir) {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;padding-right:20px;flex-wrap:wrap;" x-data="{vPriceOpen:false,vPriceDir:'asc'}">
         <div style="position:relative;">
             <button @click="vPriceOpen=!vPriceOpen"
-                    style="display:inline-flex;align-items:center;gap:10px;background:#fff;color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                    style="display:inline-flex;align-items:center;gap:10px;background:var(--bg-white);color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
                 <span x-text="vPriceDir==='asc'?'Price: Low to High':'Price: High to Low'"></span>
                 <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);transition:transform .15s;" :style="vPriceOpen?'transform:rotate(180deg)':''"></i>
             </button>
             <div x-show="vPriceOpen" @click.outside="vPriceOpen=false" x-cloak
-                 style="position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
+                 style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
                 <button @click="vPriceDir='asc';vPriceOpen=false;sortVenues('asc')"
                         style="width:100%;text-align:left;padding:13px 18px;border:none;background:none;font-size:13px;font-weight:500;color:var(--dark);cursor:pointer;display:block;"
-                        onmouseenter="this.style.background='#F8F5F2'" onmouseleave="this.style.background='transparent'">
+                        onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
                     Price: Low to High
                 </button>
                 <div style="height:1px;background:var(--border);"></div>
                 <button @click="vPriceDir='desc';vPriceOpen=false;sortVenues('desc')"
                         style="width:100%;text-align:left;padding:13px 18px;border:none;background:none;font-size:13px;font-weight:500;color:var(--dark);cursor:pointer;display:block;"
-                        onmouseenter="this.style.background='#F8F5F2'" onmouseleave="this.style.background='transparent'">
+                        onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
                     Price: High to Low
                 </button>
             </div>
         </div>
 
         <button wire:click="skipVenue" wire:loading.attr="disabled" wire:target="skipVenue"
-                style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
-                onmouseenter="this.style.background='#6A3500';this.style.gap='9px'" onmouseleave="this.style.background='#934B19';this.style.gap='6px'">
+                style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
+                onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
             <span wire:loading.remove wire:target="skipVenue">Skip this step <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
             <span wire:loading wire:target="skipVenue"><i class="fa-solid fa-spinner fa-spin"></i></span>
         </button>
@@ -1601,16 +1609,16 @@ window.sortVenues = function(dir) {
     @if(!$mcVenueStep)
     {{-- Leg 1 venue list --}}
     @if($venueLoading)
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-            <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:#934B19;"></i>
+            <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--dark);font-size:15px;font-weight:600;margin:0;">Searching for dining options…</p>
     </div>
     @elseif(empty($venueResults))
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-            <i class="fa-solid fa-utensils" style="font-size:22px;color:#934B19;"></i>
+            <i class="fa-solid fa-utensils" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--muted);font-size:15px;margin:0;">{{ $venueError ?: 'No venues found. Try searching above.' }}</p>
     </div>
@@ -1621,15 +1629,15 @@ window.sortVenues = function(dir) {
             @if(!empty($venue['image']))
             <img src="{{ $venue['image'] }}" alt="{{ $venue['name'] }}" class="venue-img">
             @else
-            <div class="venue-img" style="background:#F5F0EB;display:flex;align-items:center;justify-content:center;">
+            <div class="venue-img" style="background:var(--bg);display:flex;align-items:center;justify-content:center;">
                 <i class="fa-solid fa-utensils" style="font-size:28px;color:var(--muted);"></i>
             </div>
             @endif
             <div class="venue-body">
                 <div style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:3px;">{{ $venue['name'] }}</div>
                 <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap;">
-                    <span><i class="fa-solid fa-tag" style="font-size:10px;color:#934B19;margin-right:3px;"></i>{{ $venue['cuisine'] }}</span>
-                    <span><i class="fa-solid fa-location-dot" style="font-size:10px;color:#934B19;margin-right:3px;"></i>{{ $venue['city'] }}</span>
+                    <span><i class="fa-solid fa-tag" style="font-size:10px;color:var(--primary);margin-right:3px;"></i>{{ $venue['cuisine'] }}</span>
+                    <span><i class="fa-solid fa-location-dot" style="font-size:10px;color:var(--primary);margin-right:3px;"></i>{{ $venue['city'] }}</span>
                 </div>
                 @if(!empty($venue['rating']))
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
@@ -1638,15 +1646,15 @@ window.sortVenues = function(dir) {
                     @if(!empty($venue['reviews']))<span style="font-size:11px;color:var(--muted);">({{ number_format($venue['reviews']) }})</span>@endif
                 </div>
                 @endif
-                <div style="font-size:13px;color:#934B19;font-weight:600;">
+                <div style="font-size:13px;color:var(--primary);font-weight:600;">
                     ₱{{ number_format($venue['priceMin']) }} – ₱{{ number_format($venue['priceMax']) }}
                     <span style="font-size:11px;color:var(--muted);font-weight:400;"> Average price per person</span>
                 </div>
             </div>
             <div class="venue-action">
                 <button wire:click="selectVenue({{ $vi }})" wire:loading.attr="disabled" wire:target="selectVenue({{ $vi }})"
-                        style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
-                        onmouseenter="this.style.background='#6A3500';this.style.gap='9px'" onmouseleave="this.style.background='#934B19';this.style.gap='6px'">
+                        style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
+                        onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
                     <span wire:loading.remove wire:target="selectVenue({{ $vi }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
                     <span wire:loading wire:target="selectVenue({{ $vi }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
                 </button>
@@ -1659,16 +1667,16 @@ window.sortVenues = function(dir) {
     @else
     {{-- Leg 2 venue list (multi-city second destination) --}}
     @if($mcVenueLoading)
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-            <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:#934B19;"></i>
+            <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--dark);font-size:15px;font-weight:600;margin:0;">Searching for dining options in {{ $mcTo }}…</p>
     </div>
     @elseif(empty($mcVenueResults))
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-            <i class="fa-solid fa-utensils" style="font-size:22px;color:#934B19;"></i>
+            <i class="fa-solid fa-utensils" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--muted);font-size:15px;margin:0;">{{ $venueError ?: 'No venues found for '.$mcTo.'.' }}</p>
     </div>
@@ -1679,15 +1687,15 @@ window.sortVenues = function(dir) {
             @if(!empty($venue['image']))
             <img src="{{ $venue['image'] }}" alt="{{ $venue['name'] }}" class="venue-img">
             @else
-            <div class="venue-img" style="background:#F5F0EB;display:flex;align-items:center;justify-content:center;">
+            <div class="venue-img" style="background:var(--bg);display:flex;align-items:center;justify-content:center;">
                 <i class="fa-solid fa-utensils" style="font-size:28px;color:var(--muted);"></i>
             </div>
             @endif
             <div class="venue-body">
                 <div style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:3px;">{{ $venue['name'] }}</div>
                 <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap;">
-                    <span><i class="fa-solid fa-tag" style="font-size:10px;color:#934B19;margin-right:3px;"></i>{{ $venue['cuisine'] }}</span>
-                    <span><i class="fa-solid fa-location-dot" style="font-size:10px;color:#934B19;margin-right:3px;"></i>{{ $venue['city'] }}</span>
+                    <span><i class="fa-solid fa-tag" style="font-size:10px;color:var(--primary);margin-right:3px;"></i>{{ $venue['cuisine'] }}</span>
+                    <span><i class="fa-solid fa-location-dot" style="font-size:10px;color:var(--primary);margin-right:3px;"></i>{{ $venue['city'] }}</span>
                 </div>
                 @if(!empty($venue['rating']))
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
@@ -1696,15 +1704,15 @@ window.sortVenues = function(dir) {
                     @if(!empty($venue['reviews']))<span style="font-size:11px;color:var(--muted);">({{ number_format($venue['reviews']) }})</span>@endif
                 </div>
                 @endif
-                <div style="font-size:13px;color:#934B19;font-weight:600;">
+                <div style="font-size:13px;color:var(--primary);font-weight:600;">
                     ₱{{ number_format($venue['priceMin']) }} – ₱{{ number_format($venue['priceMax']) }}
                     <span style="font-size:11px;color:var(--muted);font-weight:400;"> Average price per person</span>
                 </div>
             </div>
             <div class="venue-action">
                 <button wire:click="selectVenue({{ $vi }})" wire:loading.attr="disabled" wire:target="selectVenue({{ $vi }})"
-                        style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
-                        onmouseenter="this.style.background='#6A3500';this.style.gap='9px'" onmouseleave="this.style.background='#934B19';this.style.gap='6px'">
+                        style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
+                        onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
                     <span wire:loading.remove wire:target="selectVenue({{ $vi }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
                     <span wire:loading wire:target="selectVenue({{ $vi }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
                 </button>
@@ -1724,7 +1732,7 @@ window.sortVenues = function(dir) {
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($planningMode !== '' && $step === 5)
 <style>
-.attr-card{background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s,border-color .2s;}
+.attr-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s,border-color .2s;}
 .attr-card:hover{box-shadow:0 10px 30px rgba(45,27,20,0.10);transform:translateY(-2px);border-color:#E7D4C4;}
 .attr-img{width:140px;min-height:120px;flex-shrink:0;object-fit:cover;object-position:center;display:block;align-self:stretch;}
 .attr-body{flex:1;padding:14px 18px;min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;}
@@ -1737,14 +1745,14 @@ window.sortVenues = function(dir) {
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px;flex-wrap:wrap;">
         <div>
             <button wire:click="$set('step', 4)"
-                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
+                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
                 <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Planner
             </button>
             <h1 style="font-size:26px;font-weight:800;color:var(--dark);margin:0 0 6px;">Select Attractions</h1>
             @php $attrDest = $mcAttractionStep ? $mcTo : ($manualTo ?: $mcTo); @endphp
             <p style="font-size:14px;color:var(--muted);margin:0;">Showing the best attractions within 15 km of {{ $attrDest }}.</p>
         </div>
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;display:inline-flex;align-items:stretch;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;display:inline-flex;align-items:stretch;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
             <div style="padding:12px 20px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;">
                 <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;">Destination</div>
                 <div style="font-size:15px;font-weight:800;color:var(--dark);">{{ $attrDest }}</div>
@@ -1765,27 +1773,27 @@ window.sortVenues = function(dir) {
     </div>
 
     {{-- Search bar --}}
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:visible;box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:16px;">
+    <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:visible;box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:16px;">
         <div style="display:flex;align-items:stretch;border-bottom:1px solid var(--border);">
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Location</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-solid fa-location-dot" style="color:#934B19;font-size:13px;flex-shrink:0;"></i>
+                    <i class="fa-solid fa-location-dot" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
                     <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $attrDest }}</span>
                 </div>
             </div>
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);position:relative;" x-data="{ typeOpen:false }">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Type</div>
                 <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" @click="typeOpen=!typeOpen">
-                    <i class="fa-solid fa-binoculars" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                    <i class="fa-solid fa-binoculars" style="color:var(--primary);font-size:12px;flex-shrink:0;"></i>
                     <span style="font-size:14px;font-weight:600;color:var(--dark);flex:1;">{{ $attractionType }}</span>
                     <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);flex-shrink:0;"></i>
                 </div>
                 <div x-show="typeOpen" @click.outside="typeOpen=false" x-cloak
-                     style="position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:200;min-width:180px;overflow:hidden;">
+                     style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:200;min-width:180px;overflow:hidden;">
                     @foreach(['All Attractions','Religious','Historical','Nature','Theme Park','Beach','Museum','Shopping'] as $t)
                     <button type="button" wire:click="$set('attractionType', '{{ $t }}')" @click="typeOpen=false"
-                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;cursor:pointer;{{ $attractionType === $t ? 'color:#934B19;font-weight:700;background:#FDF8F4;' : '' }}">
+                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;cursor:pointer;{{ $attractionType === $t ? 'color:var(--primary);font-weight:700;background:#FDF8F4;' : '' }}">
                         {{ $t }}
                     </button>
                     @endforeach
@@ -1794,22 +1802,22 @@ window.sortVenues = function(dir) {
             <div style="flex:1;min-width:0;padding:16px 20px;border-right:1px solid var(--border);">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">Start Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                    <i class="fa-regular fa-calendar" style="color:var(--primary);font-size:12px;flex-shrink:0;"></i>
                     <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $attrSd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($attrSd) : '—' }}</span>
                 </div>
             </div>
             <div style="flex:1;min-width:0;padding:16px 20px;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;">End Date</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-regular fa-calendar" style="color:#934B19;font-size:12px;flex-shrink:0;"></i>
+                    <i class="fa-regular fa-calendar" style="color:var(--primary);font-size:12px;flex-shrink:0;"></i>
                     <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $attrEd ? \App\Livewire\Traveler\TripPlannerWizard::fmtDate($attrEd) : '—' }}</span>
                 </div>
             </div>
         </div>
         <div style="display:flex;justify-content:flex-end;padding:14px 20px;">
             <button wire:click="searchAttractionsList" wire:loading.attr="disabled" wire:target="searchAttractionsList"
-                    style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;"
-                    onmouseenter="this.style.background='#7A3C12'" onmouseleave="this.style.background='#934B19'">
+                    style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;"
+                    onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
                 <span wire:loading.remove wire:target="searchAttractionsList"><i class="fa-solid fa-magnifying-glass" style="font-size:12px;"></i> Search Attractions</span>
                 <span wire:loading wire:target="searchAttractionsList"><i class="fa-solid fa-spinner fa-spin"></i> Searching</span>
             </button>
@@ -1820,29 +1828,29 @@ window.sortVenues = function(dir) {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;padding-right:20px;flex-wrap:wrap;" x-data="{aPriceOpen:false,aPriceDir:'asc'}">
         <div style="position:relative;">
             <button @click="aPriceOpen=!aPriceOpen"
-                    style="display:inline-flex;align-items:center;gap:10px;background:#fff;color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                    style="display:inline-flex;align-items:center;gap:10px;background:var(--bg-white);color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
                 <span x-text="aPriceDir==='asc'?'Price: Low to High':'Price: High to Low'"></span>
                 <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);transition:transform .15s;" :style="aPriceOpen?'transform:rotate(180deg)':''"></i>
             </button>
             <div x-show="aPriceOpen" @click.outside="aPriceOpen=false" x-cloak
-                 style="position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
+                 style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
                 <button @click="aPriceDir='asc';aPriceOpen=false;sortAttractions('asc')"
                         style="width:100%;text-align:left;padding:13px 18px;border:none;background:none;font-size:13px;font-weight:500;color:var(--dark);cursor:pointer;display:block;"
-                        onmouseenter="this.style.background='#F8F5F2'" onmouseleave="this.style.background='transparent'">
+                        onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
                     Price: Low to High
                 </button>
                 <div style="height:1px;background:var(--border);"></div>
                 <button @click="aPriceDir='desc';aPriceOpen=false;sortAttractions('desc')"
                         style="width:100%;text-align:left;padding:13px 18px;border:none;background:none;font-size:13px;font-weight:500;color:var(--dark);cursor:pointer;display:block;"
-                        onmouseenter="this.style.background='#F8F5F2'" onmouseleave="this.style.background='transparent'">
+                        onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
                     Price: High to Low
                 </button>
             </div>
         </div>
 
         <button wire:click="skipAttraction" wire:loading.attr="disabled" wire:target="skipAttraction"
-                style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
-                onmouseenter="this.style.background='#6A3500';this.style.gap='9px'" onmouseleave="this.style.background='#934B19';this.style.gap='6px'">
+                style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
+                onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
             <span wire:loading.remove wire:target="skipAttraction">Skip this step <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
             <span wire:loading wire:target="skipAttraction"><i class="fa-solid fa-spinner fa-spin"></i></span>
         </button>
@@ -1851,16 +1859,16 @@ window.sortVenues = function(dir) {
     {{-- Results --}}
     @php $activeAttractions = $mcAttractionStep ? $mcAttractionResults : $attractionResults; @endphp
     @if($attractionLoading || ($mcAttractionStep && $mcAttractionLoading))
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-            <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:#934B19;"></i>
+            <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--dark);font-size:15px;font-weight:600;margin:0;">Searching for attractions…</p>
     </div>
     @elseif(empty($activeAttractions))
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-            <i class="fa-solid fa-binoculars" style="font-size:22px;color:#934B19;"></i>
+            <i class="fa-solid fa-binoculars" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--muted);font-size:15px;margin:0;">{{ $attractionError ?: 'No attractions found. Try searching above.' }}</p>
     </div>
@@ -1872,7 +1880,7 @@ window.sortVenues = function(dir) {
             @if(!empty($attr['image']))
             <img src="{{ $attr['image'] }}" alt="{{ $attr['name'] }}" class="attr-img">
             @else
-            <div class="attr-img" style="background:#F5F0EB;display:flex;align-items:center;justify-content:center;min-height:120px;">
+            <div class="attr-img" style="background:var(--bg);display:flex;align-items:center;justify-content:center;min-height:120px;">
                 <i class="fa-solid fa-landmark" style="font-size:28px;color:var(--muted);"></i>
             </div>
             @endif
@@ -1884,7 +1892,7 @@ window.sortVenues = function(dir) {
                 @endphp
                 @if($attrLocation)
                 <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-bottom:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
-                    <i class="fa-solid fa-location-dot" style="font-size:10px;color:#934B19;flex-shrink:0;"></i>
+                    <i class="fa-solid fa-location-dot" style="font-size:10px;color:var(--primary);flex-shrink:0;"></i>
                     <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $attrLocation }}</span>
                 </div>
                 @endif
@@ -1909,8 +1917,8 @@ window.sortVenues = function(dir) {
             </div>
             <div class="attr-action">
                 <button wire:click="selectAttraction({{ $ai }})" wire:loading.attr="disabled" wire:target="selectAttraction({{ $ai }})"
-                        style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
-                        onmouseenter="this.style.background='#6A3500';this.style.gap='9px'" onmouseleave="this.style.background='#934B19';this.style.gap='6px'">
+                        style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s,gap .18s;"
+                        onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
                     <span wire:loading.remove wire:target="selectAttraction({{ $ai }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
                     <span wire:loading wire:target="selectAttraction({{ $ai }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
                 </button>
@@ -1947,7 +1955,7 @@ window.sortAttractions = function(dir) {
     <h1 style="font-size:38px;font-weight:800;color:var(--dark);margin:0 0 14px;">Emergency Fund</h1>
     <p style="font-size:16px;color:var(--muted);margin:0 0 40px;max-width:560px;line-height:1.6;">Set aside a safety net for unexpected expenses during your journey.</p>
 
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:20px;width:100%;max-width:680px;box-shadow:0 4px 20px rgba(0,0,0,0.07);overflow:hidden;">
+    <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;width:100%;max-width:680px;box-shadow:0 4px 20px rgba(0,0,0,0.07);overflow:hidden;">
 
         {{-- Input area --}}
         <div style="padding:40px 40px 32px;text-align:left;">
@@ -1963,9 +1971,9 @@ window.sortAttractions = function(dir) {
                         $wire.set('emergency', raw ? Number(raw) : 0);
                     }
                  }"
-                 style="display:flex;align-items:center;gap:16px;background:#FBF8F5;border:1.5px solid var(--border);border-radius:14px;padding:18px 22px;transition:border-color .18s,background .18s,box-shadow .18s;">
+                 style="display:flex;align-items:center;gap:16px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:14px;padding:18px 22px;transition:border-color .18s,background .18s,box-shadow .18s;">
                 <div style="width:44px;height:44px;border-radius:12px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fa-solid fa-piggy-bank" style="color:#934B19;font-size:19px;"></i>
+                    <i class="fa-solid fa-piggy-bank" style="color:var(--primary);font-size:19px;"></i>
                 </div>
                 <input type="text" x-model="display" @input="format($event)" placeholder="Please input amount"
                        class="emergency-fund-input"
@@ -1973,19 +1981,19 @@ window.sortAttractions = function(dir) {
                        autocomplete="off">
             </div>
             @if ($emergencyError)
-            <p style="color:#DC2626;font-size:13px;margin:10px 0 0;">{{ $emergencyError }}</p>
+            <p style="color:var(--danger);font-size:13px;margin:10px 0 0;">{{ $emergencyError }}</p>
             @endif
         </div>
 
         {{-- Footer --}}
-        <div style="border-top:1.5px solid var(--border);padding:20px 28px;display:flex;align-items:center;gap:16px;background:#FCFAF8;">
+        <div style="border-top:1.5px solid var(--border);padding:20px 28px;display:flex;align-items:center;gap:16px;background:var(--bg-white);">
             <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                 <i class="fa-solid fa-circle-info" style="font-size:14px;color:var(--muted);flex-shrink:0;"></i>
                 <span style="font-size:13px;color:var(--muted);line-height:1.4;">This amount is excluded from your daily budget</span>
             </div>
             <button wire:click="confirmEmergencyFund" wire:loading.attr="disabled" wire:target="confirmEmergencyFund"
-                    style="background:#934B19;color:#fff;border:none;border-radius:12px;padding:13px 28px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 6px 16px rgba(147,75,25,0.22);transition:background .18s,gap .18s;"
-                    onmouseenter="this.style.background='#6A3500';this.style.gap='11px'" onmouseleave="this.style.background='#934B19';this.style.gap='8px'">
+                    style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px 28px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 6px 16px rgba(147,75,25,0.22);transition:background .18s,gap .18s;"
+                    onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='11px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='8px'">
                 <span wire:loading.remove wire:target="confirmEmergencyFund" style="display:inline-flex;align-items:center;gap:8px;">Confirm Amount <i class="fa-solid fa-arrow-right" style="font-size:12px;"></i></span>
                 <span wire:loading wire:target="confirmEmergencyFund"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
@@ -2031,11 +2039,11 @@ window.sortAttractions = function(dir) {
 @endphp
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;padding:40px 24px;">
 
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:22px;padding:32px 28px;width:100%;max-width:480px;box-shadow:0 8px 36px rgba(45,27,20,.08);">
+    <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:22px;padding:32px 28px;width:100%;max-width:480px;box-shadow:0 8px 36px rgba(45,27,20,.08);">
 
         {{-- Header --}}
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">
-            <div style="width:40px;height:40px;border-radius:11px;background:#934B19;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(147,75,25,0.22);">
+            <div style="width:40px;height:40px;border-radius:11px;background:var(--primary);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(147,75,25,0.22);">
                 <i class="fa-regular fa-calendar-days" style="color:#fff;font-size:15px;"></i>
             </div>
             <span style="font-size:17px;font-weight:800;color:var(--dark);">Generate Itinerary</span>
@@ -2049,10 +2057,10 @@ window.sortAttractions = function(dir) {
                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Trip 1</span>
             </div>
             <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
-                <div style="background:#FBF8F5;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
+                <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
                     <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ trim($manualFrom) }} to {{ trim($manualTo) }}</span>
                 </div>
-                <div style="background:#FBF8F5;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
+                <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
                     <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $sd }} – {{ $ed }}</span>
                 </div>
             </div>
@@ -2065,10 +2073,10 @@ window.sortAttractions = function(dir) {
                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Trip 2</span>
             </div>
             <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
-                <div style="background:#FBF8F5;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
+                <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
                     <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ trim($manualTo) }} to {{ trim($mcTo) }}</span>
                 </div>
-                <div style="background:#FBF8F5;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
+                <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
                     <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $mcSd }} – {{ $mcEd }}</span>
                 </div>
             </div>
@@ -2081,7 +2089,7 @@ window.sortAttractions = function(dir) {
                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Destination</span>
             </div>
             <div style="flex:1;min-width:0;">
-                <div style="background:#FBF8F5;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
+                <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
                     <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $route }}</span>
                 </div>
             </div>
@@ -2094,7 +2102,7 @@ window.sortAttractions = function(dir) {
                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Travel Dates</span>
             </div>
             <div style="flex:1;min-width:0;">
-                <div style="background:#FBF8F5;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
+                <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
                     <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $sd }} – {{ $ed }}</span>
                 </div>
             </div>
@@ -2108,7 +2116,7 @@ window.sortAttractions = function(dir) {
                 <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Budget Range</span>
             </div>
             <div style="flex:1;min-width:0;">
-                <div style="background:#FBF8F5;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
+                <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
                     <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $budMin }} – {{ $budMax }}</span>
                 </div>
             </div>
@@ -2122,7 +2130,7 @@ window.sortAttractions = function(dir) {
             </div>
             <div style="flex:1;display:flex;flex-wrap:wrap;gap:6px;padding-top:2px;">
                 @forelse($allTags as $tag)
-                <span style="display:inline-flex;align-items:center;gap:5px;background:#F5F0EB;color:#934B19;font-size:11px;font-weight:700;padding:5px 11px;border-radius:20px;">
+                <span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg);color:var(--primary);font-size:11px;font-weight:700;padding:5px 11px;border-radius:20px;">
                     <i class="fa-solid fa-tag" style="font-size:9px;"></i> {{ $tag }}
                 </span>
                 @empty
@@ -2133,8 +2141,8 @@ window.sortAttractions = function(dir) {
 
         {{-- Generate button --}}
         <button wire:click="generateItinerary" wire:loading.attr="disabled"
-                style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#934B19;color:#fff;border:none;border-radius:12px;padding:14px 24px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 6px 18px rgba(147,75,25,0.24);transition:background .18s,gap .18s;"
-                onmouseenter="this.style.background='#6A3500';this.style.gap='13px'" onmouseleave="this.style.background='#934B19';this.style.gap='10px'">
+                style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:14px 24px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 6px 18px rgba(147,75,25,0.24);transition:background .18s,gap .18s;"
+                onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='13px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='10px'">
             <span wire:loading.remove wire:target="generateItinerary">
                 Generate Itinerary <i class="fa-solid fa-wand-magic-sparkles" style="font-size:13px;"></i>
             </span>
@@ -2330,47 +2338,47 @@ window.sortAttractions = function(dir) {
 .itin8-topbar{background:transparent;border:none;padding:0;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .itin8-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
 .itin8-tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:#4f4441;line-height:16px;}
-.itin8-tag i{font-size:9px;color:#817470;}
+.itin8-tag i{font-size:9px;color:var(--muted);}
 .itin8-left{flex:1;min-width:0;}
 .itin8-right{flex-shrink:0;width:340px;}
-.itin8-cost-card{background:#fff;background-clip:padding-box;border:1px solid #d3c3be;border-radius:14px;overflow:hidden;padding:12px 16px;box-shadow:0 2px 8px rgba(45,27,20,0.08);text-align:right;width:100%;box-sizing:border-box;isolation:isolate;}
+.itin8-cost-card{background:var(--bg-white);background-clip:padding-box;border:1px solid var(--border);border-radius:14px;overflow:hidden;padding:12px 16px;box-shadow:0 2px 8px rgba(45,27,20,0.08);text-align:right;width:100%;box-sizing:border-box;isolation:isolate;}
 .itin8-cost-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#4f4441;margin-bottom:6px;line-height:16px;}
 .itin8-budget-status{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:16px;padding:2px 10px;border-radius:99px;margin-bottom:6px;}
 .itin8-budget-status.under{background:#FEF3C7;color:#b07e00;}
 .itin8-budget-status.over{background:#FEE2E2;color:#ba1a1a;}
-.itin8-budget-status.on{background:#FDF3EB;color:#934b19;}
-.itin8-cost-val{font-size:28px;font-weight:700;color:#934b19;line-height:1.15;letter-spacing:-0.01em;}
+.itin8-budget-status.on{background:#FDF3EB;color:var(--primary);}
+.itin8-cost-val{font-size:28px;font-weight:700;color:var(--primary);line-height:1.15;letter-spacing:-0.01em;}
 .itin8-actions{display:flex;align-items:center;gap:8px;margin-top:12px;width:100%;}
 .itin8-actions .itin8-btn-ghost,.itin8-actions .itin8-btn-save{flex:1;justify-content:center;}
-.itin8-btn-ghost{background:#ffffff;border:1px solid #d3c3be;color:#1c1c19;border-radius:9px;padding:8px 16px;font-size:12px;font-weight:700;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:16px;transition:background .18s,border-color .18s;}
-.itin8-btn-ghost:hover{background:#f5f0eb;border-color:#D9C4AE;}
-.itin8-btn-save{background:#934b19;color:#ffffff;border:none;border-radius:9px;padding:8px 18px;font-size:12px;font-weight:700;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:16px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s;}
-.itin8-btn-save:hover{background:#6A3500;}
+.itin8-btn-ghost{background:var(--bg-white)fff;border:1px solid var(--border);color:var(--dark);border-radius:9px;padding:8px 16px;font-size:12px;font-weight:700;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:16px;transition:background .18s,border-color .18s;}
+.itin8-btn-ghost:hover{background:var(--bg);border-color:#D9C4AE;}
+.itin8-btn-save{background:var(--primary);color:#ffffff;border:none;border-radius:9px;padding:8px 18px;font-size:12px;font-weight:700;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:16px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s;}
+.itin8-btn-save:hover{background:var(--primary-dark);}
 .itin8-desc{font-size:14px;font-weight:400;color:#4f4441;line-height:20px;margin:0;}
 
 /* Day sections — stacked vertically, one below another */
 .itin8-days{display:flex;flex-direction:column;gap:18px;padding-bottom:20px;}
-.itin8-day-col{display:flex;flex-direction:column;background:#fff;border:1px solid #e8ddd4;border-radius:18px;padding:20px 22px 22px;box-shadow:0 4px 16px rgba(45,27,20,0.06);}
-.itin8-day-header{display:flex;align-items:center;gap:12px;padding:0 0 14px;border-bottom:1px solid #f0ede8;margin-bottom:18px;}
-.itin8-day-num{width:40px;height:40px;border-radius:9999px;background:#934b19;color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;font-family:'Hanken Grotesk',sans-serif;}
-.itin8-day-label{font-size:15px;font-weight:700;color:#1c1c19;line-height:20px;}
-.itin8-day-date{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#817470;margin-bottom:1px;}
+.itin8-day-col{display:flex;flex-direction:column;background:var(--bg-white);border:1px solid var(--border);border-radius:18px;padding:20px 22px 22px;box-shadow:0 4px 16px rgba(45,27,20,0.06);}
+.itin8-day-header{display:flex;align-items:center;gap:12px;padding:0 0 14px;border-bottom:1px solid var(--bg);margin-bottom:18px;}
+.itin8-day-num{width:40px;height:40px;border-radius:9999px;background:var(--primary);color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;font-family:'Hanken Grotesk',sans-serif;}
+.itin8-day-label{font-size:15px;font-weight:700;color:var(--dark);line-height:20px;}
+.itin8-day-date{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:1px;}
 
 /* Vertical timeline of activities within a day */
 .itin8-timeline{position:relative;padding-left:26px;}
 .itin8-timeline::before{content:'';position:absolute;left:15px;top:8px;bottom:8px;width:2px;background:#EDE0D6;}
-.itin8-act-card{position:relative;background:#fcf9f6;border-radius:12px;border:1px solid #efe6dd;padding:14px 16px;font-family:'Hanken Grotesk',sans-serif;margin-bottom:14px;}
+.itin8-act-card{position:relative;background:var(--bg-white);border-radius:12px;border:1px solid #efe6dd;padding:14px 16px;font-family:'Hanken Grotesk',sans-serif;margin-bottom:14px;}
 .itin8-act-card:last-child{margin-bottom:0;}
 .itin8-act-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-.itin8-act-icon{position:absolute;left:-26px;top:14px;width:32px;height:32px;border-radius:9999px;border:2px solid #fff;background:#fcf9f6;box-shadow:0 0 0 2px #d3c3be;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.itin8-act-icon{position:absolute;left:-26px;top:14px;width:32px;height:32px;border-radius:9999px;border:2px solid #fff;background:var(--bg-white);box-shadow:0 0 0 2px var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .itin8-act-icon .material-symbols-outlined{font-size:16px;}
-.itin8-act-time{font-size:11px;font-weight:600;color:#817470;line-height:16px;}
+.itin8-act-time{font-size:11px;font-weight:600;color:var(--muted);line-height:16px;}
 .itin8-act-body{margin-bottom:8px;}
-.itin8-act-title{font-size:14px;font-weight:700;color:#1c1c19;line-height:19px;margin-bottom:3px;}
+.itin8-act-title{font-size:14px;font-weight:700;color:var(--dark);line-height:19px;margin-bottom:3px;}
 .itin8-act-sub{font-size:12px;font-weight:400;color:#4f4441;line-height:17px;font-style:italic;}
 .itin8-act-footer{border-top:1px solid #ece2d8;padding-top:8px;display:flex;align-items:center;justify-content:space-between;}
-.itin8-act-cost-label{font-size:11px;color:#817470;font-weight:500;}
-.itin8-act-cost-val{font-size:13px;font-weight:700;color:#934b19;}
+.itin8-act-cost-label{font-size:11px;color:var(--muted);font-weight:500;}
+.itin8-act-cost-val{font-size:13px;font-weight:700;color:var(--primary);}
 .itin8-loading{display:flex;align-items:center;gap:10px;padding:32px 0;color:#4f4441;font-size:14px;}
 .material-symbols-outlined{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;}
 </style>
@@ -2388,13 +2396,13 @@ window.sortAttractions = function(dir) {
         <div class="itin8-left">
             @if($flightTripType === 'multi_city' && $mcTo && $itineraryLeg === 2)
             <button wire:click="backToLeg1Itinerary"
-                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
+                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
                 <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Suggested Itineraries
             </button>
             @endif
             <div class="itin8-meta">
                 @if($flightTripType === 'multi_city' && $mcTo)
-                <div class="itin8-tag" style="background:#F5F0EB;color:#934B19;font-weight:700;padding:3px 10px;border-radius:20px;">Leg {{ $itineraryLeg }} of 2</div>
+                <div class="itin8-tag" style="background:var(--bg);color:var(--primary);font-weight:700;padding:3px 10px;border-radius:20px;">Leg {{ $itineraryLeg }} of 2</div>
                 @endif
                 <div class="itin8-tag"><i class="fa-regular fa-calendar"></i> {{ $sd8 }} - {{ $ed8 }}</div>
                 @if(count($allTags8))
@@ -2447,7 +2455,7 @@ window.sortAttractions = function(dir) {
     {{-- AI loading state --}}
     @if($aiLoading)
     <div class="itin8-loading">
-        <i class="fa-solid fa-spinner fa-spin" style="color:#934B19;font-size:18px;"></i>
+        <i class="fa-solid fa-spinner fa-spin" style="color:var(--primary);font-size:18px;"></i>
         Generating itinerary options for your trip…
     </div>
     @endif
@@ -2461,15 +2469,15 @@ window.sortAttractions = function(dir) {
     {{-- Every AI provider failed/timed out for every option — surface this
          instead of silently rendering an empty page. --}}
     @if(!$aiLoading && empty($optionsToRender))
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-triangle-exclamation" style="font-size:24px;color:#fff;"></i>
         </div>
-        <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:#1A0A00;">Couldn't generate itinerary suggestions</h3>
-        <p style="color:#9B8EA0;font-size:13px;max-width:320px;line-height:1.6;margin:0 0 18px;">Our AI providers are temporarily unavailable or rate-limited. Please try again in a moment.</p>
+        <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">Couldn't generate itinerary suggestions</h3>
+        <p style="color:var(--muted);font-size:13px;max-width:320px;line-height:1.6;margin:0 0 18px;">Our AI providers are temporarily unavailable or rate-limited. Please try again in a moment.</p>
         <button wire:click="regenerateItineraryOptions" wire:loading.attr="disabled" wire:target="regenerateItineraryOptions"
-                style="background:#934B19;color:#fff;border:none;border-radius:10px;padding:11px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s;"
-                onmouseenter="this.style.background='#6A3500'" onmouseleave="this.style.background='#934B19'">
+                style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:11px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s;"
+                onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
             <i class="fa-solid fa-rotate" style="font-size:11px;"></i> Try Again
         </button>
     </div>
@@ -2486,8 +2494,8 @@ window.sortAttractions = function(dir) {
         // User-selected card types
         'Flight'                 => ['icon'=>'flight_takeoff', 'color'=>'#F1A53D'],
         'Flight (Leg 2)'         => ['icon'=>'flight_takeoff', 'color'=>'#F1A53D'],
-        'Accommodation'          => ['icon'=>'hotel',           'color'=>'#934b19'],
-        'Accommodation (Leg 2)'  => ['icon'=>'hotel',           'color'=>'#934b19'],
+        'Accommodation'          => ['icon'=>'hotel',           'color'=>'var(--primary)'],
+        'Accommodation (Leg 2)'  => ['icon'=>'hotel',           'color'=>'var(--primary)'],
         'Food & Dining'          => ['icon'=>'restaurant',      'color'=>'#ba4a4a'],
         'Activity'               => ['icon'=>'explore',         'color'=>'#4f7b94'],
         'Transport'              => ['icon'=>'directions_car',  'color'=>'#6b5e8c'],
@@ -2495,8 +2503,8 @@ window.sortAttractions = function(dir) {
         'Shopping'               => ['icon'=>'shopping_bag',    'color'=>'#b07e00'],
         // AI-returned types (lowercase)
         'flight'                 => ['icon'=>'flight_takeoff', 'color'=>'#F1A53D'],
-        'hotel'                  => ['icon'=>'hotel',           'color'=>'#934b19'],
-        'accommodation'          => ['icon'=>'hotel',           'color'=>'#934b19'],
+        'hotel'                  => ['icon'=>'hotel',           'color'=>'var(--primary)'],
+        'accommodation'          => ['icon'=>'hotel',           'color'=>'var(--primary)'],
         'food'                   => ['icon'=>'restaurant',      'color'=>'#ba4a4a'],
         'dining'                 => ['icon'=>'restaurant',      'color'=>'#ba4a4a'],
         'restaurant'             => ['icon'=>'restaurant',      'color'=>'#ba4a4a'],
@@ -2512,7 +2520,7 @@ window.sortAttractions = function(dir) {
         'adventure'              => ['icon'=>'hiking',          'color'=>'#4f7b94'],
         'nightlife'              => ['icon'=>'nightlife',       'color'=>'#7b5e94'],
         'spa'                    => ['icon'=>'spa',             'color'=>'#4f9648'],
-        'default'                => ['icon'=>'explore',         'color'=>'#817470'],
+        'default'                => ['icon'=>'explore',         'color'=>'var(--muted)'],
     ];
     @endphp
 
@@ -2548,23 +2556,23 @@ window.sortAttractions = function(dir) {
         @endphp
         <div wire:click="selectItineraryOption({{ $optIdx }})"
              style="cursor:pointer;border-radius:18px;padding:22px 20px;display:flex;flex-direction:column;transition:box-shadow .2s,transform .2s;
-                    {{ $optActive ? 'background:#FDF3EB;border:1.5px solid #934b19;box-shadow:0 10px 28px rgba(147,75,25,0.16);' : 'background:#fff;border:1.5px solid #e8ddd4;' }}"
+                    {{ $optActive ? 'background:#FDF3EB;border:1.5px solid var(--primary);box-shadow:0 10px 28px rgba(147,75,25,0.16);' : 'background:var(--bg-white);border:1.5px solid var(--border);' }}"
              onmouseenter="if(!{{ $optActive ? 'true' : 'false' }}){this.style.boxShadow='0 10px 28px rgba(45,27,20,0.10)';this.style.transform='translateY(-2px)';}"
              onmouseleave="if(!{{ $optActive ? 'true' : 'false' }}){this.style.boxShadow='none';this.style.transform='none';}">
 
             {{-- Header --}}
-            <div style="font-size:13px;font-weight:700;color:{{ $optActive ? '#934b19' : '#1c1c19' }};margin-bottom:2px;">{{ $optLabel }}</div>
-            <div style="font-size:11px;color:#817470;margin-bottom:14px;">{{ $sd8 }} – {{ $ed8 }}</div>
-            <div style="font-size:26px;font-weight:800;color:#934b19;line-height:1.1;margin-bottom:14px;">₱{{ number_format($optCost) }}</div>
+            <div style="font-size:13px;font-weight:700;color:{{ $optActive ? 'var(--primary)' : 'var(--dark)' }};margin-bottom:2px;">{{ $optLabel }}</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">{{ $sd8 }} – {{ $ed8 }}</div>
+            <div style="font-size:26px;font-weight:800;color:var(--primary);line-height:1.1;margin-bottom:14px;">₱{{ number_format($optCost) }}</div>
 
             <button type="button" style="width:100%;padding:9px 0;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:18px;font-family:'Hanken Grotesk',sans-serif;transition:background .18s;
-                           {{ $optActive ? 'background:#934b19;color:#fff;border:none;box-shadow:0 4px 12px rgba(147,75,25,0.2);' : 'background:#fff;color:#934b19;border:1.5px solid #934b19;' }}">
+                           {{ $optActive ? 'background:var(--primary);color:#fff;border:none;box-shadow:0 4px 12px rgba(147,75,25,0.2);' : 'background:var(--bg-white);color:var(--primary);border:1.5px solid var(--primary);' }}">
                 {{ $optActive ? 'Selected' : 'Select This Option' }}
             </button>
 
             {{-- Traveler's own selections — same across every option --}}
             @if(!empty($selCardsWithPicks))
-            <div style="font-size:11px;font-weight:700;color:#817470;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Your Selections</div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Your Selections</div>
             <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
                 @foreach($selCardsWithPicks as $sc8)
                 <div style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#4f4441;line-height:1.4;">
@@ -2576,7 +2584,7 @@ window.sortAttractions = function(dir) {
             @endif
 
             {{-- AI-suggested days for this specific option --}}
-            <div style="font-size:11px;font-weight:700;color:#817470;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">AI Suggested</div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">AI Suggested</div>
             <div style="display:flex;flex-direction:column;gap:6px;">
                 @foreach($optDaysPreview as $dpItem)
                 @if(!($dpItem['isUserDay'] ?? false))
@@ -2585,8 +2593,8 @@ window.sortAttractions = function(dir) {
                     $dpLabel = $dpItem['label'] ?? ('Day ' . $dpNum);
                 @endphp
                 <div style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#4f4441;line-height:1.4;">
-                    <i class="fa-solid fa-sparkles" style="color:#934b19;font-size:10px;margin-top:3px;flex-shrink:0;"></i>
-                    <span><strong style="color:#1c1c19;">Day {{ $dpNum }}:</strong> {{ $dpLabel }}</span>
+                    <i class="fa-solid fa-sparkles" style="color:var(--primary);font-size:10px;margin-top:3px;flex-shrink:0;"></i>
+                    <span><strong style="color:var(--dark);">Day {{ $dpNum }}:</strong> {{ $dpLabel }}</span>
                 </div>
                 @endif
                 @endforeach
@@ -2633,7 +2641,7 @@ window.sortAttractions = function(dir) {
                 <div class="itin8-act-card" style="position:relative;">
                     @if($act['isCustom'] ?? false)
                     <button wire:click="removeCustomActivity({{ $act['customIndex'] }})" title="Remove"
-                            style="position:absolute;top:8px;right:8px;background:none;border:none;color:#9B8EA0;cursor:pointer;font-size:12px;padding:2px;">
+                            style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px;">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                     @endif
@@ -2654,7 +2662,7 @@ window.sortAttractions = function(dir) {
                         @if($actFree)<span class="itin8-act-cost-val">FREE</span>
                         @elseif($actCost !== null && $actCost !== '' && $actCost != 0)
                             <span class="itin8-act-cost-val">{{ is_numeric($actCost) ? '₱'.number_format((float)$actCost) : $actCost }}</span>
-                        @else<span class="itin8-act-cost-val" style="color:#9B8EA0;font-weight:400;">—</span>
+                        @else<span class="itin8-act-cost-val" style="color:var(--muted);font-weight:400;">—</span>
                         @endif
                     </div>
                 </div>
@@ -2666,7 +2674,7 @@ window.sortAttractions = function(dir) {
 
     {{-- Add Custom Activity button --}}
     <div style="display:flex;justify-content:center;padding-top:4px;">
-        <button wire:click="openCustomActivityModal" style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:2px solid #934b19;border-radius:8px;padding:10px 20px;font-size:12px;font-weight:700;color:#934b19;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;">
+        <button wire:click="openCustomActivityModal" style="display:inline-flex;align-items:center;gap:8px;background:var(--bg-white);border:2px solid var(--primary);border-radius:8px;padding:10px 20px;font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;font-family:'Hanken Grotesk',sans-serif;">
             <span class="material-symbols-outlined" style="font-size:16px;">add</span> Add Custom Activity
         </button>
     </div>
@@ -2675,15 +2683,15 @@ window.sortAttractions = function(dir) {
     {{-- Add Custom Activity modal --}}
     @if($showCustomActivityModal)
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;" wire:click.self="closeCustomActivityModal">
-        <div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:24px;font-family:'Hanken Grotesk',sans-serif;">
+        <div style="background:var(--bg-white);border-radius:16px;max-width:420px;width:100%;padding:24px;font-family:'Hanken Grotesk',sans-serif;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                <span style="font-size:16px;font-weight:700;color:#1c1c19;">Add Custom Activity</span>
-                <button wire:click="closeCustomActivityModal" style="background:none;border:none;font-size:18px;cursor:pointer;color:#9CA3AF;line-height:1;">&times;</button>
+                <span style="font-size:16px;font-weight:700;color:var(--dark);">Add Custom Activity</span>
+                <button wire:click="closeCustomActivityModal" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);line-height:1;">&times;</button>
             </div>
 
             <div style="margin-bottom:12px;">
-                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Day</label>
-                <select wire:model="customActivityDay" style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;">
+                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:5px;">Day</label>
+                <select wire:model="customActivityDay" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;">
                     @foreach($allDays as $d)
                     <option value="{{ $d['day'] }}">Day {{ $d['day'] }} · {{ $d['label'] ?? 'Itinerary' }}</option>
                     @endforeach
@@ -2691,20 +2699,20 @@ window.sortAttractions = function(dir) {
             </div>
 
             <div style="margin-bottom:12px;">
-                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Title</label>
+                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:5px;">Title</label>
                 <input type="text" wire:model="customActivityTitle" placeholder="e.g. Souvenir shopping at the market"
-                       style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+                       style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
             </div>
 
             <div style="display:flex;gap:10px;margin-bottom:12px;">
                 <div style="flex:1;">
-                    <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Time</label>
+                    <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:5px;">Time</label>
                     <input type="time" wire:model="customActivityTime"
-                           style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+                           style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
                 </div>
                 <div style="flex:1;">
-                    <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Type</label>
-                    <select wire:model="customActivityType" style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;">
+                    <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:5px;">Type</label>
+                    <select wire:model="customActivityType" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;">
                         @foreach(['Activity','Food & Dining','Attraction','Transport','Shopping'] as $typeOpt)
                         <option value="{{ $typeOpt }}">{{ $typeOpt }}</option>
                         @endforeach
@@ -2713,22 +2721,22 @@ window.sortAttractions = function(dir) {
             </div>
 
             <div style="margin-bottom:12px;">
-                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Est. Cost (₱, optional)</label>
+                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:5px;">Est. Cost (₱, optional)</label>
                 <input type="number" min="0" step="1" wire:model="customActivityCost" placeholder="0"
-                       style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+                       style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
             </div>
 
             <div style="margin-bottom:20px;">
-                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#817470;display:block;margin-bottom:5px;">Notes (optional)</label>
+                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:5px;">Notes (optional)</label>
                 <textarea wire:model="customActivityDescription" rows="2" placeholder="Any extra detail…"
-                          style="width:100%;border:1.5px solid #d3c3be;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;"></textarea>
+                          style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;"></textarea>
             </div>
 
             <div style="display:flex;gap:10px;">
-                <button wire:click="closeCustomActivityModal" style="flex:1;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:8px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
+                <button wire:click="closeCustomActivityModal" style="flex:1;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:8px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
                     Cancel
                 </button>
-                <button wire:click="addCustomActivity" style="flex:1;background:#934b19;color:#fff;border:none;border-radius:8px;padding:11px 0;font-size:13px;font-weight:700;cursor:pointer;">
+                <button wire:click="addCustomActivity" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:11px 0;font-size:13px;font-weight:700;cursor:pointer;">
                     Add Activity
                 </button>
             </div>
@@ -2849,19 +2857,19 @@ window.sortAttractions = function(dir) {
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-        <button wire:click="$set('step', 8)" style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#934B19;font-size:13px;font-weight:600;cursor:pointer;padding:0;">
+        <button wire:click="$set('step', 8)" style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;">
             <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Suggested Itineraries
         </button>
         <div style="display:flex;gap:8px;">
             <button wire:click="downloadPdf" wire:loading.attr="disabled" wire:target="downloadPdf"
-                    style="width:170px;padding:8px 18px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-size:12px;font-weight:700;color:var(--dark);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;transition:border-color .18s,background .18s;"
-                    onmouseenter="this.style.background='#F8F5F2';this.style.borderColor='#D9C4AE'" onmouseleave="this.style.background='#fff';this.style.borderColor='var(--border)'">
+                    style="width:170px;padding:8px 18px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg-white);font-size:12px;font-weight:700;color:var(--dark);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;transition:border-color .18s,background .18s;"
+                    onmouseenter="this.style.background='var(--bg)';this.style.borderColor='#D9C4AE'" onmouseleave="this.style.background='#fff';this.style.borderColor='var(--border)'">
                 <span wire:loading.remove wire:target="downloadPdf"><i class="fa-solid fa-download" style="font-size:10px;"></i> Download PDF</span>
                 <span wire:loading wire:target="downloadPdf"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
             <button wire:click="saveItinerary" wire:loading.attr="disabled"
-                    style="width:170px;padding:8px 18px;border:none;border-radius:10px;background:#934B19;color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s;"
-                    onmouseenter="this.style.background='#6A3500'" onmouseleave="this.style.background='#934B19'">
+                    style="width:170px;padding:8px 18px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s;"
+                    onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
                 <span wire:loading.remove wire:target="saveItinerary">Confirm Trip <i class="fa-solid fa-check" style="font-size:10px;"></i></span>
                 <span wire:loading wire:target="saveItinerary"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
@@ -2875,25 +2883,25 @@ window.sortAttractions = function(dir) {
         {{-- Left column --}}
         <div>
             {{-- Route & dates card --}}
-            <div style="background:#fff;border:1.5px solid var(--border);border-radius:18px;padding:24px 26px;margin-bottom:14px;box-shadow:0 4px 16px rgba(45,27,20,0.05);">
+            <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:18px;padding:24px 26px;margin-bottom:14px;box-shadow:0 4px 16px rgba(45,27,20,0.05);">
                 @if($s9isMultiCity)
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:12px;">Trip 1</div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--primary);background:var(--bg);display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:12px;">Trip 1</div>
                 @endif
                 <div style="display:flex;align-items:flex-start;gap:22px;flex-wrap:wrap;">
                     <div>
                         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">FROM</div>
-                        <div style="font-size:21px;font-weight:800;color:#934B19;">{{ $s9from }}</div>
+                        <div style="font-size:21px;font-weight:800;color:var(--primary);">{{ $s9from }}</div>
                         <div style="font-size:11px;color:var(--muted);">{{ $selectedFlight['dep_id'] ?? 'MNL' }}</div>
                     </div>
                     <div style="flex:1;min-width:120px;margin-top:26px;display:flex;flex-direction:column;align-items:center;">
                         <div style="font-size:11px;color:var(--muted);margin-bottom:5px;text-align:center;">{{ $s9days }}-Day Journey</div>
                         <div style="border-top:2px dashed #D1C5B8;position:relative;width:100%;">
-                            <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #D1C5B8;display:inline-block;box-sizing:border-box;"></span>
+                            <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:var(--bg-white);border:2px solid #D1C5B8;display:inline-block;box-sizing:border-box;"></span>
                         </div>
                     </div>
                     <div>
                         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">TO</div>
-                        <div style="font-size:21px;font-weight:800;color:#934B19;">{{ $s9leg1Dest }}</div>
+                        <div style="font-size:21px;font-weight:800;color:var(--primary);">{{ $s9leg1Dest }}</div>
                         <div style="font-size:11px;color:var(--muted);">{{ $selectedFlight['arr_id'] ?? '' }}</div>
                     </div>
                     <div style="border-left:1.5px solid var(--border);padding-left:22px;">
@@ -2905,22 +2913,22 @@ window.sortAttractions = function(dir) {
 
                 @if($s9isMultiCity)
                 <div style="border-top:1.5px solid var(--border);margin:20px 0;"></div>
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:12px;">Trip 2</div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--primary);background:var(--bg);display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:12px;">Trip 2</div>
                 <div style="display:flex;align-items:flex-start;gap:22px;flex-wrap:wrap;">
                     <div>
                         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">FROM</div>
-                        <div style="font-size:21px;font-weight:800;color:#934B19;">{{ $s9leg1Dest }}</div>
+                        <div style="font-size:21px;font-weight:800;color:var(--primary);">{{ $s9leg1Dest }}</div>
                         <div style="font-size:11px;color:var(--muted);">{{ $selectedMcFlight['dep_id'] ?? '' }}</div>
                     </div>
                     <div style="flex:1;min-width:120px;margin-top:26px;display:flex;flex-direction:column;align-items:center;">
                         <div style="font-size:11px;color:var(--muted);margin-bottom:5px;text-align:center;">{{ $s9leg2Days }}-Day Journey</div>
                         <div style="border-top:2px dashed #D1C5B8;position:relative;width:100%;">
-                            <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #D1C5B8;display:inline-block;box-sizing:border-box;"></span>
+                            <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:var(--bg-white);border:2px solid #D1C5B8;display:inline-block;box-sizing:border-box;"></span>
                         </div>
                     </div>
                     <div>
                         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">TO</div>
-                        <div style="font-size:21px;font-weight:800;color:#934B19;">{{ $s9leg2Dest }}</div>
+                        <div style="font-size:21px;font-weight:800;color:var(--primary);">{{ $s9leg2Dest }}</div>
                         <div style="font-size:11px;color:var(--muted);">{{ $selectedMcFlight['arr_id'] ?? '' }}</div>
                     </div>
                     <div style="border-left:1.5px solid var(--border);padding-left:22px;">
@@ -2933,7 +2941,7 @@ window.sortAttractions = function(dir) {
             </div>
 
             {{-- Itinerary collapsible --}}
-            <div x-data="{ open: false }" style="background:#fff;border:1.5px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 16px rgba(45,27,20,0.05);">
+            <div x-data="{ open: false }" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 16px rgba(45,27,20,0.05);">
                 <button @click="open=!open" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:none;border:none;cursor:pointer;">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <i class="fa-regular fa-calendar-check" style="color:var(--muted);font-size:14px;"></i>
@@ -2943,13 +2951,13 @@ window.sortAttractions = function(dir) {
                 </button>
                 <div x-show="open" x-transition style="border-top:1px solid var(--border);padding:18px 22px;">
                     @if($s9isMultiCity)
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:10px;">Leg 1 — {{ $s9leg1Dest }}</div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--primary);background:var(--bg);display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:10px;">Leg 1 — {{ $s9leg1Dest }}</div>
                     @endif
                     @if(!empty($s9picks))
                     <div style="margin-bottom:10px;">
-                        <div style="font-size:10px;font-weight:700;color:#934B19;margin-bottom:5px;">Day 1 — Arrival</div>
+                        <div style="font-size:10px;font-weight:700;color:var(--primary);margin-bottom:5px;">Day 1 — Arrival</div>
                         @foreach($s9picks as $pk9)
-                        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid #F5F0EB;">
+                        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid var(--bg);">
                             <span>{{ $pk9['label'] }} · {{ $pk9['val'] }}</span>
                             <span style="color:var(--muted);font-weight:600;">{{ $pk9['cost'] ? '₱'.number_format($pk9['cost']) : 'Free' }}</span>
                         </div>
@@ -2959,9 +2967,9 @@ window.sortAttractions = function(dir) {
                     @if(!empty($s9leg1AiDays))
                         @foreach($s9leg1AiDays as $i => $d9)
                         <div style="margin-bottom:10px;">
-                            <div style="font-size:10px;font-weight:700;color:#934B19;margin-bottom:5px;">Day {{ $i+2 }} — {{ $d9['label'] ?? '' }}</div>
+                            <div style="font-size:10px;font-weight:700;color:var(--primary);margin-bottom:5px;">Day {{ $i+2 }} — {{ $d9['label'] ?? '' }}</div>
                             @foreach($d9['activities'] ?? [] as $a9)
-                            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid #F5F0EB;">
+                            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid var(--bg);">
                                 <span>{{ $a9['time'] ?? '' }} · {{ $a9['title'] ?? '' }}</span>
                                 <span style="color:var(--muted);font-weight:600;">{{ $a9['cost'] ? '₱'.number_format($a9['cost']) : 'Free' }}</span>
                             </div>
@@ -2972,12 +2980,12 @@ window.sortAttractions = function(dir) {
 
                     @if($s9isMultiCity)
                     <div style="border-top:1px solid var(--border);margin:14px 0;"></div>
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:10px;">Leg 2 — {{ $s9leg2Dest }}</div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--primary);background:var(--bg);display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:10px;">Leg 2 — {{ $s9leg2Dest }}</div>
                     @if(!empty($s9picksLeg2))
                     <div style="margin-bottom:10px;">
-                        <div style="font-size:10px;font-weight:700;color:#934B19;margin-bottom:5px;">Day 1 — Arrival</div>
+                        <div style="font-size:10px;font-weight:700;color:var(--primary);margin-bottom:5px;">Day 1 — Arrival</div>
                         @foreach($s9picksLeg2 as $pk9)
-                        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid #F5F0EB;">
+                        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid var(--bg);">
                             <span>{{ $pk9['label'] }} · {{ $pk9['val'] }}</span>
                             <span style="color:var(--muted);font-weight:600;">{{ $pk9['cost'] ? '₱'.number_format($pk9['cost']) : 'Free' }}</span>
                         </div>
@@ -2987,9 +2995,9 @@ window.sortAttractions = function(dir) {
                     @if(!empty($s9leg2AiDays))
                         @foreach($s9leg2AiDays as $i => $d9)
                         <div style="margin-bottom:10px;">
-                            <div style="font-size:10px;font-weight:700;color:#934B19;margin-bottom:5px;">Day {{ $i+2 }} — {{ $d9['label'] ?? '' }}</div>
+                            <div style="font-size:10px;font-weight:700;color:var(--primary);margin-bottom:5px;">Day {{ $i+2 }} — {{ $d9['label'] ?? '' }}</div>
                             @foreach($d9['activities'] ?? [] as $a9)
-                            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid #F5F0EB;">
+                            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid var(--bg);">
                                 <span>{{ $a9['time'] ?? '' }} · {{ $a9['title'] ?? '' }}</span>
                                 <span style="color:var(--muted);font-weight:600;">{{ $a9['cost'] ? '₱'.number_format($a9['cost']) : 'Free' }}</span>
                             </div>
@@ -3006,7 +3014,7 @@ window.sortAttractions = function(dir) {
             </div>
 
             {{-- Selection Summary collapsible --}}
-            <div x-data="{ open: false }" style="background:#fff;border:1.5px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 4px 16px rgba(45,27,20,0.05);">
+            <div x-data="{ open: false }" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 4px 16px rgba(45,27,20,0.05);">
                 <button @click="open=!open" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:none;border:none;cursor:pointer;">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <i class="fa-regular fa-bookmark" style="color:var(--muted);font-size:14px;"></i>
@@ -3016,10 +3024,10 @@ window.sortAttractions = function(dir) {
                 </button>
                 <div x-show="open" x-transition style="border-top:1px solid var(--border);padding:18px 22px;">
                     @if($s9isMultiCity)
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:8px;">Leg 1 — {{ $s9leg1Dest }}</div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--primary);background:var(--bg);display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:8px;">Leg 1 — {{ $s9leg1Dest }}</div>
                     @endif
                     @foreach($s9picks as $pk)
-                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EB;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bg);">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <div style="width:28px;height:28px;border-radius:7px;background:{{ $pk['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                 <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:{{ $pk['color'] }};"></i>
@@ -3030,16 +3038,16 @@ window.sortAttractions = function(dir) {
                             </div>
                         </div>
                         <div style="text-align:right;">
-                            <button wire:click="editFromSummary({{ $pk['editStep'] }})" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:#934B19;background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
-                            <div style="font-size:12px;font-weight:700;color:#1A0A00;">{{ $pk['cost'] ? '₱'.number_format($pk['cost']) : 'Free' }}</div>
+                            <button wire:click="editFromSummary({{ $pk['editStep'] }})" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
+                            <div style="font-size:12px;font-weight:700;color:var(--dark);">{{ $pk['cost'] ? '₱'.number_format($pk['cost']) : 'Free' }}</div>
                         </div>
                     </div>
                     @endforeach
 
                     @if($s9isMultiCity)
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#934B19;background:#F5F0EB;display:inline-block;padding:3px 10px;border-radius:20px;margin:14px 0 8px;">Leg 2 — {{ $s9leg2Dest }}</div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--primary);background:var(--bg);display:inline-block;padding:3px 10px;border-radius:20px;margin:14px 0 8px;">Leg 2 — {{ $s9leg2Dest }}</div>
                     @foreach($s9picksLeg2 as $pk)
-                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EB;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bg);">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <div style="width:28px;height:28px;border-radius:7px;background:{{ $pk['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                 <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:{{ $pk['color'] }};"></i>
@@ -3050,8 +3058,8 @@ window.sortAttractions = function(dir) {
                             </div>
                         </div>
                         <div style="text-align:right;">
-                            <button wire:click="editFromSummary({{ $pk['editStep'] }})" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:#934B19;background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
-                            <div style="font-size:12px;font-weight:700;color:#1A0A00;">{{ $pk['cost'] ? '₱'.number_format($pk['cost']) : 'Free' }}</div>
+                            <button wire:click="editFromSummary({{ $pk['editStep'] }})" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
+                            <div style="font-size:12px;font-weight:700;color:var(--dark);">{{ $pk['cost'] ? '₱'.number_format($pk['cost']) : 'Free' }}</div>
                         </div>
                     </div>
                     @endforeach
@@ -3068,8 +3076,8 @@ window.sortAttractions = function(dir) {
                             </div>
                         </div>
                         <div style="text-align:right;">
-                            <button wire:click="editFromSummary(6)" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:#934B19;background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
-                            <div style="font-size:12px;font-weight:700;color:#1A0A00;">₱{{ number_format($s9emergency) }}</div>
+                            <button wire:click="editFromSummary(6)" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
+                            <div style="font-size:12px;font-weight:700;color:var(--dark);">₱{{ number_format($s9emergency) }}</div>
                         </div>
                     </div>
                 </div>
@@ -3077,7 +3085,7 @@ window.sortAttractions = function(dir) {
         </div>
 
         {{-- Right column: Cost Breakdown --}}
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:18px;padding:26px;position:sticky;top:80px;box-shadow:0 4px 16px rgba(45,27,20,0.05);">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:18px;padding:26px;position:sticky;top:80px;box-shadow:0 4px 16px rgba(45,27,20,0.05);">
             <div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:18px;">Cost Breakdown</div>
 
             @php
@@ -3090,8 +3098,8 @@ window.sortAttractions = function(dir) {
             @endphp
             @foreach($s9rows as [$lbl,$amt])
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:11px 0;border-bottom:1px solid #F3F0EB;">
-                <span style="color:#6B7280;">{{ $lbl }}</span>
-                <span style="font-weight:600;color:#1A0A00;">₱ {{ number_format($amt) }}</span>
+                <span style="color:var(--muted);">{{ $lbl }}</span>
+                <span style="font-weight:600;color:var(--dark);">₱ {{ number_format($amt) }}</span>
             </div>
             @endforeach
 
@@ -3102,17 +3110,17 @@ window.sortAttractions = function(dir) {
 
             <div style="border-top:1.5px solid #E5E0D8;margin-top:6px;padding-top:16px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-size:15px;font-weight:700;color:#1A0A00;">Total Cost</span>
-                    <span style="font-size:22px;font-weight:900;color:{{ $s9over ? '#B91C1C' : '#934B19' }};">PHP {{ number_format($s9total) }}</span>
+                    <span style="font-size:15px;font-weight:700;color:var(--dark);">Total Cost</span>
+                    <span style="font-size:22px;font-weight:900;color:{{ $s9over ? '#B91C1C' : 'var(--primary)' }};">PHP {{ number_format($s9total) }}</span>
                 </div>
                 @if($s9budget > 0)
-                <div style="margin-top:5px;font-size:12px;color:{{ $s9over ? '#B91C1C' : '#9B8EA0' }};text-align:right;">
+                <div style="margin-top:5px;font-size:12px;color:{{ $s9over ? '#B91C1C' : 'var(--muted)' }};text-align:right;">
                     {{ $s9over ? 'Over ₱'.number_format($s9budget).' budget' : 'Within ₱'.number_format($s9budget).' budget' }}
                 </div>
                 @endif
             </div>
 
-            <div style="margin-top:16px;padding-top:14px;border-top:1px solid #F0EDE8;font-size:12px;color:var(--muted);line-height:1.6;">
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bg);font-size:12px;color:var(--muted);line-height:1.6;">
                 All estimates include upper-bound restaurant pricing.
             </div>
         </div>
@@ -3126,12 +3134,12 @@ window.sortAttractions = function(dir) {
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($showEmpty && !auth()->user()?->userProfile)
 <div class="empty-state-center" style="min-height:80vh;">
-    <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+    <div style="width:64px;height:64px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
         <i class="fa-solid fa-map-location-dot" style="font-size:28px;color:#fff;"></i>
     </div>
-    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">Set up your profile first</h2>
-    <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile so we can tailor budget suggestions before you plan your first trip.</p>
-    <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">Set up your profile first</h2>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile so we can tailor budget suggestions before you plan your first trip.</p>
+    <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
         <i class="fa-solid fa-user"></i> Set Up Your Profile First
     </a>
 </div>
@@ -3145,7 +3153,8 @@ window.sortAttractions = function(dir) {
 ═══════════════════════════════════════════════════════════════ --}}
 @if ((!$showEmpty || auth()->user()?->userProfile) && $planningMode === '' && $step === 0)
 <style>
-.mode-card{background:#fff;border:1.5px solid var(--border);border-radius:22px;overflow:hidden;cursor:pointer;transition:box-shadow .25s ease,transform .25s ease,border-color .25s ease;display:flex;flex-direction:column;height:fit-content;align-self:start;text-decoration:none;color:inherit;position:relative;}
+.mode-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:22px;overflow:hidden;cursor:pointer;transition:box-shadow .25s ease,transform .25s ease,border-color .25s ease;display:flex;flex-direction:column;height:fit-content;align-self:start;text-decoration:none;color:inherit;position:relative;outline:none;-webkit-tap-highlight-color:transparent;}
+.mode-card:focus,.mode-card:focus-visible{outline:none;}
 .mode-card:hover{box-shadow:0 20px 50px rgba(26,10,0,0.14);transform:translateY(-6px);border-color:#E7D4C4;}
 .mode-card .mode-img-wrap{height:320px;flex-shrink:0;overflow:hidden;position:relative;}
 .mode-card .mode-img-wrap img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease;display:block;}
@@ -3153,8 +3162,8 @@ window.sortAttractions = function(dir) {
 .mode-card .mode-img-fade{position:absolute;inset:0;background:linear-gradient(to top,rgba(20,10,4,0.55) 0%,rgba(20,10,4,0) 45%);}
 .mode-tags{position:absolute;bottom:16px;left:20px;right:20px;display:flex;flex-wrap:wrap;gap:6px;}
 .mode-tag{font-size:11px;font-weight:600;color:#fff;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.35);backdrop-filter:blur(3px);border-radius:20px;padding:4px 11px;}
-.mode-cta{font-size:13px;font-weight:800;letter-spacing:0.4px;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#934B19;border-radius:12px;padding:13px 22px;width:100%;box-sizing:border-box;transition:background .2s,gap .2s;}
-.mode-card:hover .mode-cta{background:#6A3500;gap:11px;}
+.mode-cta{font-size:13px;font-weight:800;letter-spacing:0.4px;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--primary);border-radius:12px;padding:13px 22px;width:100%;box-sizing:border-box;transition:background .2s,gap .2s;}
+.mode-card:hover .mode-cta{background:var(--primary-dark);gap:11px;}
 </style>
 <div style="display:flex;flex-direction:column;align-items:center;padding:16px 32px 20px;height:100%;box-sizing:border-box;position:relative;">
 

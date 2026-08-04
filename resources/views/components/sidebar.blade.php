@@ -17,7 +17,7 @@
 
     $bottomLinks = [
         ['href' => auth()->user()?->userProfile ? url('/profile') : url('/profile/setup'), 'icon' => 'fa-regular fa-user-circle', 'label' => 'Profile', 'key' => 'profile', 'segment' => 'profile'],
-        ['href' => url('/dashboard'),'icon' => 'fa-solid fa-gear', 'label' => 'Settings', 'key' => 'settings', 'segment' => 'settings'],
+        ['href' => url('/settings'), 'icon' => 'fa-solid fa-gear', 'label' => 'Settings', 'key' => 'settings', 'segment' => 'settings'],
     ];
 
     // Auto-detect active from URL if not explicitly passed
@@ -61,7 +61,7 @@
         @endforeach
 
         {{-- Divider --}}
-        <div style="height:1px;background:rgba(255,255,255,.08);margin:6px 12px;"></div>
+        <div class="sidebar-divider"></div>
 
         <div class="sidebar-bottom-links">
             {{-- Profile & Settings --}}

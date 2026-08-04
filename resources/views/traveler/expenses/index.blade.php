@@ -3,7 +3,8 @@
 
 @push('styles')
 <style>
-    .expense-dest-link { transition: background .15s ease, border-color .15s ease; }
+    .expense-dest-link { transition: background .12s ease; }
+    .expense-dest-link:hover { background: var(--primary-light) !important; }
     .expense-filter-select { transition: border-color .2s; }
 
     /* ── Transaction cards ─────────────────────────────────── */
@@ -20,7 +21,7 @@
     .txn-amount { font-size: 15px; font-weight: 700; color: var(--primary); flex-shrink: 0; font-variant-numeric: tabular-nums; }
     .txn-actions { display: flex; gap: 4px; flex-shrink: 0; }
     .txn-action-btn {
-        width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid var(--border); background: #fff;
+        width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--bg-white);
         color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
         font-size: 12px; transition: transform .12s ease, border-color .15s ease, color .15s ease;
     }
@@ -90,7 +91,7 @@
     @else
     <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;">No expenses yet</h2>
     <p class="text-muted" style="margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Plan a trip first before logging your expenses.</p>
-    <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+    <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
         <i class="fa-solid fa-plane"></i> Plan Your First Trip
     </a>
     @endif
@@ -137,31 +138,37 @@
 
     {{-- Header: destination selector --}}
     <div style="margin-bottom:20px;">
-        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--primary);text-transform:uppercase;margin-bottom:6px;">Destination</div>
         @if ($trips->count() === 1)
         @php $t = $trips->first(); @endphp
-        <div class="card" style="padding:13px 16px;display:flex;align-items:center;gap:10px;">
-            <i class="fa-solid fa-plane" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
-            <span style="font-size:14px;font-weight:600;">{{ $tripLabel($t) }}</span>
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;padding:12px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-sm);">
+            <div style="width:34px;height:34px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa-solid fa-plane" style="color:var(--primary);font-size:13px;"></i>
+            </div>
+            <span style="font-size:14px;font-weight:700;color:var(--dark);">{{ $tripLabel($t) }}</span>
         </div>
         @else
         <div x-data="{ open: false }" style="position:relative;">
             <button @click="open = !open" @click.away="open = false" type="button"
-                    class="card" style="width:100%;padding:13px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;border:1.5px solid var(--border);">
-                <i class="fa-solid fa-plane" style="color:var(--primary);font-size:13px;flex-shrink:0;"></i>
-                <span style="flex:1;font-size:14px;font-weight:600;">
+                    style="width:100%;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;box-shadow:var(--shadow-sm);transition:border-color .15s;"
+                    onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='var(--border)'">
+                <div style="width:34px;height:34px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa-solid fa-plane" style="color:var(--primary);font-size:13px;"></i>
+                </div>
+                <span style="flex:1;font-size:14px;font-weight:700;color:var(--dark);">
                     @php $sel = $trips->firstWhere('id', $selectedTripId); @endphp
                     {{ $sel ? $tripLabel($sel) : 'Select a trip' }}
                 </span>
-                <i class="fa-solid fa-chevron-down" style="font-size:11px;color:var(--muted);transition:transform .2s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+                <i class="fa-solid fa-chevron-down" style="font-size:11px;color:var(--muted);transition:transform .2s;flex-shrink:0;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
             </button>
             <div x-show="open" x-transition
-                 class="card" style="position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:50;overflow:hidden;">
+                 style="position:absolute;top:calc(100% + 8px);left:0;right:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;box-shadow:0 12px 32px rgba(45,27,20,.14);z-index:50;overflow:hidden;padding:6px;">
                 @foreach($trips as $t)
                 <a href="{{ route('expenses.index') }}?{{ http_build_query(array_merge($filterParams, ['trip_id' => $t->id])) }}"
                    class="expense-dest-link"
-                   style="display:flex;align-items:center;gap:10px;padding:12px 16px;text-decoration:none;background:{{ $selectedTripId == $t->id ? 'var(--primary-light)' : '#fff' }};border-bottom:1px solid var(--border-light);">
-                    <i class="fa-solid fa-plane" style="color:var(--primary);font-size:12px;flex-shrink:0;"></i>
+                   style="display:flex;align-items:center;gap:11px;text-decoration:none;background:{{ $selectedTripId == $t->id ? 'var(--primary-light)' : 'transparent' }};border-radius:11px;padding:10px 12px;">
+                    <div style="width:28px;height:28px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fa-solid fa-plane" style="color:var(--primary);font-size:11px;"></i>
+                    </div>
                     <span style="font-size:13px;font-weight:{{ $selectedTripId == $t->id ? '700' : '500' }};color:{{ $selectedTripId == $t->id ? 'var(--primary)' : 'var(--text)' }};">{{ $tripLabel($t) }}</span>
                 </a>
                 @endforeach
@@ -280,18 +287,18 @@
 
     {{-- Delete Confirmation Modal --}}
     <div x-show="confirmDeleteId" x-cloak style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:#fff;border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
+        <div style="background:var(--bg-white);border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
             <div style="background:#FEF2F2;padding:28px 24px 20px;text-align:center;">
                 <div style="width:52px;height:52px;border-radius:50%;background:#FEE2E2;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
                     <i class="fa-solid fa-trash-can" style="font-size:22px;color:#DC2626;"></i>
                 </div>
-                <div style="font-size:17px;font-weight:700;color:#1A0A00;margin-bottom:6px;">Delete Expense?</div>
-                <div style="font-size:13px;color:#6B7280;line-height:1.5;">
+                <div style="font-size:17px;font-weight:700;color:var(--dark);margin-bottom:6px;">Delete Expense?</div>
+                <div style="font-size:13px;color:var(--muted);line-height:1.5;">
                     <strong x-text="confirmDeleteDesc"></strong> will be permanently deleted.<br>This action cannot be undone.
                 </div>
             </div>
             <div style="display:flex;gap:10px;padding:18px 24px;">
-                <button type="button" @click="confirmDeleteId = null" style="flex:1;padding:11px;border-radius:10px;border:1.5px solid var(--border);background:#fff;color:var(--dark);font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+                <button type="button" @click="confirmDeleteId = null" style="flex:1;padding:11px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg-white);color:var(--dark);font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
                 <button type="button" @click="document.getElementById('expense-delete-' + confirmDeleteId).submit()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#DC2626;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Delete</button>
             </div>
         </div>

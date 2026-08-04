@@ -15,19 +15,19 @@
 {{-- No trips at all --}}
 @if ($trips->isEmpty())
 <div class="empty-state-center" style="min-height:80vh;">
-    <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+    <div style="width:64px;height:64px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
         <i class="fa-solid fa-bell" style="font-size:28px;color:#fff;"></i>
     </div>
     @if (!auth()->user()?->userProfile)
-    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">Set up your profile first</h2>
-    <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile before planning a trip and receiving budget alerts.</p>
-    <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">Set up your profile first</h2>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile before planning a trip and receiving budget alerts.</p>
+    <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
         <i class="fa-solid fa-user"></i> Set Up Your Profile First
     </a>
     @else
-    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">No trips yet</h2>
-    <p style="color:#9B8EA0;margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Plan a trip first to start receiving budget alerts and notifications.</p>
-    <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:#934B19;color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">No trips yet</h2>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Plan a trip first to start receiving budget alerts and notifications.</p>
+    <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
         <i class="fa-solid fa-plane"></i> Plan Your First Trip
     </a>
     @endif
@@ -36,11 +36,11 @@
 @elseif (!$hasAny)
 {{-- Has trips but no notifications --}}
 <div class="empty-state-center" style="min-height:80vh;">
-    <div style="width:64px;height:64px;border-radius:16px;background:#934B19;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+    <div style="width:64px;height:64px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
         <i class="fa-solid fa-bell" style="font-size:28px;color:#fff;"></i>
     </div>
-    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:#1A0A00;">All caught up!</h2>
-    <p style="color:#9B8EA0;font-size:14px;max-width:320px;line-height:1.6;">
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">All caught up!</h2>
+    <p style="color:var(--muted);font-size:14px;max-width:320px;line-height:1.6;">
         @if ($activeTrip)
             No notifications for <strong>{{ $activeTrip->destination }}</strong> yet.
         @else
@@ -95,7 +95,7 @@
 
 {{-- Budget Alerts section --}}
 @if ($budgetNotifs->isNotEmpty())
-<div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;margin-bottom:16px;overflow:hidden;">
+<div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;margin-bottom:16px;overflow:hidden;">
     <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
         <h3 style="font-weight:700;">Budget Alerts</h3>
     </div>
@@ -138,7 +138,7 @@
 @endif
 
 {{-- General Notifications section --}}
-<div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:hidden;">
+<div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
         <h3 style="font-weight:700;">Notifications</h3>
         @if ($unreadCount > 0)
@@ -154,7 +154,7 @@
             $iconClr   = $isDanger ? '#DC2626' : ($isWarning ? '#D97706' : '#16A34A');
             $icon      = $isDanger ? 'fa-circle-exclamation' : ($isWarning ? 'fa-triangle-exclamation' : 'fa-circle-check');
         @endphp
-        <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 20px;{{ !$loop->last ? 'border-bottom:1px solid var(--border);' : '' }}{{ !$notif->is_read ? 'background:#FAFAF8;' : '' }}">
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 20px;{{ !$loop->last ? 'border-bottom:1px solid var(--border);' : '' }}{{ !$notif->is_read ? 'background:var(--bg);' : '' }}">
             <div style="width:32px;height:32px;border-radius:50%;background:{{ $iconBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fa-solid {{ $icon }}" style="color:{{ $iconClr }};font-size:14px;"></i>
             </div>

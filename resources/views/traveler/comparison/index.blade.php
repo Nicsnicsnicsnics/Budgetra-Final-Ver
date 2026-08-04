@@ -41,9 +41,9 @@
                 <h3>{{ $comp['destination'] }}</h3>
                 <span style="background:#e0f0ff;color:#2980b9;padding:2px 8px;border-radius:4px;font-size:.8rem;">{{ $comp['cost_level'] }}</span>
                 <div style="font-size:2rem;font-weight:800;margin:1rem 0;">₱{{ number_format($comp['total'], 0) }}</div>
-                <p style="color:#666;font-size:.9rem;">Total for {{ $days }} days, {{ $travelers }} traveler(s)</p>
+                <p style="color:var(--muted);font-size:.9rem;">Total for {{ $days }} days, {{ $travelers }} traveler(s)</p>
                 <p>₱{{ number_format($comp['per_day'], 0) }} / day</p>
-                <p style="font-size:.85rem;color:#999;">Multiplier: {{ $comp['multiplier'] }}×</p>
+                <p style="font-size:.85rem;color:var(--muted);">Multiplier: {{ $comp['multiplier'] }}×</p>
                 <a href="{{ route('trips.create') }}"
                    class="btn btn-primary btn-sm" style="margin-top:.5rem;">Plan This Trip</a>
             </div>

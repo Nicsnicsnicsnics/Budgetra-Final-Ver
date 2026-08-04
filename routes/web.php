@@ -32,6 +32,9 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/profile',         [Traveler\ProfileController::class, 'update'])->name('profile.update');
     Route::get('/profile/setup',   \App\Livewire\Traveler\ProfileBuilder::class)->name('profile.setup');
 
+    Route::get('/settings',        [Traveler\SettingsController::class, 'edit'])->name('settings.edit');
+    Route::patch('/settings/theme',[Traveler\SettingsController::class, 'updateTheme'])->name('settings.theme');
+
     Route::get('/saved-trips',             \App\Livewire\Traveler\SavedTrips::class)->name('saved-trips');
     Route::get('/trips/import/{code}',    [Traveler\TripImportController::class, 'import'])->name('trips.import');
     Route::get('/trips',                  \App\Livewire\Traveler\TripPlannerWizard::class)->name('trips.index');

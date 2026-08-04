@@ -1,5 +1,5 @@
 @props(['icon', 'color', 'bg', 'label', 'value', 'sub' => null])
-<div style="background:#fff;border-radius:14px;border:1.5px solid var(--border);padding:20px 18px;">
+<div style="background:var(--bg-white);border-radius:14px;border:1.5px solid var(--border);padding:20px 18px;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
         <div style="width:40px;height:40px;border-radius:10px;background:{{ $bg }};
                     display:flex;align-items:center;justify-content:center;">

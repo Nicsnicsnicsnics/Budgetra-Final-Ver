@@ -43,7 +43,7 @@
         $pct   = $trip->budget_limit > 0 ? min(100, round($spent / $trip->budget_limit * 100)) : 0;
         $isOver = $spent > $trip->budget_limit && $trip->budget_limit > 0;
     @endphp
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;">
+    <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;">
             <span style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;
                   background:{{ $trip->status === 'active' ? '#F0FDF4' : '#EFF6FF' }};
@@ -62,7 +62,7 @@
             </div>
         </div>
 
-        <div style="height:5px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
+        <div style="height:5px;background:var(--border-light);border-radius:99px;overflow:hidden;">
             <div style="height:100%;width:{{ $pct }}%;background:{{ $isOver ? 'var(--danger)' : 'var(--primary)' }};border-radius:99px;"></div>
         </div>
 
@@ -85,16 +85,16 @@
 
     {{-- Plan New Adventure card --}}
     <a href="{{ route('trips.plan') }}"
-       style="background:transparent;border:2px dashed #D1D5DB;border-radius:16px;padding:20px;
+       style="background:transparent;border:2px dashed var(--border);border-radius:16px;padding:20px;
               display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
               min-height:160px;text-decoration:none;transition:border-color 0.15s;"
        onmouseover="this.style.borderColor='var(--primary)'"
-       onmouseout="this.style.borderColor='#D1D5DB'">
-        <div style="width:44px;height:44px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;">
-            <i class="fa-solid fa-plus" style="font-size:20px;color:#9CA3AF;"></i>
+       onmouseout="this.style.borderColor='var(--border)'">
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--border-light);display:flex;align-items:center;justify-content:center;">
+            <i class="fa-solid fa-plus" style="font-size:20px;color:var(--muted);"></i>
         </div>
-        <div style="font-size:14px;font-weight:600;color:#6B7280;">Plan New Adventure</div>
-        <div style="font-size:12px;color:#9CA3AF;text-align:center;">Start tracking your next destination today.</div>
+        <div style="font-size:14px;font-weight:600;color:var(--muted);">Plan New Adventure</div>
+        <div style="font-size:12px;color:var(--muted);text-align:center;">Start tracking your next destination today.</div>
     </a>
 </div>
 @elseif ($trips->isEmpty())
@@ -131,20 +131,20 @@
     @foreach ($recommended as $attraction)
     <a href="{{ route('attractions.show', $attraction) }}" style="text-decoration:none;color:inherit;">
         <div class="card" style="overflow:hidden;border-radius:14px;">
-            <div style="position:relative;height:220px;background:linear-gradient(135deg,#934B19,#C8874A);">
+            <div style="position:relative;height:220px;background:linear-gradient(135deg,var(--primary),#C8874A);">
                 @if ($attraction->image)
                 <img src="{{ asset('storage/' . $attraction->image) }}"
                      style="width:100%;height:100%;object-fit:cover;display:block;" alt="{{ $attraction->name }}">
                 @endif
                 <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.05) 40%,rgba(0,0,0,0.55));"></div>
 
-                <span style="position:absolute;top:12px;left:12px;background:#FDF3EB;color:#934B19;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;">
+                <span style="position:absolute;top:12px;left:12px;background:#FDF3EB;color:var(--primary);font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;">
                     {{ $attraction->category }}
                 </span>
 
                 <div style="position:absolute;bottom:12px;left:12px;display:flex;gap:6px;">
                     <span style="background:rgba(255,255,255,0.92);color:#1A0A00;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;">
-                        <i class="fa-solid fa-location-dot" style="font-size:9px;color:#934B19;"></i> {{ $attraction->destination }}
+                        <i class="fa-solid fa-location-dot" style="font-size:9px;color:var(--primary);"></i> {{ $attraction->destination }}
                     </span>
                     <span style="background:rgba(0,0,0,0.5);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">
                         <i class="fa-solid fa-fire" style="font-size:9px;color:#F5A623;"></i> {{ number_format($attraction->rating, 1) }}
@@ -164,43 +164,21 @@
 </div>
 @endif
 
-{{-- Footer --}}
-<footer class="app-footer" style="margin:24px -28px -28px;border-radius:0;">
-    <div class="app-footer-inner">
-        <div>
-            <div class="app-footer-brand">Budgetra</div>
-            <div class="app-footer-sub">Smart travel, smarter spending.</div>
-        </div>
-        <div class="app-footer-links">
-            <div class="app-footer-col">
-                <span style="font-size:11px;font-weight:800;color:var(--dark);letter-spacing:.06em;">CONTACT US</span>
-                <a href="mailto:support@budgetra.app">support@budgetra.app</a>
-                <a href="tel:+639171234567">+63 917 123 4567</a>
-            </div>
-            <div class="app-footer-col">
-                <span style="font-size:11px;font-weight:800;color:var(--dark);letter-spacing:.06em;">ABOUT</span>
-                <a href="{{ route('features') }}">Features</a>
-                <a href="{{ url('/') }}">About Budgetra</a>
-            </div>
-        </div>
-    </div>
-</footer>
-
 {{-- Delete Trip Confirmation Modal --}}
 <div id="deleteTripModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;align-items:center;justify-content:center;padding:20px;">
-    <div style="background:#fff;border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
+    <div style="background:var(--bg-white);border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
         <div style="background:#FEF2F2;padding:28px 24px 20px;text-align:center;">
             <div style="width:52px;height:52px;border-radius:50%;background:#FEE2E2;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
                 <i class="fa-solid fa-trash-can" style="font-size:22px;color:#DC2626;"></i>
             </div>
-            <div style="font-size:17px;font-weight:700;color:#1A0A00;margin-bottom:6px;">Delete Trip?</div>
-            <div style="font-size:13px;color:#6B7280;line-height:1.5;">
+            <div style="font-size:17px;font-weight:700;color:var(--dark);margin-bottom:6px;">Delete Trip?</div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.5;">
                 <strong id="deleteTripModalName"></strong> will be permanently deleted.<br>This action cannot be undone.
             </div>
         </div>
         <div style="display:flex;gap:10px;padding:18px 20px;">
             <button type="button" onclick="closeDeleteTripModal()"
-                    style="flex:1;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:10px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
+                    style="flex:1;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:10px;padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;">
                 Cancel
             </button>
             <button type="button" onclick="submitDeleteTripModal()"

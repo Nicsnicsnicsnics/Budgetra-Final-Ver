@@ -71,7 +71,7 @@
                     'Food'                => ['bg'=>'#FFF7ED','bar'=>'#EA580C','icon'=>'fa-utensils'],
                     'Tourist Attractions' => ['bg'=>'#F5F3FF','bar'=>'#7C3AED','icon'=>'fa-landmark'],
                     'Shopping'            => ['bg'=>'#FDF2F8','bar'=>'#DB2777','icon'=>'fa-bag-shopping'],
-                    'Emergency Funds'     => ['bg'=>'#FEF2F2','bar'=>'#DC2626','icon'=>'fa-shield-halved'],
+                    'Emergency Funds'     => ['bg'=>'#FEF2F2','bar'=>'var(--danger)','icon'=>'fa-shield-halved'],
                 ];
             @endphp
 
@@ -88,7 +88,7 @@
                     $pct    = $b->estimated_cost > 0 ? min(100, round($b->actual_spent / $b->estimated_cost * 100)) : 0;
                     $over   = $b->actual_spent > $b->estimated_cost;
                     $cc     = $catColors[$b->category] ?? ['bg'=>'#F9FAFB','bar'=>'var(--primary)','icon'=>'fa-tag'];
-                    $barClr = $over ? '#DC2626' : $cc['bar'];
+                    $barClr = $over ? 'var(--danger)' : $cc['bar'];
                 @endphp
                 <div>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
@@ -99,16 +99,16 @@
                             <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $b->category }}</span>
                         </div>
                         <div style="text-align:right;">
-                            <span style="font-size:12px;font-weight:700;color:{{ $over ? '#DC2626' : 'var(--dark)' }};">
+                            <span style="font-size:12px;font-weight:700;color:{{ $over ? 'var(--danger)' : 'var(--dark)' }};">
                                 ₱{{ number_format($b->actual_spent, 0) }}
                             </span>
                             <span style="font-size:11px;color:var(--muted);"> / ₱{{ number_format($b->estimated_cost, 0) }}</span>
                         </div>
                     </div>
-                    <div style="height:7px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
+                    <div style="height:7px;background:var(--border-light);border-radius:99px;overflow:hidden;">
                         <div style="height:100%;width:{{ $pct }}%;background:{{ $barClr }};border-radius:99px;transition:width 0.4s;"></div>
                     </div>
-                    <div style="font-size:11px;color:{{ $over ? '#DC2626' : 'var(--muted)' }};margin-top:3px;text-align:right;">
+                    <div style="font-size:11px;color:{{ $over ? 'var(--danger)' : 'var(--muted)' }};margin-top:3px;text-align:right;">
                         {{ $pct }}% used{{ $over ? ' · Over budget!' : '' }}
                     </div>
                 </div>
@@ -191,10 +191,10 @@
                     </td>
                     <td style="width:140px;">
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="flex:1;height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
-                                <div style="height:100%;width:{{ $pct }}%;background:{{ $over ? '#DC2626' : $cc['bar'] }};border-radius:99px;"></div>
+                            <div style="flex:1;height:6px;background:var(--border-light);border-radius:99px;overflow:hidden;">
+                                <div style="height:100%;width:{{ $pct }}%;background:{{ $over ? 'var(--danger)' : $cc['bar'] }};border-radius:99px;"></div>
                             </div>
-                            <span style="font-size:11px;font-weight:600;color:{{ $over ? '#DC2626' : 'var(--muted)' }};min-width:32px;">{{ $pct }}%</span>
+                            <span style="font-size:11px;font-weight:600;color:{{ $over ? 'var(--danger)' : 'var(--muted)' }};min-width:32px;">{{ $pct }}%</span>
                         </div>
                     </td>
                 </tr>

@@ -6,7 +6,7 @@
     .dropzone-preview img { display: block; max-width: 100%; }
     .scan-item { transition: background .15s ease; border-radius: var(--radius-sm); }
     .scan-item:hover { background: var(--bg); }
-    .scan-select-menu { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow); min-width: 190px; z-index: 50; overflow: hidden; }
+    .scan-select-menu { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow); min-width: 190px; z-index: 50; overflow: hidden; }
     .scan-select-option {
         display: flex; align-items: center; gap: 8px; width: 100%; padding: 11px 14px;
         background: none; border: none; text-align: left; font-size: 13px; font-weight: 600;

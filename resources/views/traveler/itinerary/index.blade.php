@@ -14,16 +14,16 @@
 <style>
     #itinerary-calendar { font-family: inherit; }
     #itinerary-calendar .fc-toolbar { align-items: center; margin-bottom: 16px !important; }
-    #itinerary-calendar .fc-toolbar-title { font-size: 20px !important; font-weight: 700 !important; color: #1A0A00 !important; letter-spacing: -0.01em; }
-    #itinerary-calendar .fc-button { background: transparent !important; border: none !important; box-shadow: none !important; color: #6B7280 !important; padding: 4px 8px !important; font-size: 16px !important; line-height: 1 !important; }
-    #itinerary-calendar .fc-button:hover { color: #1A0A00 !important; }
+    #itinerary-calendar .fc-toolbar-title { font-size: 20px !important; font-weight: 700 !important; color: var(--dark) !important; letter-spacing: -0.01em; }
+    #itinerary-calendar .fc-button { background: transparent !important; border: none !important; box-shadow: none !important; color: var(--muted) !important; padding: 4px 8px !important; font-size: 16px !important; line-height: 1 !important; }
+    #itinerary-calendar .fc-button:hover { color: var(--dark) !important; }
     #itinerary-calendar .fc-button:focus { outline: none !important; box-shadow: none !important; }
     #itinerary-calendar .fc-col-header-cell { border: none !important; padding: 6px 0 10px !important; }
-    #itinerary-calendar .fc-col-header-cell-cushion { font-size: 11px !important; font-weight: 600 !important; color: #9CA3AF !important; text-transform: uppercase; letter-spacing: .06em; text-decoration: none !important; }
-    #itinerary-calendar .fc-daygrid-day { border-color: #F3F4F6 !important; }
+    #itinerary-calendar .fc-col-header-cell-cushion { font-size: 11px !important; font-weight: 600 !important; color: var(--muted) !important; text-transform: uppercase; letter-spacing: .06em; text-decoration: none !important; }
+    #itinerary-calendar .fc-daygrid-day { border-color: var(--border-light) !important; }
     #itinerary-calendar .fc-scrollgrid { border: none !important; }
-    #itinerary-calendar .fc-scrollgrid td, #itinerary-calendar .fc-scrollgrid th { border-color: #F3F4F6 !important; }
-    #itinerary-calendar .fc-daygrid-day-number { font-size: 13px !important; color: #9CA3AF !important; font-weight: 500 !important; text-decoration: none !important; padding: 6px 8px 2px !important; line-height: 1 !important; }
+    #itinerary-calendar .fc-scrollgrid td, #itinerary-calendar .fc-scrollgrid th { border-color: var(--border-light) !important; }
+    #itinerary-calendar .fc-daygrid-day-number { font-size: 13px !important; color: var(--muted) !important; font-weight: 500 !important; text-decoration: none !important; padding: 6px 8px 2px !important; line-height: 1 !important; }
     #itinerary-calendar .fc-day-other .fc-daygrid-day-number { color: #D1D5DB !important; }
     #itinerary-calendar .fc-day-today { background: transparent !important; }
     #itinerary-calendar .fc-day-today .fc-daygrid-day-number { color: var(--primary) !important; font-weight: 700 !important; }
