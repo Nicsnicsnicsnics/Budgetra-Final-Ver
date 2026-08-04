@@ -1346,7 +1346,7 @@ class TripPlannerWizard extends Component
         // instead of silently producing a nonsensical AI budget later.
         $totalBudget = (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin);
         if ($totalBudget > 0 && (int) $this->emergency >= $totalBudget) {
-            $this->emergencyError = 'Your emergency fund can\'t be greater than or equal to your total budget of ₱' . number_format($totalBudget) . '.';
+            $this->emergencyError = 'Your emergency fund can\'t be greater than or equal to your total budget of ' . currency_symbol() . number_format($totalBudget) . '.';
             return;
         }
         $this->emergencyError = '';
@@ -2463,7 +2463,7 @@ class TripPlannerWizard extends Component
         $this->editingCategory = '';
         $subtotal = $this->transportation + $this->accommodation + $this->food
                   + $this->attractions + $this->shopping;
-        $this->emergency   = round($subtotal * 0.05, 2);
+        $this->emergency   = round($subtotal * (auth()->user()->default_buffer_pct / 100), 2);
         $this->budgetLimit = round($subtotal + $this->emergency, 2);
     }
 
@@ -2617,7 +2617,7 @@ class TripPlannerWizard extends Component
 
         $subtotal = $this->transportation + $this->accommodation + $this->food
                   + $this->attractions + $this->shopping;
-        $this->emergency   = round($subtotal * 0.05, 2);
+        $this->emergency   = round($subtotal * (auth()->user()->default_buffer_pct / 100), 2);
         $this->budgetLimit = round($subtotal + $this->emergency, 2);
     }
 

@@ -25,7 +25,7 @@
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
             <div class="form-group">
-                <label class="form-label" for="target_amount">Target Amount (₱)</label>
+                <label class="form-label" for="target_amount">Target Amount ({{ currency_symbol() }})</label>
                 <input id="target_amount" type="number" step="0.01" name="target_amount"
                        value="{{ old('target_amount') }}"
                        class="form-control {{ $errors->has('target_amount') ? 'is-invalid' : '' }}"
@@ -33,7 +33,7 @@
                 @error('target_amount')<div class="error">{{ $message }}</div>@enderror
             </div>
             <div class="form-group">
-                <label class="form-label" for="current_savings">Current Savings (₱)</label>
+                <label class="form-label" for="current_savings">Current Savings ({{ currency_symbol() }})</label>
                 <input id="current_savings" type="number" step="0.01" name="current_savings"
                        value="{{ old('current_savings', 0) }}"
                        class="form-control" placeholder="0.00" min="0">

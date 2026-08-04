@@ -41,20 +41,8 @@
     }
     .txn-date-label:first-child { padding-top: 16px; }
 
-    /* ── Category filter pills ───────────────────────────────── */
-    .expense-cat-pills { display: flex; flex-wrap: wrap; gap: 8px; }
-    .cat-pill {
-        display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
-        border-radius: 999px; border: 1.5px solid var(--border); background: #fff;
-        color: var(--text); font-size: 12px; font-weight: 600; text-decoration: none;
-        transition: transform .12s ease, border-color .15s ease, background .15s ease;
-    }
-    .cat-pill:hover { transform: translateY(-1px); border-color: var(--primary); }
-    .cat-pill.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
-
     /* ── Keyboard focus (WCAG 2.4.7) — every new interactive element
        gets a visible ring, since none of these existed before. ──── */
-    .cat-pill:focus-visible,
     .txn-action-btn:focus-visible,
     .txn-icon-photo:focus-visible,
     .expense-fab:focus-visible,
@@ -179,25 +167,17 @@
 
     {{-- Filters --}}
     <div class="card mb-16"><div class="card-body" style="padding:16px 20px;">
-        <div class="expense-cat-pills mb-12">
-            @php
-                $pillBase = array_merge($filterParams, ['trip_id' => $selectedTripId]);
-                unset($pillBase['category']);
-            @endphp
-            <a href="{{ route('expenses.index') }}?{{ http_build_query($pillBase) }}"
-               class="cat-pill {{ !request('category') ? 'active' : '' }}">All</a>
-            @foreach ($categories as $cat)
-            @php $c = $categoryColors[$cat]; @endphp
-            <a href="{{ route('expenses.index') }}?{{ http_build_query(array_merge($pillBase, ['category' => $cat])) }}"
-               class="cat-pill {{ request('category') === $cat ? 'active' : '' }}"
-               style="{{ request('category') === $cat ? "background:{$c}22;color:{$c};border-color:{$c}66;" : '' }}">
-                <i class="fa-solid {{ $categoryIcons[$cat] }}"></i> {{ $cat }}
-            </a>
-            @endforeach
-        </div>
         <form method="GET" action="{{ route('expenses.index') }}" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
             <input type="hidden" name="trip_id" value="{{ $selectedTripId }}">
-            <input type="hidden" name="category" value="{{ request('category') }}">
+            <div style="flex:1;min-width:170px;">
+                <label class="form-label">Category</label>
+                <select name="category" class="form-control expense-filter-select" onchange="this.form.submit()">
+                    <option value="">All Categories</option>
+                    @foreach ($categories as $cat)
+                    <option value="{{ $cat }}" {{ request('category') === $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div style="flex:1;min-width:150px;">
                 <label class="form-label">From</label>
                 <input type="date" name="date_from" class="form-control expense-filter-select" value="{{ request('date_from') }}" onchange="this.form.submit()">
@@ -257,7 +237,7 @@
                         <span>{{ $expense->category }}</span> · <span>{{ $expense->expense_date->format('M j, Y') }}</span>
                     </div>
                 </div>
-                <div class="txn-amount">₱{{ number_format($expense->amount, 0) }}</div>
+                <div class="txn-amount">{{ currency_symbol() }}{{ number_format($expense->amount, 0) }}</div>
                 <div class="txn-actions">
                     <a href="{{ route('expenses.edit', $expense) }}" class="txn-action-btn" title="Edit">
                         <i class="fa-solid fa-pen"></i>

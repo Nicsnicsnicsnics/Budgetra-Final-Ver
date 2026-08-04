@@ -21,13 +21,13 @@
     <div class="stat-card">
         <div class="stat-card-accent" style="background:var(--secondary);"></div>
         <div class="stat-label"><i class="fa-solid fa-coins"></i> Total Budget</div>
-        <div class="stat-value" style="color:var(--secondary);">₱{{ number_format($totalBudget, 0) }}</div>
+        <div class="stat-value" style="color:var(--secondary);">{{ currency_symbol() }}{{ number_format($totalBudget, 0) }}</div>
         <div class="stat-sub">Across all trips</div>
     </div>
     <div class="stat-card">
         <div class="stat-card-accent" style="background:var(--tertiary);"></div>
         <div class="stat-label"><i class="fa-regular fa-credit-card"></i> Total Spent</div>
-        <div class="stat-value" style="color:var(--tertiary);">₱{{ number_format($totalSpent, 0) }}</div>
+        <div class="stat-value" style="color:var(--tertiary);">{{ currency_symbol() }}{{ number_format($totalSpent, 0) }}</div>
         <div class="stat-sub">Across all trips</div>
     </div>
 </div>
@@ -58,7 +58,7 @@
                 {{ $trip->start_date->format('M j') }} – {{ $trip->end_date->format('M j, Y') }}
             </div>
             <div style="font-size:13px;color:var(--muted);margin-top:2px;">
-                Spent ₱{{ number_format($spent, 0) }} / ₱{{ number_format($trip->budget_limit, 0) }}
+                Spent {{ currency_symbol() }}{{ number_format($spent, 0) }} / {{ currency_symbol() }}{{ number_format($trip->budget_limit, 0) }}
             </div>
         </div>
 

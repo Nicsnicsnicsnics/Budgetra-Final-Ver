@@ -347,9 +347,9 @@
                     @endforeach
                 </div>
                 @endforeach
-                @if(empty($itemsByDate))
-                <p style="font-size:12px;color:var(--muted);margin:0;">No events yet.</p>
-                @endif
+                <template x-if="!{{ Illuminate\Support\Js::from(array_keys($itemsByDate)) }}.includes(selDate)">
+                    <p style="font-size:12px;color:var(--muted);margin:0;">No trips planned on this date.</p>
+                </template>
             </div>
         </div>
 
@@ -415,11 +415,11 @@
                         </div>
                         @endforeach
                         @if($more > 0)
-                        <div style="font-size:9px;font-weight:700;color:var(--muted);padding:0 2px;">+{{ $more }} More</div>
+                        <div x-show="showFlight||showHotel||showFood||showActivity" style="font-size:9px;font-weight:700;color:var(--muted);padding:0 2px;">+{{ $more }} More</div>
                         @endif
                     </div>
                     @else
-                    <div style="min-height:88px;min-width:0;padding:6px;box-sizing:border-box;">
+                    <div @click="selDate='{{ $dateStr }}'" style="min-height:88px;min-width:0;padding:6px;box-sizing:border-box;cursor:pointer;">
                         <span style="font-size:12px;color:var(--muted);">{{ str_pad($d,2,'0',STR_PAD_LEFT) }}</span>
                     </div>
                     @endif
@@ -453,10 +453,10 @@
                                 $isTrip = $dc && $dc >= $tripStart && $dc <= $tripEnd;
                                 $dayItemsList = $dateStr ? ($itemsByDate[$dateStr] ?? []) : [];
                             @endphp
-                            <div style="min-height:220px;min-width:0;box-sizing:border-box;border:1px solid #f0ede9;border-radius:10px;padding:8px;{{ $isTrip ? 'cursor:pointer;background:#fafafa;' : 'background:#fcfbfa;' }}"
-                                 @if($isTrip) wire:click="selectDay('{{ $dateStr }}')" @click="selDate='{{ $dateStr }}'" @endif>
+                            <div style="min-height:220px;min-width:0;box-sizing:border-box;border:1px solid var(--border-light);border-radius:10px;padding:8px;{{ $dateStr ? 'cursor:pointer;' : '' }}{{ $isTrip ? 'background:var(--bg-white);' : 'background:var(--bg);' }}"
+                                 @if($dateStr) @click="selDate='{{ $dateStr }}'" @endif @if($isTrip) wire:click="selectDay('{{ $dateStr }}')" @endif>
                                 @if($dateStr)
-                                <div style="font-size:11px;font-weight:700;color:{{ $isTrip ? '#1c1c19' : '#c8c0bb' }};margin-bottom:6px;">{{ \Carbon\Carbon::parse($dateStr)->format('D, M j') }}</div>
+                                <div style="font-size:11px;font-weight:700;color:{{ $isTrip ? 'var(--dark)' : 'var(--muted)' }};margin-bottom:6px;">{{ \Carbon\Carbon::parse($dateStr)->format('D, M j') }}</div>
                                 @foreach($dayItemsList as $it)
                                 @php $cat = array_search($it['color'], $catColor) ?: 'activity'; @endphp
                                 <div x-show="show{{ ucfirst($cat === 'hotel' ? 'Hotel' : ($cat==='food'?'Food':($cat==='flight'?'Flight':'Activity'))) }}"
@@ -653,21 +653,47 @@ $titleIconMap = [
     'check out'  => ['icon'=>'hotel',            'color'=>'var(--primary)'],
 ];
 @endphp
-<div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closeModals">
-    <div style="background:var(--bg-white);border-radius:16px;width:100%;max-width:420px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(45,27,20,0.18);">
+<style>
+    @keyframes dayModalBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes dayModalCardIn { from { opacity: 0; transform: scale(.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    .day-modal-backdrop { animation: dayModalBackdropIn .16s ease both; }
+    .day-modal-card { animation: dayModalCardIn .2s cubic-bezier(.2,.9,.3,1.1) both; }
+    .day-modal-row { transition: background .15s ease; }
+    .day-modal-row:hover { background: var(--bg); }
+    .day-modal-remove { transition: background .15s ease, color .15s ease; }
+    .day-modal-remove:hover { background: #FEE2E2; color: #DC2626 !important; }
+    .day-modal-close { transition: background .15s ease; }
+    .day-modal-close:hover { background: var(--primary-dark) !important; }
+</style>
+<div class="day-modal-backdrop" style="position:fixed;inset:0;background:rgba(20,10,4,.45);backdrop-filter:blur(2px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closeModals">
+    <div class="day-modal-card" style="background:var(--bg-white);border-radius:20px;width:100%;max-width:440px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(45,27,20,0.22);overflow:hidden;">
 
         {{-- Header --}}
-        <div style="padding:22px 24px 16px;flex-shrink:0;">
-            <h2 style="font-size:18px;font-weight:800;color:var(--dark);margin:0 0 12px;">Trip Itinerary</h2>
-            <span style="display:inline-block;padding:5px 14px;border-radius:20px;background:#FDF3EB;color:var(--primary);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
-                {{ \Carbon\Carbon::parse($selectedDate)->format('F j, Y') }}
-            </span>
+        <div style="padding:24px 26px 18px;flex-shrink:0;display:flex;align-items:flex-start;gap:14px;">
+            <div style="width:44px;height:44px;border-radius:13px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa-regular fa-calendar-days" style="color:var(--primary);font-size:18px;"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <h2 style="font-size:18px;font-weight:800;color:var(--dark);margin:0 0 6px;">Trip Itinerary</h2>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border-radius:20px;background:var(--primary-light);color:var(--primary);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">
+                        <i class="fa-solid fa-circle" style="font-size:5px;"></i>
+                        {{ \Carbon\Carbon::parse($selectedDate)->format('l, F j, Y') }}
+                    </span>
+                    @if ($this->dayItems->isNotEmpty())
+                    <span style="font-size:11px;font-weight:700;color:var(--muted);">{{ $this->dayItems->count() }} {{ \Illuminate\Support\Str::plural('activity', $this->dayItems->count()) }}</span>
+                    @endif
+                </div>
+            </div>
+            <button wire:click="closeModals" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;flex-shrink:0;border-radius:8px;">
+                <i class="fa-solid fa-xmark" style="font-size:15px;"></i>
+            </button>
         </div>
 
-        <div style="height:1px;background:#f0ede9;flex-shrink:0;"></div>
+        <div style="height:1px;background:var(--border-light);flex-shrink:0;"></div>
 
         {{-- Activity list --}}
-        <div style="overflow-y:auto;flex:1;padding:8px 24px 16px;">
+        <div style="overflow-y:auto;flex:1;padding:10px 14px 16px;">
             @forelse ($this->dayItems as $item)
             @php
                 $iType  = $item->type ?? 'Activity';
@@ -681,29 +707,37 @@ $titleIconMap = [
                     }
                 }
             @endphp
-            <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid #f5f0eb;">
-                <div style="width:36px;height:36px;border-radius:50%;border:1px solid #e8ddd4;background:#fcf9f4;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
-                    <span class="material-symbols-outlined" style="font-size:18px;color:{{ $mi['color'] }};font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;">{{ $mi['icon'] }}</span>
+            <div class="day-modal-row" style="display:flex;align-items:flex-start;gap:13px;padding:12px;border-radius:14px;">
+                <div style="width:38px;height:38px;border-radius:12px;background:{{ $mi['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+                    <span class="material-symbols-outlined" style="font-size:19px;color:{{ $mi['color'] }};font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24;">{{ $mi['icon'] }}</span>
                 </div>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:14px;font-weight:600;color:var(--dark);margin-bottom:2px;">{{ $item->title }}</div>
-                    <div style="font-size:12px;color:var(--muted);">{{ $item->start_datetime->format('g:i A') }}</div>
-                    @if($item->notes)<div style="font-size:12px;color:var(--text);margin-top:3px;font-style:italic;">{{ $item->notes }}</div>@endif
+                <div style="flex:1;min-width:0;padding-top:1px;">
+                    <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:3px;">{{ $item->title }}</div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:600;">
+                        <i class="fa-regular fa-clock" style="font-size:10px;"></i> {{ $item->start_datetime->format('g:i A') }}
+                    </div>
+                    @if($item->notes)
+                    <div style="display:inline-block;margin-top:6px;padding:3px 9px;border-radius:8px;background:var(--bg);font-size:11px;color:var(--text);">{{ $item->notes }}</div>
+                    @endif
                 </div>
-                <button wire:click="deleteItem({{ $item->id }})" style="background:none;border:none;cursor:pointer;color:#c8c0bb;padding:4px;flex-shrink:0;" title="Remove">
+                <button wire:click="deleteItem({{ $item->id }})" class="day-modal-remove" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:6px;flex-shrink:0;border-radius:8px;margin-top:2px;" title="Remove">
                     <i class="fa-solid fa-xmark" style="font-size:12px;"></i>
                 </button>
             </div>
             @empty
-            <p style="text-align:center;padding:28px 0;font-size:13px;color:var(--muted);">No activities for this day.</p>
+            <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:44px 20px;">
+                <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
+                    <i class="fa-regular fa-calendar" style="font-size:22px;color:var(--primary);"></i>
+                </div>
+                <p style="font-size:13px;color:var(--muted);margin:0;">No activities planned for this day.</p>
+            </div>
             @endforelse
         </div>
 
         {{-- Footer --}}
-        <div style="padding:14px 24px 18px;flex-shrink:0;display:flex;justify-content:flex-end;">
-            <button wire:click="closeModals"
-                    style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;"
-                    onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
+        <div style="padding:14px 22px 20px;flex-shrink:0;display:flex;justify-content:flex-end;border-top:1px solid var(--border-light);">
+            <button wire:click="closeModals" class="day-modal-close"
+                    style="background:var(--primary);color:#fff;border:none;border-radius:11px;padding:10px 26px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;">
                 Close
             </button>
         </div>

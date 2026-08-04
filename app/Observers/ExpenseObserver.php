@@ -65,6 +65,7 @@ class ExpenseObserver
     private function checkOverallBudgetExceeded(?Trip $trip): void
     {
         if (!$trip || $trip->budget_limit <= 0) return;
+        if (!optional($trip->user)->notify_budget_alerts) return;
 
         $totalSpent = Expense::where('trip_id', $trip->id)->sum('amount');
         if ($totalSpent <= $trip->budget_limit) return;
@@ -103,7 +104,7 @@ class ExpenseObserver
 
         $pct  = $budget->actual_spent / $budget->estimated_cost;
         $trip = Trip::find($expense->trip_id);
-        if (!$trip) return;
+        if (!$trip || !optional($trip->user)->notify_budget_alerts) return;
 
         // 50% threshold — fires budget_warning (only when below 80%)
         if ($pct >= 0.50 && $pct < 0.80) {

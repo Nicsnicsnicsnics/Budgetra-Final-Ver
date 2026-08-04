@@ -42,6 +42,25 @@
 }
 
 /* ── Themes ────────────────────────────────────── */
+[data-theme="original"] {
+  --primary: #934B19;
+  --primary-dark: #7A3C12;
+  --primary-hover: #7A3C12;
+  --primary-light: #FDF0E8;
+  --primary-muted: #F5E8DF;
+  --bg: #F8F5F2;
+  --bg-white: #FFFFFF;
+  --dark: #1A1A2E;
+  --text: #1F2937;
+  --muted: #6B7280;
+  --border: #E5E7EB;
+  --border-light: #F3F4F6;
+  --sidebar-bg: #3D2411;
+  --sidebar-active: rgba(255,255,255,0.12);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow: 0 4px 16px rgba(0,0,0,0.10);
+  --shadow-lg: 0 10px 40px rgba(0,0,0,0.14);
+}
 /* :root above is the pre-theme fallback (unauthenticated pages etc).
    Every signed-in page renders one of these blocks explicitly via
    [data-theme] on <body> — including "daylight" itself — so nested

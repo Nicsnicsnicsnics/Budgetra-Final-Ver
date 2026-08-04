@@ -28,7 +28,7 @@
         <div class="stat-card">
             <div class="stat-card-accent" style="background:var(--primary);"></div>
             <div class="stat-label"><i class="fa-regular fa-calendar"></i> Total Budget</div>
-            <div class="stat-value">₱{{ number_format($trip->budget_limit, 2) }}</div>
+            <div class="stat-value">{{ currency_symbol() }}{{ number_format($trip->budget_limit, 2) }}</div>
             <div class="stat-sub" style="color:var(--primary);">Allocated for {{ $this->days }} days</div>
             <div class="mt-8">
                 <div class="progress"><div class="progress-bar" style="width:100%;background:var(--primary);"></div></div>
@@ -37,7 +37,7 @@
         <div class="stat-card">
             <div class="stat-card-accent" style="background:var(--secondary);"></div>
             <div class="stat-label"><i class="fa-regular fa-credit-card"></i> Amount Spent</div>
-            <div class="stat-value" style="color:var(--secondary);">₱{{ number_format($this->totalSpent, 2) }}</div>
+            <div class="stat-value" style="color:var(--secondary);">{{ currency_symbol() }}{{ number_format($this->totalSpent, 2) }}</div>
             <div class="stat-sub">{{ $this->spentPct }}% of total budget</div>
             <div class="mt-8">
                 <div class="progress"><div class="progress-bar" style="width:{{ min(100,$this->spentPct) }}%;background:var(--secondary);"></div></div>
@@ -47,7 +47,7 @@
             <div class="stat-card-accent" style="background:var(--tertiary);"></div>
             <div class="stat-label"><i class="fa-solid fa-building-columns"></i> Remaining Funds</div>
             <div class="stat-value" style="color:{{ $this->remaining < 0 ? 'var(--danger)' : 'var(--tertiary)' }};">
-                ₱{{ number_format(abs($this->remaining), 2) }}{{ $this->remaining < 0 ? ' over' : '' }}
+                {{ currency_symbol() }}{{ number_format(abs($this->remaining), 2) }}{{ $this->remaining < 0 ? ' over' : '' }}
             </div>
             <div class="stat-sub" style="color:{{ $this->remaining < 0 ? 'var(--danger)' : 'var(--tertiary)' }};">
                 {{ $this->remaining >= 0 ? 'Stay on budget!' : 'You are over budget!' }}
@@ -100,9 +100,9 @@
                         </div>
                         <div style="text-align:right;">
                             <span style="font-size:12px;font-weight:700;color:{{ $over ? 'var(--danger)' : 'var(--dark)' }};">
-                                ₱{{ number_format($b->actual_spent, 0) }}
+                                {{ currency_symbol() }}{{ number_format($b->actual_spent, 0) }}
                             </span>
-                            <span style="font-size:11px;color:var(--muted);"> / ₱{{ number_format($b->estimated_cost, 0) }}</span>
+                            <span style="font-size:11px;color:var(--muted);"> / {{ currency_symbol() }}{{ number_format($b->estimated_cost, 0) }}</span>
                         </div>
                     </div>
                     <div style="height:7px;background:var(--border-light);border-radius:99px;overflow:hidden;">
@@ -142,7 +142,7 @@
                             <span style="color:var(--primary);">{{ $exp->category }}</span>
                         </div>
                     </div>
-                    <span style="font-size:14px;font-weight:700;color:var(--dark);">₱{{ number_format($exp->amount, 2) }}</span>
+                    <span style="font-size:14px;font-weight:700;color:var(--dark);">{{ currency_symbol() }}{{ number_format($exp->amount, 2) }}</span>
                 </div>
                 @endforeach
             </div>
@@ -184,10 +184,10 @@
                             {{ $b->category }}
                         </div>
                     </td>
-                    <td>₱{{ number_format($b->estimated_cost, 2) }}</td>
-                    <td>₱{{ number_format($b->actual_spent, 2) }}</td>
+                    <td>{{ currency_symbol() }}{{ number_format($b->estimated_cost, 2) }}</td>
+                    <td>{{ currency_symbol() }}{{ number_format($b->actual_spent, 2) }}</td>
                     <td style="color:{{ $over ? 'var(--danger)' : 'inherit' }};font-weight:{{ $over ? '600' : '400' }};">
-                        {{ $over ? '-' : '' }}₱{{ number_format(abs($rem), 2) }}
+                        {{ $over ? '-' : '' }}{{ currency_symbol() }}{{ number_format(abs($rem), 2) }}
                     </td>
                     <td style="width:140px;">
                         <div style="display:flex;align-items:center;gap:8px;">

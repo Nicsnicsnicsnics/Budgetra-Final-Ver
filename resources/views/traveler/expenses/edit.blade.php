@@ -61,7 +61,7 @@
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                 <div class="form-group">
-                    <label class="form-label" for="amount">Amount (₱)</label>
+                    <label class="form-label" for="amount">Amount ({{ currency_symbol() }})</label>
                     <input type="number" step="0.01" min="0.01" id="amount" name="amount"
                            class="form-control {{ $errors->has('amount') ? 'is-invalid' : '' }}"
                            value="{{ old('amount', $expense->amount) }}" required>

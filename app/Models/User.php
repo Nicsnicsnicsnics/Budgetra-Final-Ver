@@ -13,6 +13,8 @@ class User extends Authenticatable
         'full_name', 'first_name', 'middle_name', 'last_name', 'contact_number',
         'email', 'password', 'phone', 'country',
         'currency_code', 'currency_symbol', 'role', 'profile_photo', 'theme',
+        'default_buffer_pct', 'notify_budget_alerts', 'notify_trip_reminders',
+        'notify_itinerary_reminders', 'ocr_auto_categorize',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -20,7 +22,12 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'password'          => 'hashed',
+            'password'                    => 'hashed',
+            'notify_budget_alerts'        => 'boolean',
+            'notify_trip_reminders'       => 'boolean',
+            'notify_itinerary_reminders'  => 'boolean',
+            'ocr_auto_categorize'         => 'boolean',
+            'password_changed_at'         => 'datetime',
         ];
     }
 

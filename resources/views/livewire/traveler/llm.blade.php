@@ -4,8 +4,8 @@
      chat, loading, results), since a past conversation should always be
      reachable regardless of where the current one is at. --}}
 <button type="button" wire:click="openHistory" title="Past conversations"
-        style="position:fixed;top:20px;right:24px;z-index:900;width:38px;height:38px;border-radius:50%;background:#fff;border:1.5px solid var(--border);color:#934B19;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(45,27,20,.08);transition:border-color .15s ease,box-shadow .15s ease;"
-        onmouseenter="this.style.borderColor='#934B19';this.style.boxShadow='0 4px 12px rgba(147,75,25,.14)';"
+        style="position:fixed;top:20px;right:24px;z-index:900;width:38px;height:38px;border-radius:50%;background:var(--bg-white);border:1.5px solid var(--border);color:var(--primary);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(45,27,20,.08);transition:border-color .15s ease,box-shadow .15s ease;"
+        onmouseenter="this.style.borderColor='var(--primary)';this.style.boxShadow='0 4px 12px rgba(147,75,25,.14)';"
         onmouseleave="this.style.borderColor='var(--border)';this.style.boxShadow='0 2px 8px rgba(45,27,20,.08)';">
     <i class="fa-solid fa-clock-rotate-left" style="font-size:14px;"></i>
 </button>
@@ -35,9 +35,9 @@
             @if ($aiBudgetMin || $aiBudgetMax)
                 &nbsp;·&nbsp;
                 @if ($aiBudgetMin && $aiBudgetMax && $aiBudgetMin !== $aiBudgetMax)
-                    ₱{{ number_format($aiBudgetMin) }}–₱{{ number_format($aiBudgetMax) }}
+                    {{ currency_symbol() }}{{ number_format($aiBudgetMin) }}–{{ currency_symbol() }}{{ number_format($aiBudgetMax) }}
                 @else
-                    ₱{{ number_format($aiBudgetMax ?: $aiBudgetMin) }}
+                    {{ currency_symbol() }}{{ number_format($aiBudgetMax ?: $aiBudgetMin) }}
                 @endif
             @endif
             @if ($aiDateFrom && $aiDateTo)
@@ -119,7 +119,7 @@
             {{-- Cost --}}
             <div style="text-align:right;flex-shrink:0;min-width:80px;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:4px;">Est. Cost</div>
-                <div style="font-size:18px;font-weight:800;color:var(--dark);">₱{{ number_format($sec['cost'] ?? 0) }}</div>
+                <div style="font-size:18px;font-weight:800;color:var(--dark);">{{ currency_symbol() }}{{ number_format($sec['cost'] ?? 0) }}</div>
             </div>
 
         </div>
@@ -134,7 +134,7 @@
     <div style="flex:1;min-width:0;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:5px;">Estimated Cost (Total)</div>
         <div style="font-size:18px;font-weight:800;color:var(--dark);margin-bottom:6px;">
-            ₱{{ number_format($total) }} of ₱{{ number_format($budget) }} budget
+            {{ currency_symbol() }}{{ number_format($total) }} of {{ currency_symbol() }}{{ number_format($budget) }} budget
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
             <div style="flex:1;height:6px;background:#EDE8E3;border-radius:99px;overflow:hidden;">
@@ -362,7 +362,7 @@
                 <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);font-size:12px;color:var(--muted);">
                     <i class="fa-regular fa-calendar" style="margin-right:5px;"></i>{{ $entry->ai_date_from }} – {{ $entry->ai_date_to }}
                     @if ($entry->ai_budget_min || $entry->ai_budget_max)
-                        &nbsp;·&nbsp;₱{{ number_format($entry->ai_budget_max ?: $entry->ai_budget_min) }}
+                        &nbsp;·&nbsp;{{ currency_symbol() }}{{ number_format($entry->ai_budget_max ?: $entry->ai_budget_min) }}
                     @endif
                 </div>
                 @endif

@@ -47,13 +47,13 @@
         <div class="stat-card">
             <div class="stat-card-accent" style="background:var(--secondary);"></div>
             <div class="stat-label"><i class="fa-solid fa-coins"></i> Total Budget</div>
-            <div class="stat-value" style="color:var(--secondary);">₱{{ number_format($totals['budget'], 0) }}</div>
+            <div class="stat-value" style="color:var(--secondary);">{{ currency_symbol() }}{{ number_format($totals['budget'], 0) }}</div>
             <div class="stat-sub">Across all trips</div>
         </div>
         <div class="stat-card">
             <div class="stat-card-accent" style="background:var(--tertiary);"></div>
             <div class="stat-label"><i class="fa-regular fa-credit-card"></i> Total Spent</div>
-            <div class="stat-value" style="color:var(--tertiary);">₱{{ number_format($totals['spent'], 0) }}</div>
+            <div class="stat-value" style="color:var(--tertiary);">{{ currency_symbol() }}{{ number_format($totals['spent'], 0) }}</div>
             <div class="stat-sub">Across all trips</div>
         </div>
     </div>
@@ -92,8 +92,8 @@
                     <div style="height:100%;width:{{ $pct }}%;background:var(--primary);border-radius:99px;"></div>
                 </div>
                 <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:18px;">
-                    <span>Spent: <strong style="color:var(--primary);">₱{{ number_format($trip->total_spent, 2) }}</strong></span>
-                    <span class="text-muted">Allocated Budget: ₱{{ number_format($trip->budget_limit, 2) }}</span>
+                    <span>Spent: <strong style="color:var(--primary);">{{ currency_symbol() }}{{ number_format($trip->total_spent, 2) }}</strong></span>
+                    <span class="text-muted">Allocated Budget: {{ currency_symbol() }}{{ number_format($trip->budget_limit, 2) }}</span>
                 </div>
 
                 <div style="display:flex;gap:10px;">
@@ -169,14 +169,14 @@
                 <div style="display:flex;justify-content:space-between;">
                     <div>
                         <div class="text-muted" style="font-size:11px;">Spent</div>
-                        <div style="font-weight:700;">₱{{ number_format($spent, 2) }}</div>
+                        <div style="font-weight:700;">{{ currency_symbol() }}{{ number_format($spent, 2) }}</div>
                     </div>
                     <div style="text-align:right;">
                         <div class="text-muted" style="font-size:11px;">Total Budget</div>
-                        <div style="font-weight:700;">₱{{ number_format($budget, 2) }}</div>
+                        <div style="font-weight:700;">{{ currency_symbol() }}{{ number_format($budget, 2) }}</div>
                     </div>
                 </div>
-                <div class="text-muted" style="font-size:12px;margin-top:10px;">Remaining: ₱{{ number_format($remaining, 2) }}</div>
+                <div class="text-muted" style="font-size:12px;margin-top:10px;">Remaining: {{ currency_symbol() }}{{ number_format($remaining, 2) }}</div>
             </div>
 
             <div style="display:flex;gap:10px;">
@@ -208,7 +208,7 @@
                 <div style="border:1px solid var(--border);border-radius:14px;padding:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;">
                         <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:{{ $over ? '#FEF2F2' : '#F0FDF4' }};color:{{ $color }};white-space:nowrap;">
-                            {{ $over ? 'Over budget · overspent' : 'Under budget · saved' }} ₱{{ number_format(abs($diff), 0) }}
+                            {{ $over ? 'Over budget · overspent' : 'Under budget · saved' }} {{ currency_symbol() }}{{ number_format(abs($diff), 0) }}
                         </span>
                         <div style="width:32px;height:32px;flex-shrink:0;border-radius:50%;background:{{ $color }};display:flex;align-items:center;justify-content:center;">
                             <i class="fa-solid {{ $over ? 'fa-triangle-exclamation' : 'fa-rocket' }}" style="color:#fff;font-size:12px;"></i>
@@ -220,8 +220,8 @@
                         <span class="text-muted">Budget</span><span class="text-muted">Actual Spend</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:8px;">
-                        <span>₱{{ number_format($t->budget_limit, 0) }}</span>
-                        <span style="color:{{ $color }};">₱{{ number_format($t->total_spent, 0) }}</span>
+                        <span>{{ currency_symbol() }}{{ number_format($t->budget_limit, 0) }}</span>
+                        <span style="color:{{ $color }};">{{ currency_symbol() }}{{ number_format($t->total_spent, 0) }}</span>
                     </div>
                     <div style="height:6px;background:var(--border-light);border-radius:99px;overflow:hidden;">
                         <div style="height:100%;width:{{ min(100,$t->pct_used) }}%;background:{{ $color }};border-radius:99px;"></div>
@@ -250,14 +250,14 @@
                     <div style="flex:1;height:8px;background:var(--border-light);border-radius:99px;overflow:hidden;">
                         <div style="height:100%;width:{{ $max > 0 ? min(100, $aVal / $max * 100) : 0 }}%;background:#16A34A;border-radius:99px;"></div>
                     </div>
-                    <span style="font-size:11px;width:80px;text-align:right;flex-shrink:0;">₱{{ number_format($aVal, 0) }}</span>
+                    <span style="font-size:11px;width:80px;text-align:right;flex-shrink:0;">{{ currency_symbol() }}{{ number_format($aVal, 0) }}</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <div style="flex:1;height:8px;background:var(--border-light);border-radius:99px;overflow:hidden;">
                         <div style="height:100%;width:{{ $max > 0 ? min(100, $bVal / $max * 100) : 0 }}%;background:#F97316;border-radius:99px;"></div>
                     </div>
                     <span style="font-size:11px;width:80px;text-align:right;flex-shrink:0;">
-                        ₱{{ number_format($bVal, 0) }}
+                        {{ currency_symbol() }}{{ number_format($bVal, 0) }}
                         @if ($diffPct !== 0)
                         <span class="text-muted">({{ $diffPct > 0 ? '+' : '' }}{{ $diffPct }}%)</span>
                         @endif

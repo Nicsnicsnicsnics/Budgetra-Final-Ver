@@ -127,6 +127,11 @@ class ExpenseController extends Controller
     {
         $request->validate(['receipt' => 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:10240']);
         $result = $ocrService->scan($request->file('receipt'), auth()->id());
+
+        if (! auth()->user()->ocr_auto_categorize) {
+            unset($result['category']);
+        }
+
         return response()->json($result);
     }
 }

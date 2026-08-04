@@ -48,7 +48,7 @@
         $activeTrips = $trips->whereNotIn('status', ['past', 'draft']);
         $pastTrips   = $trips->where('status', '=', 'past');
         $stGroups = [
-            ['key' => 'active', 'label' => 'Active Trips', 'icon' => 'fa-solid fa-plane-departure',  'items' => $activeTrips, 'noun' => 'active trips'],
+            ['key' => 'active', 'label' => 'Active Trips', 'icon' => 'fa-solid fa-suitcase-rolling',  'items' => $activeTrips, 'noun' => 'active trips'],
             ['key' => 'draft',  'label' => 'Draft Trips',  'icon' => 'fa-regular fa-file-lines',      'items' => $draftTrips,  'noun' => 'draft trips'],
             ['key' => 'past',   'label' => 'Past Trips',   'icon' => 'fa-solid fa-clock-rotate-left', 'items' => $pastTrips,   'noun' => 'past trips'],
         ];
@@ -103,9 +103,9 @@
             };
             $spendColor = $trip->spend_pct >= 80 ? '#DC2626' : ($trip->spend_pct >= 50 ? '#D97706' : 'var(--dark)');
         @endphp
-        <div wire:key="trip-{{ $trip->id }}" style="background:var(--bg-white);border-radius:20px;overflow:hidden;box-shadow:0 4px 18px rgba(45,27,20,0.08);display:flex;flex-direction:column;width:420px;flex-shrink:0;transition:box-shadow .2s,transform .2s;"
-             onmouseenter="this.style.boxShadow='0 14px 36px rgba(45,27,20,0.14)';this.style.transform='translateY(-3px)'"
-             onmouseleave="this.style.boxShadow='0 4px 18px rgba(45,27,20,0.08)';this.style.transform='none'">
+        <div wire:key="trip-{{ $trip->id }}" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;width:420px;flex-shrink:0;transition:border-color .2s;"
+             onmouseenter="this.style.borderColor='var(--primary)'"
+             onmouseleave="this.style.borderColor='var(--border)'">
             {{-- Cover image --}}
             <div style="position:relative;height:200px;background:linear-gradient(135deg,var(--primary),#C8874A);overflow:hidden;">
                 @if($cover)
@@ -187,7 +187,7 @@
                         <div style="height:100%;border-radius:99px;background:{{ $spendColor }};width:{{ $trip->spend_pct }}%;transition:width .4s ease;"></div>
                     </div>
                     <div style="font-size:23px;font-weight:700;color:#C8874A;">
-                        PHP {{ number_format($trip->actual_spent, 0) }}
+                        {{ currency_code() }} {{ number_format($trip->actual_spent, 0) }}
                         <span style="font-size:13px;font-weight:500;color:var(--muted);">/ {{ number_format($displayCost, 0) }}</span>
                     </div>
                 </div>
@@ -255,7 +255,7 @@
                     <div style="flex:1;min-width:0;">
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
                             <div style="font-size:12px;font-weight:700;color:var(--dark);margin-bottom:2px;">{{ $meta['label'] }}</div>
-                            <div style="font-size:12px;font-weight:700;color:var(--dark);white-space:nowrap;flex-shrink:0;">PHP {{ number_format($rowCost, 0) }}</div>
+                            <div style="font-size:12px;font-weight:700;color:var(--dark);white-space:nowrap;flex-shrink:0;">{{ currency_code() }} {{ number_format($rowCost, 0) }}</div>
                         </div>
                         @if($rowDetail)
                         <div style="font-size:10px;color:var(--muted);line-height:1.4;">{{ $rowDetail }}</div>
@@ -272,7 +272,7 @@
             {{-- Total --}}
             <div style="margin:0 16px 18px;padding:14px 16px;background:linear-gradient(135deg,#FDF3EB,#FBEADC);border-radius:14px;">
                 <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;">Total Cost</div>
-                <div style="font-size:23px;font-weight:800;color:var(--primary);">PHP {{ number_format($dtTotal, 0) }}</div>
+                <div style="font-size:23px;font-weight:800;color:var(--primary);">{{ currency_code() }} {{ number_format($dtTotal, 0) }}</div>
             </div>
         </div>
         @endif
@@ -325,7 +325,7 @@
 
             {{-- Header --}}
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-                <div style="width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#B0662A,var(--primary));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 16px rgba(147,75,25,0.28);">
+                <div style="width:42px;height:42px;border-radius:13px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 16px rgba(147,75,25,0.28);">
                     <i class="fa-regular fa-pen-to-square" style="color:#fff;font-size:16px;"></i>
                 </div>
                 <span style="font-size:18px;font-weight:800;color:var(--dark);">Edit Trip</span>

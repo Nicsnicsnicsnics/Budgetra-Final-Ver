@@ -13,7 +13,7 @@
         <table style="width:100%;border-collapse:collapse;">
             <thead><tr>
                 <th style="text-align:left;padding:8px;border-bottom:2px solid var(--border-light);">Category</th>
-                <th style="text-align:right;padding:8px;border-bottom:2px solid var(--border-light);">Estimated (₱)</th>
+                <th style="text-align:right;padding:8px;border-bottom:2px solid var(--border-light);">Estimated ({{ currency_symbol() }})</th>
             </tr></thead>
             <tbody>
             @foreach($categories as $cat => $amount)
@@ -24,7 +24,7 @@
             @endforeach
             <tr style="font-weight:800;">
                 <td style="padding:8px;">TOTAL</td>
-                <td style="padding:8px;text-align:right;">₱{{ number_format($total, 2) }}</td>
+                <td style="padding:8px;text-align:right;">{{ currency_symbol() }}{{ number_format($total, 2) }}</td>
             </tr>
             </tbody>
         </table>
@@ -44,7 +44,7 @@
         @foreach($activities as $activity)
             <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-light);">
                 <div>{{ $activity['name'] }} <span style="color:#f5a623;">⭐ {{ $activity['rating'] }}</span></div>
-                <div>₱{{ number_format($activity['price'], 0) }}</div>
+                <div>{{ currency_symbol() }}{{ number_format($activity['price'], 0) }}</div>
             </div>
         @endforeach
     </div>

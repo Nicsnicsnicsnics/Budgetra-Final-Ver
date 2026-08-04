@@ -73,6 +73,7 @@ class OcrService
 
         $text       = $response->json('ParsedResults.0.ParsedText', '');
         $parsed     = $this->parseReceiptText($text);
+        $parsed['category'] = $this->guessCategory($text);
         $confidence = $parsed['amount'] ? 85.0 : 30.0;
 
         OcrLog::create([
@@ -83,6 +84,29 @@ class OcrService
         ]);
 
         return array_merge($parsed, ['confidence' => $confidence]);
+    }
+
+    // Keyword => category, checked in order against the full lowercased OCR
+    // text. Coarse on purpose — good enough for a pre-filled suggestion the
+    // traveler can still change, not meant to be a definitive classifier.
+    private const CATEGORY_KEYWORDS = [
+        'Transportation'     => ['airline', 'airways', 'grab', 'taxi', 'uber', 'flight', 'bus fare', 'terminal fee', 'toll', 'gasoline', 'gas station', 'fuel', 'parking'],
+        'Accommodation'      => ['hotel', 'resort', 'inn', 'hostel', 'lodge', 'suites', 'booking.com', 'airbnb', 'check-in', 'check-out', 'room rate'],
+        'Food'                => ['restaurant', 'cafe', 'coffee', 'bar', 'grill', 'diner', 'bakery', 'buffet', 'food court', 'eatery', 'kitchen'],
+        'Activities'          => ['tour', 'ticket', 'museum', 'admission', 'entrance fee', 'attraction', 'diving', 'snorkel', 'activity'],
+        'Shopping'            => ['mall', 'store', 'shop', 'boutique', 'souvenir', 'market', 'supermarket', 'convenience'],
+        'Emergency Expenses' => ['pharmacy', 'hospital', 'clinic', 'drugstore', 'medicine'],
+    ];
+
+    private function guessCategory(string $text): ?string
+    {
+        $haystack = strtolower($text);
+        foreach (self::CATEGORY_KEYWORDS as $category => $keywords) {
+            foreach ($keywords as $kw) {
+                if (str_contains($haystack, $kw)) return $category;
+            }
+        }
+        return null;
     }
 
     private function parseReceiptText(string $text): array

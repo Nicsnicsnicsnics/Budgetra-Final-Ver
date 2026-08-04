@@ -109,7 +109,7 @@
                         @error('trip_id')<div class="form-error">{{ $message }}</div>@enderror
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="amount">Amount (₱)</label>
+                        <label class="form-label" for="amount">Amount ({{ currency_symbol() }})</label>
                         <input type="number" id="amount" name="amount" step="0.01" min="0.01"
                                value="{{ old('amount') }}"
                                class="form-control {{ $errors->has('amount') ? 'is-invalid' : '' }}"
@@ -170,6 +170,7 @@
     var amountInput    = document.getElementById('amount');
     var dateInput      = document.getElementById('expense_date');
     var descInput      = document.getElementById('description');
+    var categorySelect = document.getElementById('category');
     var promptEl       = document.getElementById('dropzonePrompt');
     var previewWrap    = document.getElementById('dropzonePreview');
     var previewImg     = document.getElementById('dropzonePreviewImg');
@@ -244,6 +245,7 @@
                 if (data.amount)      amountInput.value = data.amount;
                 if (data.date)        dateInput.value   = data.date;
                 if (data.description) descInput.value   = data.description;
+                if (data.category && categorySelect) categorySelect.value = data.category;
 
                 if (data.amount) {
                     setStatus('Receipt scanned — details filled in below.', false);
