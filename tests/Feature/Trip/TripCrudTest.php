@@ -1,9 +1,13 @@
 <?php
 namespace Tests\Feature\Trip;
 
+use App\Models\Expense;
+use App\Models\Moment;
+use App\Models\MomentPhoto;
 use App\Models\Trip;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class TripCrudTest extends TestCase
@@ -90,6 +94,47 @@ class TripCrudTest extends TestCase
 
         $this->actingAs($user)->delete("/trips/{$trip->id}")->assertRedirect(route('dashboard'));
         $this->assertDatabaseMissing('trips', ['id' => $trip->id]);
+    }
+
+    public function test_deleting_a_trip_removes_its_receipt_and_moment_photo_files(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create(['user_id' => $user->id]);
+
+        $receiptPath = 'receipts/receipt-test.jpg';
+        Storage::disk('public')->put($receiptPath, 'fake-receipt-bytes');
+        Expense::create([
+            'trip_id'      => $trip->id,
+            'user_id'      => $user->id,
+            'amount'       => 500,
+            'category'     => 'Food',
+            'receipt_path' => $receiptPath,
+            'expense_date' => now()->toDateString(),
+        ]);
+
+        $moment = Moment::create([
+            'trip_id'      => $trip->id,
+            'place_name'   => 'Test Spot',
+            'visited_date' => now()->toDateString(),
+            'lat'          => 10.0,
+            'lng'          => 120.0,
+        ]);
+        $photoPath = 'moment-photos/photo-test.jpg';
+        Storage::disk('public')->put($photoPath, 'fake-photo-bytes');
+        MomentPhoto::create(['moment_id' => $moment->id, 'photo_path' => $photoPath]);
+
+        $this->assertTrue(Storage::disk('public')->exists($receiptPath));
+        $this->assertTrue(Storage::disk('public')->exists($photoPath));
+
+        $this->actingAs($user)->delete("/trips/{$trip->id}")->assertRedirect(route('dashboard'));
+
+        $this->assertDatabaseMissing('trips', ['id' => $trip->id]);
+        $this->assertDatabaseMissing('expenses', ['trip_id' => $trip->id]);
+        $this->assertDatabaseMissing('moments', ['trip_id' => $trip->id]);
+        $this->assertFalse(Storage::disk('public')->exists($receiptPath));
+        $this->assertFalse(Storage::disk('public')->exists($photoPath));
     }
 
     public function test_user_cannot_delete_another_users_trip(): void

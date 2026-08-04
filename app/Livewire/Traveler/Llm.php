@@ -209,6 +209,21 @@ class Llm extends Component
             return;
         }
 
+        // Same fast, zero-cost reasoning as the greeting check above — run
+        // BEFORE parsing, independent of which slot (if any) is still
+        // missing. A single message can resolve every remaining slot at
+        // once (a real destination, origin, budget, and dates all in one
+        // reply); once that happens missingSlotKey() goes empty and
+        // extractWithAi() below is never called, so its own is_inappropriate
+        // check never gets a chance to run. Checking here first closes that
+        // gap instead of relying solely on the AI classification.
+        if ($this->containsProfanity($userText)) {
+            $this->aiPrompt = '';
+            $this->messages[] = ['role' => 'assistant', 'text' => self::PROFANITY_REPLY];
+            $this->dispatch('message-added');
+            return;
+        }
+
         $this->parseAiPrompt();
 
         // A message naming two candidate places for the same slot ("Cebu or
@@ -287,6 +302,12 @@ class Llm extends Component
             return;
         }
 
+        if ($classification === 'inappropriate') {
+            $this->messages[] = ['role' => 'assistant', 'text' => self::PROFANITY_REPLY];
+            $this->dispatch('message-added');
+            return;
+        }
+
         // ── Self-check before replying ──────────────────────────────────
         // 1. Never ask about a slot that's already resolved (missingSlotKey()
         //    is computed fresh from live state, so this is structurally true
@@ -351,6 +372,22 @@ class Llm extends Component
     ];
 
     private const GREETING_REPLY = "Hello! 😊 How can I help you with your travel plans today?";
+
+    // Small, curated list of unambiguous profanity/abuse — checked with
+    // word boundaries (never a bare substring match) so a legitimate word
+    // or place name that merely contains one of these as a substring is
+    // never caught (e.g. nothing here can match mid-word inside "Shitake").
+    // Deliberately narrow: only clear profanity/insults, not mild
+    // frustration words ("crap", "stupid"), to keep false positives low.
+    private const PROFANITY_WORDS = [
+        'fuck', 'fucking', 'fucked', 'fucker', 'motherfucker',
+        'shit', 'shitty', 'bullshit',
+        'bitch', 'bitches',
+        'asshole', 'assholes',
+        'bastard', 'cunt', 'dumbass', 'douchebag',
+    ];
+
+    private const PROFANITY_REPLY = "Let's keep things friendly here 🙂 — I'm happy to help plan your trip, just let me know your destination, budget, and dates without the language.";
 
     // Phrases that mean "I don't have a destination in mind, you pick one"
     // rather than an attempt to name a place — checked as substrings (not
@@ -422,6 +459,21 @@ class Llm extends Component
     {
         $normalized = strtolower(trim($text, " \t\n\r\0\x0B.!?,"));
         return in_array($normalized, self::GREETINGS, true);
+    }
+
+    // Word-boundary match against PROFANITY_WORDS — deliberately NOT a bare
+    // str_contains() substring check, which would false-positive on any
+    // real word or place name that merely contains one of these as a
+    // substring. This only catches the exact listed words/forms; creative
+    // misspellings, spacing tricks, or other-language profanity can still
+    // slip through — that residual gap is covered, for messages that still
+    // leave a slot missing, by the is_inappropriate check inside
+    // extractWithAi() further down, which judges intent rather than
+    // matching a fixed list.
+    private function containsProfanity(string $text): bool
+    {
+        $pattern = '/\b(?:' . implode('|', array_map(fn ($w) => preg_quote($w, '/'), self::PROFANITY_WORDS)) . ')\b/iu';
+        return (bool) preg_match($pattern, $text);
     }
 
     private function isNonAnswerFiller(string $text): bool
@@ -527,11 +579,13 @@ Traveler's new message: "{$userText}"
 First, decide:
 1. Is this message COMPLETELY UNRELATED to travel planning — e.g. asking you to write code, general trivia (sports scores, history, etc.), or any other task that has nothing to do with planning a trip? A message that just doesn't mention a specific field yet (like "not sure" or a vague reply) is NOT off-topic — only mark it off-topic if it's asking for something entirely outside travel.
 2. Is this message JUST a greeting or small-talk pleasantry (e.g. "hey there", "how's it going?", "good to see you") with no actual travel information and no off-topic request either?
+3. Is this message abusive, insulting, or vulgar — profanity, harassment, or hate speech directed at the assistant or in general — regardless of whether it also contains real travel details?
 
 Return JSON only, no markdown:
 {
   "off_topic": true or false,
   "is_greeting": true or false,
+  "is_inappropriate": true or false,
   "origin": "city name or null",
   "destination": "city name or null",
   "budget_min": number or null,
@@ -541,8 +595,8 @@ Return JSON only, no markdown:
 }
 
 Rules:
-- If "off_topic" or "is_greeting" is true, set every other field to null.
-- A message can't be both off_topic and is_greeting — pick whichever fits best, or leave both false if it contains real travel info.
+- If "off_topic", "is_greeting", or "is_inappropriate" is true, set every other field to null.
+- Only one of "off_topic", "is_greeting", "is_inappropriate" can be true at once — pick whichever fits best, or leave all three false if it contains real travel info.
 - Only include a field if this message actually mentions or changes it.
 - If a field isn't mentioned in this message, return null for it — do not guess or repeat the known values above.
 - If information is ambiguous, return null for that field rather than assuming.
@@ -566,8 +620,9 @@ PROMPT;
             return '';
         }
 
-        if (!empty($data['off_topic']))  return 'off_topic';
-        if (!empty($data['is_greeting'])) return 'greeting';
+        if (!empty($data['off_topic']))        return 'off_topic';
+        if (!empty($data['is_greeting']))      return 'greeting';
+        if (!empty($data['is_inappropriate'])) return 'inappropriate';
 
         // Only fill in slots that are still genuinely empty — this call runs
         // whenever ANYTHING is missing, not necessarily dates/budget/etc.,
@@ -1486,9 +1541,24 @@ PROMPT;
         $hasFrom = !$ambiguousFrom && preg_match('/\bfrom\s+(' . $city . ')\b/u', $withoutDate, $mf);
         $hasTo   = !$ambiguousTo && preg_match('/\b(?:travel(?:l?ing)?\s+(?:to|in)|go(?:ing)?\s+(?:to|in)|visit(?:ing)?|fly(?:ing)?\s+to|heading\s+to|stay(?:ing)?\s+(?:in|at)|to|in|at)\s+(' . $city . ')\b/u', $withoutDate, $mt);
 
+        // Two cities joined directly by "to" ("in Cebu to Manila", "visit
+        // Cebu to Manila") must be checked BEFORE the single-city hasFrom/
+        // hasTo branches below, not after. hasTo alone already matches
+        // successfully on phrasing like "in Cebu to Manila" (via the bare
+        // "in" trigger), capturing only "Cebu" — which used to short-circuit
+        // this two-city check entirely (it used to live in the last
+        // "elseif" of this chain) and silently drop "Manila" with no trace
+        // of it anywhere. Promoting it above the single-city branches means
+        // a full route always wins over a partial one.
+        $hasTwoCities = !$ambiguousFrom && !$ambiguousTo
+            && preg_match('/(' . $city . ')\s+to\s+(' . $city . ')/u', $withoutDate, $m2);
+
         if ($hasFrom && $hasTo) {
             $this->aiFrom = trim($mf[1]);
             $this->aiTo   = trim($mt[1]);
+        } elseif ($hasTwoCities) {
+            $this->aiFrom = trim($m2[1]);
+            $this->aiTo   = trim($m2[2]);
         } elseif ($hasFrom) {
             $this->aiFrom = trim($mf[1]);
             // Destination not mentioned this turn — leave it unset so we ask.
@@ -1496,9 +1566,6 @@ PROMPT;
             // Origin not mentioned this turn — leave it unset so we ask,
             // instead of silently assuming Manila.
             $this->aiTo = trim($mt[1]);
-        } elseif (!$ambiguousFrom && !$ambiguousTo && preg_match('/(' . $city . ')\s+to\s+(' . $city . ')/u', $withoutDate, $m)) {
-            $this->aiFrom = trim($m[1]);
-            $this->aiTo   = trim($m[2]);
         }
         // else: no city mentioned this turn — leave whatever was already
         // known untouched instead of guessing Manila/Cebu.
@@ -1519,6 +1586,28 @@ PROMPT;
         // uses), so a lowercase non-place word after a trigger word never
         // gets mistaken for a destination.
         $anyCase = '[A-Za-z]+(?: [A-Za-z]+){0,2}';
+
+        // Same two-city priority fix as Step 3 above, just for lowercase
+        // input ("in cebu to manila"). Only engages when NEITHER slot is
+        // resolved yet, so it can never override a value the capitalized
+        // pass above already got right. Each side is resolved independently
+        // through knownPlaceName() rather than trusted as typed — the raw
+        // capture can grab extra surrounding words on either side ("travel
+        // in cebu", "manila please"), and knownPlaceName()'s own known-place
+        // window search already tolerates that, same as the single-city
+        // fallbacks below rely on it. Guards against both sides resolving
+        // to the same place (e.g. a false match spanning unrelated text)
+        // by requiring them to differ before accepting either.
+        if ($this->aiFrom === '' && $this->aiTo === '' && !$ambiguousFrom && !$ambiguousTo
+            && preg_match('/\b(' . $anyCase . ')\s+to\s+(' . $anyCase . ')\b/iu', $withoutDate, $m2l)) {
+            $fromCandidate = $this->knownPlaceName($this->cleanCityName($m2l[1]));
+            $toCandidate   = $this->knownPlaceName($this->cleanCityName($m2l[2]));
+            if ($fromCandidate !== '' && $toCandidate !== '' && strtolower($fromCandidate) !== strtolower($toCandidate)) {
+                $this->aiFrom = $fromCandidate;
+                $this->aiTo   = $toCandidate;
+            }
+        }
+
         if ($this->aiTo === '' && !$ambiguousTo
             && preg_match('/\b(?:travel(?:l?ing)?\s+(?:to|in)|go(?:ing)?\s+(?:to|in)|visit(?:ing)?|fly(?:ing)?\s+to|heading\s+to|stay(?:ing)?\s+(?:in|at)|to|in|at)\s+(' . $anyCase . ')\b/iu', $withoutDate, $mtl)) {
             // knownPlaceName(), not a raw assignment — the capture can grab
