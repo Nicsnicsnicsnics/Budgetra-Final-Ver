@@ -320,8 +320,8 @@
 
     {{-- Edit Trip Modal --}}
     @if ($editNameTripId)
-    <div style="position:fixed;inset:0;background:rgba(20,10,4,0.6);backdrop-filter:blur(4px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div x-data="{ type: '{{ $editType }}' }" style="background:var(--bg-white);border-radius:24px;width:100%;max-width:400px;padding:26px;max-height:90vh;overflow-y:auto;animation:stModalPop .22s cubic-bezier(.34,1.56,.64,1);">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div x-data="{ type: '{{ $editType }}' }" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:24px;width:100%;max-width:400px;padding:26px;max-height:90vh;overflow-y:auto;animation:stModalPop .22s cubic-bezier(.34,1.56,.64,1);">
 
             {{-- Header --}}
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
@@ -336,7 +336,7 @@
                 <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;">Trip Name</div>
                 <input wire:model="editNameValue" type="text" placeholder="e.g. Solo Getaway to Siargao"
                        style="width:100%;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;padding:12px 15px;font-size:14px;font-family:'Hanken Grotesk',sans-serif;color:var(--dark);outline:none;box-sizing:border-box;transition:border-color .18s,background .18s,box-shadow .18s;"
-                       onfocus="this.style.borderColor='var(--primary)';this.style.background='#fff';this.style.boxShadow='0 0 0 4px rgba(147,75,25,0.08)'" onblur="this.style.borderColor='var(--border)';this.style.background='var(--bg-white)';this.style.boxShadow='none'">
+                       onfocus="this.style.borderColor='var(--primary)';this.style.boxShadow='0 0 0 4px rgba(147,75,25,0.08)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
             </div>
 
             {{-- Travel Type --}}
@@ -347,7 +347,7 @@
                     <button type="button"
                             @click="type = '{{ $typeOpt }}'" wire:click="$set('editType', '{{ $typeOpt }}')"
                             :style="type === '{{ $typeOpt }}'
-                                ? 'flex:1;padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Hanken Grotesk,sans-serif;border:1.5px solid var(--primary);background:#FDF3EB;color:var(--primary);transition:.18s;'
+                                ? 'flex:1;padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Hanken Grotesk,sans-serif;border:1.5px solid var(--primary);background:var(--primary-light);color:var(--primary);transition:.18s;'
                                 : 'flex:1;padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Hanken Grotesk,sans-serif;border:1.5px solid var(--border);background:var(--bg-white);color:var(--muted);transition:.18s;'">
                         {{ $typeOpt }}
                     </button>
@@ -396,7 +396,7 @@
                     <input wire:model="memberEmail" type="email" placeholder="Enter member's email address"
                            wire:keydown.enter.prevent="lookupMember"
                            style="flex:1;background:var(--bg-white);border:1.5px solid {{ $memberError ? '#DC2626' : 'var(--border)' }};border-radius:11px;padding:10px 13px;font-size:13px;font-family:'Hanken Grotesk',sans-serif;color:var(--dark);outline:none;box-sizing:border-box;transition:border-color .18s,background .18s;"
-                           onfocus="this.style.borderColor='var(--primary)';this.style.background='#fff'" onblur="this.style.borderColor='{{ $memberError ? '#DC2626' : 'var(--border)' }}';this.style.background='var(--bg-white)'">
+                           onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='{{ $memberError ? '#DC2626' : 'var(--border)' }}'">
                     <button wire:click="lookupMember" type="button"
                             style="flex-shrink:0;background:var(--primary);color:#fff;border:none;border-radius:11px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'Hanken Grotesk',sans-serif;transition:background .18s;"
                             onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
@@ -415,7 +415,7 @@
                 <div style="display:flex;gap:8px;">
                     @foreach(['upcoming'=>'Upcoming','active'=>'Ongoing','past'=>'Finished'] as $statusVal => $statusLabel)
                     <button type="button" wire:click="$set('editStatus', '{{ $statusVal }}')"
-                            style="flex:1;padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:.18s;border:1.5px solid {{ $editStatus === $statusVal ? 'var(--primary)' : 'var(--border)' }};background:{{ $editStatus === $statusVal ? '#FDF3EB' : '#fff' }};color:{{ $editStatus === $statusVal ? 'var(--primary)' : 'var(--muted)' }};">
+                            style="flex:1;padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:.18s;border:1.5px solid {{ $editStatus === $statusVal ? 'var(--primary)' : 'var(--border)' }};background:{{ $editStatus === $statusVal ? 'var(--primary-light)' : 'var(--bg-white)' }};color:{{ $editStatus === $statusVal ? 'var(--primary)' : 'var(--muted)' }};">
                         {{ $statusLabel }}
                     </button>
                     @endforeach
@@ -469,7 +469,7 @@
                     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px;">Share via Link</div>
                     <div style="display:flex;gap:8px;">
                         <input readonly value="{{ $shareLink }}" id="share-link-value"
-                               style="flex:1;min-width:0;border:1.5px solid var(--border);border-radius:8px;padding:9px 10px;font-size:12px;color:var(--muted);">
+                               style="flex:1;min-width:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 10px;font-size:12px;color:var(--dark);">
                         <button type="button" onclick="
                             navigator.clipboard.writeText('{{ $shareLink }}');
                             this.textContent = 'Copied!';

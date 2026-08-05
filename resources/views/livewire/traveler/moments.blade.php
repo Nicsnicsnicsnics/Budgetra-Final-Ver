@@ -434,7 +434,7 @@
                     style="flex:2;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;"
                     wire:loading.attr="disabled" wire:target="savePin">
                 <span wire:loading.remove wire:target="savePin">{{ $pinModalMode === 'edit' ? 'Save Changes' : 'Add Pin' }}</span>
-                <span wire:loading wire:target="savePin"><i class="fa-solid fa-spinner fa-spin"></i> Saving…</span>
+                <span wire:loading wire:target="savePin"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
         </div>
 

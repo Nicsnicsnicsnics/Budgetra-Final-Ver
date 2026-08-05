@@ -114,8 +114,8 @@
 
     {{-- Deposit modal --}}
     @if ($showDeposit)
-    <div style="position:fixed;inset:0;background:rgba(20,10,4,0.55);backdrop-filter:blur(3px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closeDeposit">
-        <div style="background:var(--bg-white);border-radius:22px;width:100%;max-width:380px;padding:28px;">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(3px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closeDeposit">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:22px;width:100%;max-width:380px;padding:28px;">
 
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;">
                 <div style="width:40px;height:40px;border-radius:12px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">

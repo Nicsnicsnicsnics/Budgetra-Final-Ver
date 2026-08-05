@@ -221,12 +221,32 @@
             'Transport' => 'flight', 'Transportation' => 'flight', 'transport' => 'flight', 'flight' => 'flight',
         ];
 
+        // AI-generated day activities are all saved with the generic type
+        // 'Activity' (see TripPlannerWizard's itinerary builder) regardless
+        // of whether they're actually a meal or a hotel check-in/out, so
+        // $typeToCat alone leaves almost everything bucketed as "activity".
+        // Refine those generic items by scanning the title for food/hotel
+        // keywords before falling back to green.
+        $foodTitleKeywords  = ['lunch', 'dinner', 'breakfast', 'food', 'restaurant', 'cafe', 'coffee', 'bakery', 'seafood', 'cocktail', 'dining', 'snack', 'buffet'];
+        $hotelTitleKeywords = ['check-in', 'check in', 'check-out', 'check out', 'hotel', 'resort', 'inn', 'lodge', 'hostel'];
+
         // Full per-day agenda (title/time/category) for the sidebar list,
         // chips in the month grid, and the day/week views.
         $itemsByDate = [];
         foreach ($allItems as $item) {
-            $date = $item->start_datetime->toDateString();
-            $cat  = $typeToCat[$item->type ?? 'Activity'] ?? 'activity';
+            $date  = $item->start_datetime->toDateString();
+            $title = strtolower($item->title ?? '');
+            $cat   = $typeToCat[$item->type ?? 'Activity'] ?? 'activity';
+            if ($cat === 'activity') {
+                foreach ($hotelTitleKeywords as $kw) {
+                    if (str_contains($title, $kw)) { $cat = 'hotel'; break; }
+                }
+            }
+            if ($cat === 'activity') {
+                foreach ($foodTitleKeywords as $kw) {
+                    if (str_contains($title, $kw)) { $cat = 'food'; break; }
+                }
+            }
             $itemsByDate[$date][] = [
                 'title' => $item->title,
                 'time'  => $item->start_datetime->format('g:i A'),
@@ -410,7 +430,7 @@
                         @foreach($shown as $si => $it)
                         @php $cat = array_search($it['color'], $catColor) ?: 'activity'; @endphp
                         <div x-show="show{{ ucfirst($cat === 'hotel' ? 'Hotel' : ($cat==='food'?'Food':($cat==='flight'?'Flight':'Activity'))) }}"
-                             style="background:{{ $it['color'] }}14;border-left:2.5px solid {{ $it['color'] }};border-radius:3px;padding:2px 5px;font-size:9px;font-weight:600;color:{{ $it['color'] }};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
+                             style="background:{{ $it['color'] }}14;border-left:2.5px solid {{ $it['color'] }};border-radius:3px;padding:2px 5px;font-size:9px;font-weight:600;color:{{ $it['color'] }};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:6px;">
                             {{ $it['time'] }} - {{ $it['title'] }}
                         </div>
                         @endforeach
@@ -460,7 +480,7 @@
                                 @foreach($dayItemsList as $it)
                                 @php $cat = array_search($it['color'], $catColor) ?: 'activity'; @endphp
                                 <div x-show="show{{ ucfirst($cat === 'hotel' ? 'Hotel' : ($cat==='food'?'Food':($cat==='flight'?'Flight':'Activity'))) }}"
-                                     style="background:{{ $it['color'] }}14;border-left:2.5px solid {{ $it['color'] }};border-radius:3px;padding:3px 6px;font-size:10px;font-weight:600;color:{{ $it['color'] }};margin-bottom:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
+                                     style="background:{{ $it['color'] }}14;border-left:2.5px solid {{ $it['color'] }};border-radius:3px;padding:3px 6px;font-size:10px;font-weight:600;color:{{ $it['color'] }};margin-bottom:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
                                     {{ $it['time'] }} - {{ $it['title'] }}
                                 </div>
                                 @endforeach
@@ -490,7 +510,7 @@
                 @endforeach
                 @php $datesWithItems = array_keys($itemsByDate); @endphp
                 <template x-if="!{{ Illuminate\Support\Js::from($datesWithItems) }}.includes(selDate)">
-                    <p style="font-size:13px;color:var(--muted);text-align:center;padding:40px 0;margin:0;">No activities for this day yet — click it on the calendar to generate one.</p>
+                    <p style="font-size:13px;color:var(--muted);text-align:center;padding:40px 0;margin:0;">No trips planned on this date.</p>
                 </template>
             </div>
 

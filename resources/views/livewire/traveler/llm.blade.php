@@ -235,14 +235,14 @@
         .llm-fade-up{animation:llmFadeUp .5s ease both;}
         .llm-back-link{display:inline-flex;align-items:center;gap:6px;color:var(--primary);font-size:13px;font-weight:600;text-decoration:none;}
         .llm-greeting{font-size:clamp(24px,3.2vw,32px);font-weight:600;color:var(--dark);margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;letter-spacing:-.01em;}
-        .llm-interest-pill{display:inline-flex;align-items:center;gap:6px;background:var(--bg-white);border:1.5px solid #F0DCC5;color:var(--primary);border-radius:999px;padding:6px 15px;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(147,75,25,0.06);transition:border-color .18s,box-shadow .18s,transform .18s;}
-        .llm-interest-pill:hover{border-color:var(--primary);box-shadow:0 4px 12px rgba(147,75,25,0.12);transform:translateY(-1px);}
+        .llm-interest-pill{display:inline-flex;align-items:center;gap:6px;background:var(--primary-light);border:1.5px solid transparent;color:var(--primary);border-radius:999px;padding:6px 15px;font-size:12px;font-weight:700;transition:border-color .18s,transform .18s;}
+        .llm-interest-pill:hover{border-color:var(--primary);transform:translateY(-1px);}
         .llm-interest-edit{color:var(--primary);font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
         .llm-interest-edit:hover{text-decoration:underline;}
-        .llm-composer{width:100%;max-width:520px;margin:0 auto;background:var(--bg-white);border:1.5px solid var(--border);border-radius:999px;box-shadow:0 8px 32px rgba(45,27,20,.07);padding:8px 8px 8px 22px;display:flex;align-items:center;gap:10px;transition:box-shadow .2s ease,border-color .2s ease;}
-        .llm-composer:focus-within{border-color:var(--primary);box-shadow:0 12px 40px rgba(147,75,25,.14);}
+        .llm-composer{width:100%;max-width:520px;margin:0 auto;background:var(--bg-white);border:1.5px solid var(--border);border-radius:999px;padding:8px 8px 8px 22px;display:flex;align-items:center;gap:10px;transition:border-color .2s ease;}
+        .llm-composer:focus-within{border-color:var(--primary);}
         .llm-composer textarea{flex:1;min-width:0;border:none;outline:none;resize:none;font-family:inherit;font-size:14px;color:var(--dark);background:transparent;line-height:1.4;max-height:100px;padding:8px 0;overflow:hidden;}
-        .llm-send-btn{width:38px;height:38px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 16px rgba(147,75,25,0.28);transition:transform .15s ease,background .15s ease;}
+        .llm-send-btn{width:38px;height:38px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s ease,background .15s ease;}
         .llm-send-btn:hover{background:var(--primary-dark);transform:scale(1.08);}
         .llm-send-btn:active{transform:scale(.92);}
         .llm-thread{width:100%;max-width:600px;margin:0 auto;flex:1;overflow-y:auto;padding:80px 4px 16px;display:flex;flex-direction:column;gap:12px;}
@@ -332,25 +332,21 @@
      contained styles (not reusing .llm-msg etc.) since this can be opened
      from any aiStep, including ones whose own <style> block never rendered. --}}
 @if ($showHistory)
-<div style="position:fixed;inset:0;background:rgba(26,10,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;" wire:click.self="closeHistory">
-    <div style="background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;">
+<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;" wire:click.self="closeHistory">
+    <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:18px;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
 
         @php $entry = $this->viewingHistoryEntry; @endphp
 
         <div style="padding:18px 20px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:10px;">
             @if ($entry)
             <button type="button" wire:click="backToHistoryList" title="Back to list"
-                    style="background:none;border:none;color:#934B19;cursor:pointer;padding:4px;display:flex;">
+                    style="background:none;border:none;color:var(--primary);cursor:pointer;padding:4px;display:flex;">
                 <i class="fa-solid fa-arrow-left" style="font-size:14px;"></i>
             </button>
             @endif
             <div style="font-size:15px;font-weight:700;color:var(--dark);flex:1;">
                 {{ $entry ? ($entry->ai_from . ' to ' . $entry->ai_to) : 'Past Conversations' }}
             </div>
-            <button type="button" wire:click="closeHistory" title="Close"
-                    style="background:none;border:none;color:#9B8EA0;cursor:pointer;padding:4px;display:flex;">
-                <i class="fa-solid fa-xmark" style="font-size:16px;"></i>
-            </button>
         </div>
 
         <div style="overflow-y:auto;padding:16px 20px;flex:1;">
@@ -360,8 +356,8 @@
                     @foreach ($entry->messages as $msg)
                     <div style="max-width:85%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;
                                 {{ $msg['role'] === 'user'
-                                    ? 'align-self:flex-end;background:#934B19;color:#fff;border-bottom-right-radius:4px;'
-                                    : 'align-self:flex-start;background:#F8F5F2;color:var(--dark);border-bottom-left-radius:4px;' }}">
+                                    ? 'align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:4px;'
+                                    : 'align-self:flex-start;background:var(--bg);color:var(--dark);border-bottom-left-radius:4px;' }}">
                         {{ $msg['text'] }}
                     </div>
                     @endforeach
@@ -378,14 +374,14 @@
                 {{-- List of past conversations --}}
                 @if ($this->conversationHistory->isEmpty())
                 <div style="text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;">
-                    <i class="fa-regular fa-comments" style="font-size:28px;display:block;margin-bottom:10px;color:#D8CABB;"></i>
-                    No past conversations yet — once you finish planning a trip with TARA, it'll show up here.
+                    <i class="fa-regular fa-comments" style="font-size:28px;display:block;margin-bottom:10px;color:var(--border);"></i>
+                    No past conversations yet, once you finish planning a trip with TARA, it'll show up here.
                 </div>
                 @else
                 <div style="display:flex;flex-direction:column;gap:8px;">
                     @foreach ($this->conversationHistory as $past)
-                    <div style="background:#F8F5F2;border:1.5px solid transparent;border-radius:12px;transition:border-color .15s ease;"
-                         onmouseenter="this.style.borderColor='#934B19'" onmouseleave="this.style.borderColor='transparent'">
+                    <div style="background:var(--bg);border:1.5px solid transparent;border-radius:12px;transition:border-color .15s ease;"
+                         onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='transparent'">
                         @if ($historyEntryToDelete === $past->id)
                         {{-- Inline confirm — kept in the same row instead of stacking a
                              second modal on top of the one already open. --}}
@@ -393,7 +389,7 @@
                             <span style="font-size:12px;font-weight:600;color:var(--dark);">Delete this conversation?</span>
                             <div style="display:flex;gap:6px;flex-shrink:0;">
                                 <button type="button" wire:click="cancelDeleteHistoryEntry"
-                                        style="background:#fff;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">
+                                        style="background:var(--bg-white);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">
                                     No
                                 </button>
                                 <button type="button" wire:click="deleteHistoryEntry"
@@ -428,6 +424,13 @@
                 </div>
                 @endif
             @endif
+        </div>
+
+        <div style="padding:14px 20px;border-top:1.5px solid var(--border);display:flex;justify-content:flex-end;">
+            <button type="button" wire:click="closeHistory"
+                    style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;">
+                Close
+            </button>
         </div>
     </div>
 </div>

@@ -53,11 +53,13 @@
     /* ── Floating Add Expense button ──────────────────────── */
     .expense-fab {
         position: fixed; bottom: 28px; right: 28px; width: 56px; height: 56px; border-radius: 50%;
-        background: var(--primary); color: #fff; border: none; box-shadow: var(--shadow-lg);
+        background: var(--primary); border: none; box-shadow: var(--shadow-lg);
         font-size: 20px; cursor: pointer; z-index: 500; display: flex; align-items: center; justify-content: center;
         transition: transform .2s ease, background .2s ease;
     }
+    .expense-fab i { color: #fff; line-height: 1; }
     .expense-fab:hover { transform: scale(1.08); background: var(--primary-dark); }
+    .expense-fab:hover i { color: #fff; }
     @media (max-width: 640px) { .expense-fab { bottom: 20px; right: 20px; width: 50px; height: 50px; font-size: 18px; } }
 </style>
 @endpush
@@ -266,15 +268,16 @@
     </a>
 
     {{-- Delete Confirmation Modal --}}
-    <div x-show="confirmDeleteId" x-cloak style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:var(--bg-white);border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
-            <div style="background:#FEF2F2;padding:28px 24px 20px;text-align:center;">
+    <template x-if="confirmDeleteId">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;width:100%;max-width:360px;overflow:hidden;">
+            <div style="background:var(--bg);padding:28px 24px 20px;text-align:center;">
                 <div style="width:52px;height:52px;border-radius:50%;background:#FEE2E2;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
                     <i class="fa-solid fa-trash-can" style="font-size:22px;color:#DC2626;"></i>
                 </div>
                 <div style="font-size:17px;font-weight:700;color:var(--dark);margin-bottom:6px;">Delete Expense?</div>
                 <div style="font-size:13px;color:var(--muted);line-height:1.5;">
-                    <strong x-text="confirmDeleteDesc"></strong> will be permanently deleted.<br>This action cannot be undone.
+                    <strong x-text="confirmDeleteDesc" style="color:var(--dark);"></strong> will be permanently deleted.<br>This action cannot be undone.
                 </div>
             </div>
             <div style="display:flex;gap:10px;padding:18px 24px;">
@@ -283,6 +286,7 @@
             </div>
         </div>
     </div>
+    </template>
 
 </div>
 

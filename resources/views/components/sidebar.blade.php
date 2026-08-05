@@ -46,6 +46,7 @@
              style="width:38px;height:38px;border-radius:10px;object-fit:contain;flex-shrink:0;">
         <span class="sidebar-link-label" style="font-size:18px;font-weight:800;color:var(--primary);letter-spacing:0.01em;">Budgetra</span>
     </div>
+    <div class="sidebar-divider" style="margin-left:24px;margin-right:24px;"></div>
 
     <nav class="sidebar-nav">
         @foreach ($links as $link)

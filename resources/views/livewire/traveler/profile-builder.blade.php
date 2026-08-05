@@ -4,6 +4,7 @@
 
 <div style="min-height:100vh;background:var(--bg);display:flex;flex-direction:column;align-items:center;padding:24px;">
 
+@if(!$returnTo)
 <div style="display:flex;align-items:center;width:100%;max-width:560px;margin:8px 0 36px;padding:0 24px;box-sizing:border-box;">
     @for ($i = 1; $i <= 6; $i++)
         @php $state = $step > $i ? 'done' : ($step === $i ? 'current' : 'upcoming'); @endphp
@@ -23,6 +24,7 @@
         @endif
     @endfor
 </div>
+@endif
 
 <style>
 .pb-icon-wrap{width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
@@ -540,7 +542,7 @@
 
 {{-- Navigation --}}
 <div class="pb-nav" style="max-width:{{ in_array($step, [4, 5]) ? '100%' : ($step === 3 ? '1100px' : ($step === 1 ? '1280px' : ($step === 2 ? '720px' : ($step === 6 ? '640px' : '480px')))) }};{{ in_array($step, [1, 2, 3, 4, 5, 6]) ? ' padding:0 24px;' : '' }}">
-    @if($step > 1)
+    @if($step > 1 && !$returnTo)
     <button class="pb-btn pb-btn-ghost" wire:click="prevStep">
         <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back
     </button>
