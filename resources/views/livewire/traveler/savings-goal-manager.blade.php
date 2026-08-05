@@ -2,11 +2,11 @@
 
     @php
         $trip       = $goal->trip;
-        $cover      = $trip?->cover_image;
         $dest       = $trip?->trip_name ?? $trip?->destination ?? $goal->goal_name;
         $tType      = strtoupper($trip?->travel_type ?? 'SOLO');
         $typeColor    = $tType === 'GROUP' ? '#A855F7' : '#14B8A6';
         $tripStatus   = $trip?->status ?? ($trip?->start_date?->gt(\Carbon\Carbon::today()) ? 'upcoming' : ($trip?->end_date?->lt(\Carbon\Carbon::today()) ? 'past' : 'active'));
+        $cover      = $trip?->cover_image ?: ($tripStatus === 'draft' ? asset('stockimages/draftimage.jpg') : null);
         $statusColor  = match($tripStatus) { 'active' => '#22C55E', 'upcoming' => '#3B82F6', default => 'var(--muted)' };
         $fromCode   = $trip?->origin_code ?? 'MNL';
         $toCode     = $trip?->destination_code ?? '';
@@ -99,12 +99,12 @@
         {{-- Button --}}
         <div style="margin-top:auto;">
             @if($cardDone)
-            <div style="width:100%;padding:14px;border-radius:12px;background:#F0FDF4;color:#16A34A;font-size:14px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(22,163,74,0.08);">
+            <div style="width:100%;padding:14px;border-radius:12px;background:#F0FDF4;color:#16A34A;font-size:14px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;">
                 <i class="fa-solid fa-check"></i> Goal Reached!
             </div>
             @else
             <button wire:click="openDeposit"
-                    style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:'Hanken Grotesk',sans-serif;box-shadow:0 4px 14px rgba(147,75,25,0.22);transition:background .18s,gap .18s;"
+                    style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:'Hanken Grotesk',sans-serif;transition:background .18s,gap .18s;"
                     onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='7px'">
                 <i class="fa-solid fa-circle-plus" style="font-size:15px;"></i> Add Savings
             </button>
@@ -115,10 +115,10 @@
     {{-- Deposit modal --}}
     @if ($showDeposit)
     <div style="position:fixed;inset:0;background:rgba(20,10,4,0.55);backdrop-filter:blur(3px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closeDeposit">
-        <div style="background:var(--bg-white);border-radius:22px;width:100%;max-width:380px;box-shadow:0 24px 70px rgba(0,0,0,.28);padding:28px;">
+        <div style="background:var(--bg-white);border-radius:22px;width:100%;max-width:380px;padding:28px;">
 
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;">
-                <div style="width:40px;height:40px;border-radius:12px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(147,75,25,0.22);">
+                <div style="width:40px;height:40px;border-radius:12px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fa-solid fa-piggy-bank" style="color:#fff;font-size:16px;"></i>
                 </div>
                 <span style="font-size:18px;font-weight:700;color:var(--dark);">Add Savings</span>
@@ -152,7 +152,7 @@
             </div>
 
             <button wire:click="submitDeposit"
-                    style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:14px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;margin-bottom:12px;box-shadow:0 4px 14px rgba(147,75,25,0.22);transition:background .18s;"
+                    style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:14px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;margin-bottom:12px;transition:background .18s;"
                     onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
                 Confirm Savings
             </button>

@@ -23,20 +23,20 @@
 
     @if ($trips->isEmpty())
     <div class="empty-state-center" style="min-height:80vh;">
-        <div style="width:64px;height:64px;border-radius:18px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;box-shadow:0 10px 26px rgba(147,75,25,0.24);">
+        <div style="width:64px;height:64px;border-radius:18px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
             <i class="fa-solid fa-suitcase-rolling" style="font-size:28px;color:#fff;"></i>
         </div>
         @if (!auth()->user()?->userProfile)
         <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">Set up your profile first</h2>
         <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile before planning a trip.</p>
-        <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;box-shadow:0 8px 22px rgba(147,75,25,0.24);transition:background .18s;"
+        <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;transition:background .18s;"
            onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
             <i class="fa-solid fa-user"></i> Set Up Your Profile First
         </a>
         @else
         <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">No saved trips yet</h2>
         <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Plan a trip first to see your saved and draft trips.</p>
-        <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;box-shadow:0 8px 22px rgba(147,75,25,0.24);transition:background .18s;"
+        <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;transition:background .18s;"
            onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
             <i class="fa-solid fa-plane"></i> Plan Your First Trip
         </a>
@@ -56,22 +56,22 @@
 
     @foreach ($stGroups as $stGroup)
     <div x-data="{ open: {{ $stGroup['items']->isNotEmpty() ? 'true' : 'false' }} }" style="margin-bottom:20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:999px;transition:border-radius .2s,border-color .2s,box-shadow .2s;"
-         :style="open ? 'border-radius:22px;border-color:var(--primary);box-shadow:0 8px 24px rgba(147,75,25,.12);' : ''">
+         :style="open ? 'border-radius:22px;border-color:var(--primary);' : ''">
         <button @click="open=!open" type="button" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:none;border:none;cursor:pointer;">
             <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:32px;height:32px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 10px rgba(147,75,25,0.22);">
+                <div style="width:32px;height:32px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="{{ $stGroup['icon'] }}" style="color:#fff;font-size:13px;"></i>
                 </div>
                 <span style="font-size:15px;font-weight:700;color:var(--dark);">{{ $stGroup['label'] }}</span>
                 @php $stCount = $stGroup['items']->count(); @endphp
-                <span style="font-size:11px;font-weight:800;{{ $stCount > 0 ? 'color:#fff;background:var(--primary);box-shadow:0 3px 8px rgba(147,75,25,0.3);' : 'color:#B3A69A;background:#F3EEE8;' }}border-radius:99px;min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $stCount }}</span>
+                <span style="font-size:11px;font-weight:800;{{ $stCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:#B3A69A;background:#F3EEE8;' }}border-radius:99px;min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $stCount }}</span>
             </div>
             <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
         </button>
         <div x-show="open" x-transition style="padding:16px 18px 20px;border-top:1px solid var(--border);">
             @if ($stGroup['items']->isEmpty())
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
-                <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;box-shadow:0 8px 20px rgba(147,75,25,0.2);">
+                <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
                     <i class="{{ $stGroup['icon'] }}" style="font-size:24px;color:#fff;"></i>
                 </div>
                 <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No {{ $stGroup['label'] }} yet</h3>
@@ -95,7 +95,7 @@
             $dateTo   = $trip->end_date->format('M j, Y');
             $days     = $trip->days;
             $displayCost = $trip->total_cost ?? $trip->budget_limit ?? 0;
-            $cover    = $trip->cover_image;
+            $cover    = $trip->cover_image ?: ($trip->status === 'draft' ? asset('stockimages/draftimage.jpg') : null);
             $statusColor = match($trip->status) {
                 'active'   => '#22C55E',
                 'upcoming' => '#3B82F6',
@@ -129,7 +129,7 @@
                         <i class="fa-solid fa-ellipsis-vertical" style="font-size:14px;"></i>
                     </button>
                     <div x-show="open" x-transition
-                         style="position:absolute;top:40px;right:0;background:var(--bg-white);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(45,27,20,.18);min-width:160px;z-index:100;overflow:hidden;">
+                         style="position:absolute;top:40px;right:0;background:var(--bg-white);border:1px solid var(--border);border-radius:12px;min-width:160px;z-index:100;overflow:hidden;">
                         <button wire:click="openEditName({{ $trip->id }})" @click="open=false"
                                 style="width:100%;background:none;border:none;padding:11px 16px;font-size:13px;font-weight:500;color:var(--dark);cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;border-bottom:1px solid var(--bg);font-family:'Hanken Grotesk',sans-serif;"
                                 onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='none'">
@@ -194,7 +194,7 @@
 
                 <div style="display:flex;gap:10px;">
                     <button wire:click="showDetail({{ $trip->id }})"
-                            style="flex:1;background:{{ $detailTripId === $trip->id ? 'var(--primary-dark)' : 'var(--primary)' }};color:#fff;border:none;border-radius:10px;padding:12px 8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 4px 12px rgba(147,75,25,0.18);transition:background .18s;"
+                            style="flex:1;background:{{ $detailTripId === $trip->id ? 'var(--primary-dark)' : 'var(--primary)' }};color:#fff;border:none;border-radius:10px;padding:12px 8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .18s;"
                             onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='{{ $detailTripId === $trip->id ? 'var(--primary-dark)' : 'var(--primary)' }}'">
                         <i class="fa-regular fa-eye" style="font-size:13px;"></i> {{ $detailTripId === $trip->id ? 'Hide Details' : 'View Details' }}
                     </button>
@@ -223,7 +223,7 @@
             ];
         @endphp
         <div class="st-panel-pop st-thin-scroll" wire:key="detail-{{ $trip->id }}"
-             style="width:320px;flex-shrink:0;margin-left:16px;background:var(--bg-white);border-radius:20px;box-shadow:0 8px 28px rgba(45,27,20,0.10);overflow-y:auto;max-height:{{ 200 + 20 + 62 + 44 + 42 }}px;">
+             style="width:320px;flex-shrink:0;margin-left:16px;background:var(--bg-white);border-radius:20px;overflow-y:auto;max-height:{{ 200 + 20 + 62 + 44 + 42 }}px;">
 
             <div style="padding:18px 20px 6px;display:flex;align-items:center;gap:9px;">
                 <div style="width:26px;height:26px;border-radius:8px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -287,11 +287,11 @@
 
     {{-- Delete Confirmation Modal --}}
     @if ($deleteTripId)
-    <div style="position:fixed;inset:0;background:rgba(20,10,4,0.6);backdrop-filter:blur(4px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:var(--bg-white);border-radius:24px;width:100%;max-width:380px;box-shadow:0 30px 80px rgba(0,0,0,0.32);overflow:hidden;animation:stModalPop .22s cubic-bezier(.34,1.56,.64,1);">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:var(--bg-white);border-radius:24px;width:100%;max-width:380px;overflow:hidden;animation:stModalPop .22s cubic-bezier(.34,1.56,.64,1);">
             {{-- Icon header --}}
-            <div style="position:relative;background:radial-gradient(circle at 50% -10%,#FEE2E2,#FEF2F2 70%);padding:36px 28px 24px;text-align:center;overflow:hidden;">
-                <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 10px 24px rgba(220,38,38,0.28);position:relative;">
+            <div style="position:relative;background:var(--bg);padding:36px 28px 24px;text-align:center;overflow:hidden;">
+                <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;position:relative;">
                     <i class="fa-solid fa-trash-can" style="font-size:24px;color:#fff;"></i>
                 </div>
                 <div style="font-size:19px;font-weight:800;color:var(--dark);margin-bottom:8px;">Delete Trip?</div>
@@ -307,7 +307,7 @@
                     Cancel
                 </button>
                 <button wire:click="deleteTrip"
-                        style="flex:1;background:#DC2626;color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 6px 16px rgba(220,38,38,0.28);transition:background .18s,transform .12s;"
+                        style="flex:1;background:#DC2626;color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s,transform .12s;"
                         onmouseenter="this.style.background='#B91C1C'" onmouseleave="this.style.background='#DC2626'"
                         onmousedown="this.style.transform='scale(.97)'" onmouseup="this.style.transform='scale(1)'">
                     <span wire:loading.remove wire:target="deleteTrip"><i class="fa-solid fa-trash-can" style="font-size:11px;margin-right:6px;"></i>Delete</span>
@@ -321,11 +321,11 @@
     {{-- Edit Trip Modal --}}
     @if ($editNameTripId)
     <div style="position:fixed;inset:0;background:rgba(20,10,4,0.6);backdrop-filter:blur(4px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div x-data="{ type: '{{ $editType }}' }" style="background:var(--bg-white);border-radius:24px;width:100%;max-width:400px;box-shadow:0 30px 80px rgba(0,0,0,0.32);padding:26px;max-height:90vh;overflow-y:auto;animation:stModalPop .22s cubic-bezier(.34,1.56,.64,1);">
+        <div x-data="{ type: '{{ $editType }}' }" style="background:var(--bg-white);border-radius:24px;width:100%;max-width:400px;padding:26px;max-height:90vh;overflow-y:auto;animation:stModalPop .22s cubic-bezier(.34,1.56,.64,1);">
 
             {{-- Header --}}
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-                <div style="width:42px;height:42px;border-radius:13px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 16px rgba(147,75,25,0.28);">
+                <div style="width:42px;height:42px;border-radius:13px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fa-regular fa-pen-to-square" style="color:#fff;font-size:16px;"></i>
                 </div>
                 <span style="font-size:18px;font-weight:800;color:var(--dark);">Edit Trip</span>
@@ -398,7 +398,7 @@
                            style="flex:1;background:var(--bg-white);border:1.5px solid {{ $memberError ? '#DC2626' : 'var(--border)' }};border-radius:11px;padding:10px 13px;font-size:13px;font-family:'Hanken Grotesk',sans-serif;color:var(--dark);outline:none;box-sizing:border-box;transition:border-color .18s,background .18s;"
                            onfocus="this.style.borderColor='var(--primary)';this.style.background='#fff'" onblur="this.style.borderColor='{{ $memberError ? '#DC2626' : 'var(--border)' }}';this.style.background='var(--bg-white)'">
                     <button wire:click="lookupMember" type="button"
-                            style="flex-shrink:0;background:var(--primary);color:#fff;border:none;border-radius:11px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'Hanken Grotesk',sans-serif;box-shadow:0 4px 12px rgba(147,75,25,0.2);transition:background .18s;"
+                            style="flex-shrink:0;background:var(--primary);color:#fff;border:none;border-radius:11px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'Hanken Grotesk',sans-serif;transition:background .18s;"
                             onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
                         <i class="fa-solid fa-plus" style="font-size:10px;"></i> Add
                     </button>
@@ -430,7 +430,7 @@
                     Cancel
                 </button>
                 <button wire:click="saveEditName"
-                        style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;box-shadow:0 6px 16px rgba(147,75,25,0.26);transition:background .18s,transform .12s;"
+                        style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:background .18s,transform .12s;"
                         onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'"
                         onmousedown="this.style.transform='scale(.97)'" onmouseup="this.style.transform='scale(1)'">
                     Save
@@ -444,7 +444,7 @@
     {{-- Share Trip Modal --}}
     @if ($shareTripId)
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:var(--bg-white);border-radius:20px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
+        <div style="background:var(--bg-white);border-radius:20px;width:100%;max-width:380px;overflow:hidden;">
             <div style="padding:28px 24px 20px;text-align:center;">
                 <div style="width:52px;height:52px;border-radius:50%;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
                     <i class="fa-solid fa-share-nodes" style="font-size:20px;color:var(--primary);"></i>
@@ -483,7 +483,7 @@
                 <div style="text-align:left;margin-bottom:20px;">
                     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px;">Share via Code</div>
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <div style="flex:1;font-family:monospace;font-size:20px;font-weight:700;letter-spacing:4px;background:#F5F0EB;border-radius:8px;padding:10px;color:var(--dark);text-align:center;">
+                        <div style="flex:1;font-family:monospace;font-size:20px;font-weight:700;letter-spacing:4px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--dark);text-align:center;">
                             {{ $shareCode }}
                         </div>
                         <button type="button" onclick="
