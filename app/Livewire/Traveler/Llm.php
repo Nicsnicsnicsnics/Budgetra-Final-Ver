@@ -9,6 +9,7 @@ use App\Services\GroqService;
 use App\Services\MistralService;
 use App\Services\OpenRouterService;
 use App\Services\SerpApiService;
+use App\Services\SerperService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -53,9 +54,15 @@ class Llm extends Component
     // whichever place the regex happened to capture first.
     private ?string $ambiguityNotice = null;
 
+    // Set inside parseAiPrompt()'s budget step when the traveler's message
+    // names a non-peso currency ("$1,500", "1500 USD") — never synced, same
+    // reasoning as $ambiguityNotice above.
+    private ?string $currencyNotice = null;
+
     // ── Conversation history (view-only browsing of past chats) ────────
     public bool $showHistory       = false;
     public ?int $viewingHistoryId  = null;
+    public ?int $historyEntryToDelete = null;
 
     // Read-only summary of the traveler's saved interests (from onboarding),
     // shown as a quick reminder on the landing screen and folded into trip
@@ -113,6 +120,36 @@ class Llm extends Component
     public function backToHistoryList(): void
     {
         $this->viewingHistoryId = null;
+    }
+
+    public function confirmDeleteHistoryEntry(int $id): void
+    {
+        $this->historyEntryToDelete = $id;
+    }
+
+    public function cancelDeleteHistoryEntry(): void
+    {
+        $this->historyEntryToDelete = null;
+    }
+
+    public function deleteHistoryEntry(): void
+    {
+        if (!$this->historyEntryToDelete) return;
+
+        // Scoped to the current user the same way viewHistoryEntry()'s own
+        // lookup is — a tampered id must never be able to delete another
+        // traveler's history.
+        AiConversationHistory::where('user_id', auth()->id())
+            ->where('id', $this->historyEntryToDelete)
+            ->delete();
+
+        // Deleting the entry currently open falls back to the list instead
+        // of leaving the transcript view pointed at a now-missing record.
+        if ($this->viewingHistoryId === $this->historyEntryToDelete) {
+            $this->viewingHistoryId = null;
+        }
+
+        $this->historyEntryToDelete = null;
     }
 
     // Restores an in-progress conversation from the last visit — a page
@@ -233,9 +270,24 @@ class Llm extends Component
         if ($this->ambiguityNotice !== null) {
             $notice = $this->ambiguityNotice;
             $this->ambiguityNotice = null;
+            $this->aiPrompt = '';
             $this->messages[] = ['role' => 'assistant', 'text' => $notice];
             $this->dispatch('message-added');
             return;
+        }
+
+        // A dollar/euro/etc. amount was just auto-converted to pesos inside
+        // parseAiPrompt() (see detectAndConvertCurrency()) — budget is
+        // already genuinely resolved at this point, not just flagged, so
+        // this shows the conversion confirmation and lets the turn
+        // continue normally (asking for whatever's still missing next, or
+        // proceeding straight to generation) instead of stopping and
+        // waiting the way the ambiguity check above needs to.
+        if ($this->currencyNotice !== null) {
+            $notice = $this->currencyNotice;
+            $this->currencyNotice = null;
+            $this->messages[] = ['role' => 'assistant', 'text' => $notice];
+            $this->dispatch('message-added');
         }
 
         $this->applyDirectAnswerFallback($userText);
@@ -336,6 +388,27 @@ class Llm extends Component
             $this->missCount    = 0;
             $this->messages[] = ['role' => 'assistant', 'text' =>
                 "Looks like your origin and destination are both {$conflictCity} — could you tell me a different destination to travel to?"];
+            $this->dispatch('message-added');
+            return;
+        }
+
+        // Same reasoning as the same-origin/destination check above — a
+        // budget too small to realistically plan any trip around (e.g. a
+        // stray "1" that slipped past applyDirectAnswerFallback()'s
+        // no-minimum-digit budget check) must never sail through to
+        // generation, regardless of which of the several budget-setting
+        // paths let it through. Reset rather than just warn, so the next
+        // reply is treated as a fresh answer to "what's your budget?"
+        // instead of being blocked by the "only fill if still empty"
+        // guards those paths all share.
+        $budgetFloor = $this->budgetFloor();
+        if ($this->aiBudgetMax > 0 && $this->aiBudgetMax < $budgetFloor) {
+            $this->aiBudgetMin  = 0;
+            $this->aiBudgetMax  = 0;
+            $this->awaitingSlot = 'budget';
+            $this->missCount    = 0;
+            $this->messages[] = ['role' => 'assistant', 'text' =>
+                'That budget looks too low to plan a real trip — could you give me a more realistic number (at least ₱' . number_format($budgetFloor) . ')?'];
             $this->dispatch('message-added');
             return;
         }
@@ -832,10 +905,29 @@ PROMPT;
                 $package['transport']['from_code'] = $this->resolveCode($this->aiFrom ?: 'Manila');
                 $package['transport']['to_code']   = $this->resolveCode($this->aiTo);
             }
-            $this->aiBudgetMin = (int)($package['budget_min'] ?? $this->aiBudgetMin);
-            $this->aiBudgetMax = (int)($package['budget_max'] ?? $this->aiBudgetMax ?: $this->aiBudgetMin);
-            // Same sanity check extractWithAi() already applies before
-            // accepting an AI-supplied date. Two things to guard against:
+            // Only accept the AI's budget if nothing was already resolved
+            // earlier in the conversation. This call re-reads the WHOLE
+            // transcript from scratch and has no reason to be more
+            // trustworthy than a value already parsed correctly turn-by-
+            // turn — unconditionally overwriting here previously let it
+            // replace a correctly-parsed budget with a wrong one (confirmed
+            // live: it mixed up a traveler's "15000" budget with the year
+            // "2026" sitting right next to their travel dates in the same
+            // transcript). Same "only fill if still empty" rule
+            // extractWithAi() already applies to its own budget fields,
+            // just missing here until now.
+            if ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0
+                && (!empty($package['budget_min']) || !empty($package['budget_max']))) {
+                $this->aiBudgetMin = (int) ($package['budget_min'] ?? $package['budget_max']);
+                $this->aiBudgetMax = (int) ($package['budget_max'] ?? $package['budget_min']);
+            }
+            // Same "only fill if still empty" guard as above, applied to
+            // dates for the same reason — this call re-deriving dates from
+            // the whole transcript and overwriting already-correct ones is
+            // exactly what produced the budget bug above; dates were never
+            // protected against the same failure mode.
+            // Also carries the sanity checks extractWithAi() already
+            // applies before accepting an AI-supplied date:
             // 1. A non-date placeholder ("TBD", "Flexible") when the
             //    conversation never actually pinned down real dates —
             //    strtotime() on that silently returns false rather than
@@ -846,15 +938,18 @@ PROMPT;
             //    date_from has no year in this format, so strtotime()
             //    assumes the current one; reject anything landing before
             //    today rather than silently building a trip in the past.
-            if (!empty($package['date_from'])
+            if ($this->aiDateFrom === ''
+                && !empty($package['date_from'])
                 && ($tsFrom = strtotime($package['date_from'])) !== false
                 && $tsFrom >= strtotime('today')) {
                 $this->aiDateFrom = $package['date_from'];
             }
-            if (!empty($package['date_to']) && strtotime($package['date_to']) !== false) {
+            if ($this->aiDateTo === '' && !empty($package['date_to']) && strtotime($package['date_to']) !== false) {
                 $this->aiDateTo = $package['date_to'];
             }
-            $this->aiDays      = (int)($package['days'] ?? $this->aiDays);
+            if ($this->aiDays === 0 && !empty($package['days'])) {
+                $this->aiDays = (int) $package['days'];
+            }
 
             $transportCost     = (int)($package['transport']['cost']     ?? 0);
             $accommodationCost = (int)($package['accommodation']['cost'] ?? 0);
@@ -935,6 +1030,68 @@ PROMPT;
         $hotelData   = $serp->searchHotels($this->aiTo, $checkIn, $checkOut, $days, $gen, $accommodationBudget);
         $restaurData = $serp->searchRestaurants($this->aiTo, $days, $foodBudget, $gen);
         $attrItems   = $serp->searchAttractions($this->aiTo, $gen);
+
+        // SerpAPI's daily quota (or the real account's own limit) can be
+        // exhausted independently of Serper's — every other place in the
+        // app that calls SerpApiService already retries via Serper when it
+        // comes back empty (see TripPlannerWizard), but this method never
+        // did, so hitting the SerpAPI limit here always fell straight to
+        // the fully static Layer 3 lookup table instead. Serper's own
+        // methods return a LIST of raw options (the same "raw" shape used
+        // for manual selection elsewhere), not the single pre-picked
+        // {detail, cost} summary this method needs, so each fallback below
+        // picks one item and reshapes it into the exact summary shap
+        // SerpApiService's own methods already produce — everything
+        // downstream stays unchanged either way. Picking still honors
+        // $gen via pickFromPool() using the same "gen=0 best, gen>0 slides
+        // to a different pick" contract SerpApiService's methods already
+        // follow, so Regenerate keeps working regardless of which service
+        // actually answered.
+        if (!$flightData) {
+            $list = (new SerperService())->searchFlights($fromCode, $toCode, $checkIn, $checkOut);
+            if ($list) {
+                usort($list, fn($a, $b) => ($a['price'] ?? 0) <=> ($b['price'] ?? 0));
+                $pick = $this->pickFromPool($list, $gen);
+                $flightData = [
+                    'detail' => trim(($pick['airline'] ?? 'Airline') . ' ' . ($pick['number'] ?? '')) . ' · ' . ($pick['type'] ?? 'Round Trip'),
+                    'cost'   => (int) ($pick['price'] ?? 0),
+                ];
+            }
+        }
+        if (!$hotelData) {
+            $list = (new SerperService())->searchHotels($this->aiTo, $checkIn, $checkOut, $days);
+            if ($list) {
+                usort($list, fn($a, $b) => ($a['total'] ?? 0) <=> ($b['total'] ?? 0));
+                $pick = $this->pickFromPool($list, $gen);
+                $hotelData = [
+                    'name'   => $pick['name'] ?? ('Hotel in ' . $this->aiTo),
+                    'stars'  => $pick['stars'] ?? 3,
+                    'detail' => $days . ' Nights · Standard Room · ' . $this->aiTo,
+                    'cost'   => (int) ($pick['total'] ?? 0),
+                ];
+            }
+        }
+        if (!$restaurData) {
+            $list = (new SerperService())->searchRestaurants($this->aiTo);
+            if ($list) {
+                $pick = $this->pickFromPool($list, $gen);
+                $restaurData = [
+                    'name'   => $pick['name'] ?? ('Dining in ' . $this->aiTo),
+                    'detail' => $days . ' Days · Breakfast, Lunch, & Dinner · ' . $this->aiTo,
+                    'cost'   => (int) round((float) ($pick['priceMax'] ?? $pick['priceMin'] ?? 500) * $days),
+                ];
+            }
+        }
+        if (!$attrItems) {
+            $list = (new SerperService())->searchAttractions($this->aiTo);
+            if ($list) {
+                $offset    = $gen === 0 ? 0 : min($gen * 3, max(0, count($list) - 3));
+                $attrItems = array_map(
+                    fn($a) => [$a['name'] ?? 'Attraction', ($a['isFree'] ?? false) ? 'Free' : '₱' . number_format((int) ($a['price'] ?? 300))],
+                    array_slice($list, $offset, 3)
+                );
+            }
+        }
 
         // Fall through to static lookup only if every call failed
         if (!$flightData && !$hotelData && !$restaurData && !$attrItems) return null;
@@ -1220,9 +1377,137 @@ PROMPT;
         return $fromCode !== '' && $fromCode === $this->iataCode($this->aiTo);
     }
 
+    // The minimum realistic trip budget to accept. Prefers the traveler's
+    // own daily_budget preference (set during profile onboarding) when
+    // they have one, since that's a real personal signal rather than a
+    // guess on our part — falls back to a flat ₱500 safety net otherwise.
+    // Mirrors the same daily_budget floor
+    // TripPlannerWizard::runItineraryGeneration() already applies, for
+    // consistency between the two planning paths.
+    private function budgetFloor(): int
+    {
+        $profileDailyBudget = (int) (auth()->user()?->userProfile?->daily_budget ?? 0);
+        return $profileDailyBudget > 0 ? $profileDailyBudget : 500;
+    }
+
+    // Every non-peso currency symbol/code offered on the Settings →
+    // Preferences display-currency picker — deliberately excludes PHP/₱
+    // itself, since that's already handled correctly everywhere.
+    // Several symbols here have a visually-identical "fullwidth" lookalike
+    // in Unicode's Fullwidth Forms block (U+FF00–FFEF) — a different code
+    // point some keyboards/IMEs produce instead of the standard one.
+    // Confirmed live: a traveler's ¥ (typed as the fullwidth U+FFE5, not
+    // the standard U+00A5) went completely undetected and silently fell
+    // through to the plain-peso bare-number branch instead of converting.
+    // Rather than fix that one symbol reactively, every other currency
+    // symbol used here with a known fullwidth counterpart ($, £, ₩) is
+    // mapped alongside its standard form too, closing the same class of
+    // bug proactively instead of waiting to hit each one individually.
+    private const NON_PESO_CURRENCY_NAMES = [
+        '$' => 'US dollars', '＄' => 'US dollars', 'usd' => 'US dollars',
+        '€' => 'euros', 'eur' => 'euros',
+        '£' => 'British pounds', '￡' => 'British pounds', 'gbp' => 'British pounds',
+        '¥' => 'Japanese yen', '￥' => 'Japanese yen', 'jpy' => 'Japanese yen',
+        '₩' => 'Korean won', '￦' => 'Korean won', 'krw' => 'Korean won',
+        'sgd' => 'Singapore dollars', 'aud' => 'Australian dollars',
+        'hkd' => 'Hong Kong dollars', 'thb' => 'Thai baht',
+        'myr' => 'Malaysian ringgit', 'aed' => 'UAE dirhams',
+    ];
+
+    // Approximate PHP conversion rates, keyed by the same currency names
+    // above — good enough for a rough trip-budget estimate, deliberately
+    // not a live/financial-grade rate (no external rate API dependency).
+    private const NON_PESO_CURRENCY_RATES = [
+        'US dollars'         => 56,
+        'euros'              => 61,
+        'British pounds'     => 71,
+        'Japanese yen'       => 0.38,
+        'Korean won'         => 0.041,
+        'Singapore dollars'  => 42,
+        'Australian dollars' => 37,
+        'Hong Kong dollars'  => 7.2,
+        'Thai baht'          => 1.6,
+        'Malaysian ringgit'  => 12.5,
+        'UAE dirhams'        => 15.3,
+    ];
+
+    private const CURRENCY_DISPLAY_SYMBOLS = [
+        'US dollars' => '$', 'euros' => '€', 'British pounds' => '£',
+        'Japanese yen' => '¥', 'Korean won' => '₩', 'Singapore dollars' => 'S$',
+        'Australian dollars' => 'A$', 'Hong Kong dollars' => 'HK$',
+        'Thai baht' => '฿', 'Malaysian ringgit' => 'RM', 'UAE dirhams' => 'AED ',
+    ];
+
+    // Finds a non-peso currency marker together with its amount ("$1,500",
+    // "1500 USD" — either order) and converts it to pesos. Returns null if
+    // no currency marker is found, or one is found with no adjacent number
+    // (a bare "$" with no amount isn't a budget mention at all).
+    private function detectAndConvertCurrency(string $text): ?array
+    {
+        $symbolOrCode = '(?:\$|＄|€|£|￡|¥|￥|₩|￦|USD|EUR|GBP|JPY|SGD|AUD|KRW|HKD|THB|MYR|AED)';
+        // Comma-grouped ("1,500") OR a bare digit run of any length
+        // ("1500", "2000", "10000") — \d{1,3} alone (with no bare-digit
+        // fallback) can only ever capture the first 1-3 digits of a plain
+        // 4+ digit number with no comma, silently truncating "1500" to
+        // "150" and producing a wrong conversion. Comma-grouped is tried
+        // first so "$1,500" still captures the full "1,500" as one token
+        // rather than stopping at the comma.
+        $number = '(?:\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)';
+
+        if (preg_match('/(' . $symbolOrCode . ')\s*(' . $number . ')/iu', $text, $m)) {
+            [$marker, $amountRaw] = [$m[1], $m[2]];
+        } elseif (preg_match('/(' . $number . ')\s*(' . $symbolOrCode . ')/iu', $text, $m)) {
+            [$amountRaw, $marker] = [$m[1], $m[2]];
+        } else {
+            return null;
+        }
+
+        $currencyName = self::NON_PESO_CURRENCY_NAMES[strtolower($marker)] ?? null;
+        $rate         = $currencyName !== null ? (self::NON_PESO_CURRENCY_RATES[$currencyName] ?? null) : null;
+        if ($currencyName === null || $rate === null) return null;
+
+        $foreignAmount = (float) str_replace(',', '', $amountRaw);
+        if ($foreignAmount <= 0) return null;
+
+        $symbol = self::CURRENCY_DISPLAY_SYMBOLS[$currencyName] ?? '';
+
+        return [
+            'currencyName' => $currencyName,
+            'pesoAmount'   => (int) round($foreignAmount * $rate),
+            'displayLabel' => $symbol . number_format($foreignAmount),
+        ];
+    }
+
+    // Picks one item from a Serper results list (already sorted by the
+    // caller), honoring the same "gen=0 best, gen>0 slides into a
+    // different pool position" contract SerpApiService's own summary
+    // methods already use — so Regenerate still produces a different pick
+    // regardless of which service actually answered.
+    private function pickFromPool(array $pool, int $gen, int $poolSize = 3): array
+    {
+        $offset = $gen === 0 ? 0 : min($gen, max(0, count($pool) - $poolSize));
+        $slice  = array_slice($pool, $offset, $poolSize) ?: $pool;
+        return $slice[array_rand($slice)];
+    }
+
     public function regeneratePackage(): void
     {
         $this->aiGenCount++;
+
+        // Same fallback order processAiTrip() already uses for the initial
+        // generation (Layer 2 live/Serper data, then Layer 3 static table)
+        // — minus Layer 1's AI re-ask, since regenerating is meant to slide
+        // to a different/cheaper pick within the same already-established
+        // route/budget/dates, not re-interpret the traveler's message
+        // again. Previously this jumped straight to the static table,
+        // which never varies with $aiGenCount at all — every click after
+        // the first landed on the exact same result.
+        $package = $this->buildSerpApiPackage();
+        if ($package) {
+            $this->aiPackage = $package;
+            return;
+        }
+
         $this->generateAiPackage();
     }
 
@@ -1333,6 +1618,18 @@ PROMPT;
         $this->messages = [];
 
         return $this->redirect(route('trips.plan'), navigate: true);
+    }
+
+    // Returns to the chat from the results screen without losing anything —
+    // the conversation transcript and the generated aiPackage are both left
+    // untouched, only the visible step changes. Lets the traveler type a
+    // follow-up ("actually make it Cebu instead") and pick up right where
+    // they left off, rather than the only other ways off this screen
+    // (Edit → hands off to the manual wizard, Regenerate → discards this
+    // package for a new one, Next → saves and moves on).
+    public function backToConversation(): void
+    {
+        $this->aiStep = '';
     }
 
     // Lets the traveler swap the AI's auto-picked flight/hotel/food/
@@ -1490,8 +1787,25 @@ PROMPT;
         // unrealistic — the comma-group form already covers it).
         $big = '(?:\d{1,3}(?:,\d{3})+|\d{4,}|\d+\s*[kK]\b)';
 
+        // A dollar/euro/etc. amount must never be silently read as pesos —
+        // every branch below only ever looks at bare digits, with no
+        // concept of currency at all, so "$1,500" and "₱1,500" would
+        // otherwise both just become 1500. Converts and fills the budget
+        // in directly (using an approximate rate — good enough for a rough
+        // trip estimate, not a financial-grade or live-updated rate)
+        // rather than asking the traveler to redo the math themselves, who
+        // may not even know the peso conversion in the first place. Checked
+        // first and, if it fires, none of the branches below run at all
+        // this turn — only while budget is still unresolved, so a "$"
+        // mentioned in passing after budget was already correctly answered
+        // doesn't re-trigger this.
+        if ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0
+            && ($conversion = $this->detectAndConvertCurrency($withoutDate)) !== null) {
+            $this->aiBudgetMin = $this->aiBudgetMax = $conversion['pesoAmount'];
+            $this->currencyNotice = "Got it — {$conversion['displayLabel']} is about ₱" . number_format($conversion['pesoAmount']) . ", I'll plan around that.";
+
         // Range: "30,000 to 35,000" | "₱30,000-₱35,000" | "30000-35000" | "20k to 30k"
-        if (preg_match('/[₱P]?\s*(' . $big . ')\s*(?:[-–]|to)\s*[₱P]?\s*(' . $big . ')/ui', $withoutDate, $m)) {
+        } elseif (preg_match('/[₱P]?\s*(' . $big . ')\s*(?:[-–]|to)\s*[₱P]?\s*(' . $big . ')/ui', $withoutDate, $m)) {
             $a = $this->parseMoneyToken($m[1]);
             $b = $this->parseMoneyToken($m[2]);
             $this->aiBudgetMin = min($a,$b);
