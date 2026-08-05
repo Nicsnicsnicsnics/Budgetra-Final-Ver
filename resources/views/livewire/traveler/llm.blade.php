@@ -52,12 +52,20 @@
             <span style="width:28px;height:28px;background:#F5F0EB;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:var(--primary);flex-shrink:0;">✦</span>
             Your trip package for {{ $aiTo }}
         </h2>
-        <button wire:click="editWithWizard" wire:loading.attr="disabled" wire:target="editWithWizard"
-                style="background:#fff;border:1.5px solid var(--border);color:#934B19;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;"
-                onmouseenter="this.style.background='#F5F0EB'"
-                onmouseleave="this.style.background='#fff'">
-            <i class="fa-solid fa-pen"></i> Edit
-        </button>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+            <button wire:click="backToConversation"
+                    style="background:#fff;border:1.5px solid var(--border);color:#934B19;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;"
+                    onmouseenter="this.style.background='#F5F0EB'"
+                    onmouseleave="this.style.background='#fff'">
+                <i class="fa-solid fa-arrow-left"></i> Back to Chat
+            </button>
+            <button wire:click="editWithWizard" wire:loading.attr="disabled" wire:target="editWithWizard"
+                    style="background:#fff;border:1.5px solid var(--border);color:#934B19;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;"
+                    onmouseenter="this.style.background='#F5F0EB'"
+                    onmouseleave="this.style.background='#fff'">
+                <i class="fa-solid fa-pen"></i> Edit
+            </button>
+        </div>
     </div>
 
     {{-- Package cards --}}
@@ -376,19 +384,46 @@
                 @else
                 <div style="display:flex;flex-direction:column;gap:8px;">
                     @foreach ($this->conversationHistory as $past)
-                    <button type="button" wire:click="viewHistoryEntry({{ $past->id }})"
-                            style="text-align:left;width:100%;background:#F8F5F2;border:1.5px solid transparent;border-radius:12px;padding:12px 14px;cursor:pointer;transition:border-color .15s ease;font-family:inherit;"
-                            onmouseenter="this.style.borderColor='#934B19'" onmouseleave="this.style.borderColor='transparent'">
-                        <div style="font-size:13px;font-weight:700;color:var(--dark);margin-bottom:3px;">
-                            {{ $past->ai_from ?: '—' }} to {{ $past->ai_to ?: '—' }}
+                    <div style="background:#F8F5F2;border:1.5px solid transparent;border-radius:12px;transition:border-color .15s ease;"
+                         onmouseenter="this.style.borderColor='#934B19'" onmouseleave="this.style.borderColor='transparent'">
+                        @if ($historyEntryToDelete === $past->id)
+                        {{-- Inline confirm — kept in the same row instead of stacking a
+                             second modal on top of the one already open. --}}
+                        <div style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                            <span style="font-size:12px;font-weight:600;color:var(--dark);">Delete this conversation?</span>
+                            <div style="display:flex;gap:6px;flex-shrink:0;">
+                                <button type="button" wire:click="cancelDeleteHistoryEntry"
+                                        style="background:#fff;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">
+                                    No
+                                </button>
+                                <button type="button" wire:click="deleteHistoryEntry"
+                                        style="background:#B91C1C;border:none;color:#fff;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">
+                                    Yes, delete
+                                </button>
+                            </div>
                         </div>
-                        <div style="font-size:11px;color:var(--muted);">
-                            {{ $past->created_at->format('M j, Y · g:i A') }}
-                            @if ($past->ai_date_from && $past->ai_date_to)
-                                &nbsp;·&nbsp;{{ $past->ai_date_from }} – {{ $past->ai_date_to }}
-                            @endif
+                        @else
+                        <div style="display:flex;align-items:stretch;">
+                            <button type="button" wire:click="viewHistoryEntry({{ $past->id }})"
+                                    style="text-align:left;flex:1;min-width:0;background:none;border:none;padding:12px 14px;cursor:pointer;font-family:inherit;">
+                                <div style="font-size:13px;font-weight:700;color:var(--dark);margin-bottom:3px;">
+                                    {{ $past->ai_from ?: '—' }} to {{ $past->ai_to ?: '—' }}
+                                </div>
+                                <div style="font-size:11px;color:var(--muted);">
+                                    {{ $past->created_at->format('M j, Y · g:i A') }}
+                                    @if ($past->ai_date_from && $past->ai_date_to)
+                                        &nbsp;·&nbsp;{{ $past->ai_date_from }} – {{ $past->ai_date_to }}
+                                    @endif
+                                </div>
+                            </button>
+                            <button type="button" wire:click="confirmDeleteHistoryEntry({{ $past->id }})" title="Delete this conversation"
+                                    style="flex-shrink:0;width:38px;background:none;border:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;"
+                                    onmouseenter="this.style.color='#B91C1C'" onmouseleave="this.style.color='var(--muted)'">
+                                <i class="fa-solid fa-trash" style="font-size:13px;"></i>
+                            </button>
                         </div>
-                    </button>
+                        @endif
+                    </div>
                     @endforeach
                 </div>
                 @endif
