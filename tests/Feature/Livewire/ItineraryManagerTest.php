@@ -41,6 +41,82 @@ class ItineraryManagerTest extends TestCase
             ->assertSet('selectedTripId', $trip->id);
     }
 
+    public function test_can_open_add_pin_modal_for_an_ongoing_trip(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create([
+            'user_id'    => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date'   => now()->addDay()->toDateString(),
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ItineraryManager::class)
+            ->call('selectTrip', $trip->id)
+            ->call('openAddPinModal', 10.0, 120.0)
+            ->assertSet('showPinModal', true)
+            ->assertSet('momentBlockedMessage', '');
+    }
+
+    public function test_cannot_open_add_pin_modal_for_an_upcoming_trip(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create([
+            'user_id'    => $user->id,
+            'start_date' => now()->addWeek()->toDateString(),
+            'end_date'   => now()->addWeek()->addDays(3)->toDateString(),
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ItineraryManager::class)
+            ->call('selectTrip', $trip->id)
+            ->call('openAddPinModal', 10.0, 120.0)
+            ->assertSet('showPinModal', false)
+            ->assertSet('momentBlockedMessage', 'You can only post moments for ongoing trips.');
+    }
+
+    public function test_cannot_open_add_pin_modal_for_a_completed_trip(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create([
+            'user_id'    => $user->id,
+            'start_date' => now()->subMonth()->toDateString(),
+            'end_date'   => now()->subMonth()->addDays(3)->toDateString(),
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ItineraryManager::class)
+            ->call('selectTrip', $trip->id)
+            ->call('openAddPinModal', 10.0, 120.0)
+            ->assertSet('showPinModal', false)
+            ->assertSet('momentBlockedMessage', 'You can only post moments for ongoing trips.');
+    }
+
+    public function test_savePin_rejects_a_non_ongoing_trip_even_if_called_directly(): void
+    {
+        $user = User::factory()->create();
+        $trip = Trip::factory()->create([
+            'user_id'    => $user->id,
+            'start_date' => now()->addWeek()->toDateString(),
+            'end_date'   => now()->addWeek()->addDays(3)->toDateString(),
+        ]);
+
+        // Bypasses openAddPinModal()'s own guard entirely — simulates a
+        // request sent straight to savePin(), the scenario its own
+        // server-side abort_if() is there to catch.
+        Livewire::actingAs($user)
+            ->test(ItineraryManager::class)
+            ->call('selectTrip', $trip->id)
+            ->set('pinPlaceName', 'Test Spot')
+            ->set('pinVisitedDate', now()->toDateString())
+            ->set('pinLat', 10.0)
+            ->set('pinLng', 120.0)
+            ->call('savePin')
+            ->assertStatus(403);
+
+        $this->assertDatabaseMissing('moments', ['trip_id' => $trip->id]);
+    }
+
     public function test_selecting_trip_loads_days(): void
     {
         $user = User::factory()->create();

@@ -36,6 +36,10 @@ class ItineraryManager extends Component
     public array   $pinExistingPhotos = []; // [['id'=>.., 'url'=>..], ...] — saved photos (edit mode)
     public ?int    $pinToDelete       = null;
 
+    // Shown briefly (auto-clears client-side) when a pin add is blocked
+    // because the target trip isn't Ongoing — see canPostMomentFor().
+    public string  $momentBlockedMessage = '';
+
     // ── Moments: share-to-social photo picker ────────────────
     public bool $showSharePicker   = false;
     public ?int $sharePickerTripId = null;
@@ -379,6 +383,24 @@ class ItineraryManager extends Component
         return auth()->user()->trips()->orderByDesc('start_date')->get();
     }
 
+    // Only an Ongoing trip can have Moments posted — logging a "memory"
+    // for a trip that hasn't started yet, or one that's already over,
+    // doesn't make sense. resolved_status already resolves to exactly
+    // 'active' for an ongoing trip (or a manually-set status override),
+    // matching what the map's own legend calls "Ongoing".
+    private function canPostMomentFor(Trip $trip): bool
+    {
+        return $trip->resolved_status === 'active';
+    }
+
+    // Whether ANY of the traveler's trips is currently Ongoing — used to
+    // adapt the overview map's "Click anywhere to post a Moment" hint so
+    // it doesn't invite an action that's about to be blocked anyway.
+    public function getHasOngoingTripProperty(): bool
+    {
+        return $this->trips->contains(fn (Trip $t) => $t->resolved_status === 'active');
+    }
+
     public function getSelectedTripProperty(): ?Trip
     {
         if (!$this->selectedTripId) return null;
@@ -572,6 +594,13 @@ class ItineraryManager extends Component
     public function openAddPinModal(float $lat, float $lng): void
     {
         if (!$this->selectedTrip) return;
+
+        if (!$this->canPostMomentFor($this->selectedTrip)) {
+            $this->momentBlockedMessage = 'You can only post moments for ongoing trips.';
+            return;
+        }
+
+        $this->momentBlockedMessage = '';
         $this->pinModalMode      = 'add';
         $this->editingPinId      = null;
         $this->pinLat             = $lat;
@@ -632,6 +661,12 @@ class ItineraryManager extends Component
     {
         $trip = $this->selectedTrip;
         abort_if(!$trip, 403);
+        // Re-checked here, not just in openAddPinModal() — that only
+        // guards whether the modal opens; a request straight to this
+        // action must be blocked the same way regardless of how it got
+        // triggered, the same "never trust client-side only" reasoning
+        // applied elsewhere in this app.
+        abort_if(!$this->canPostMomentFor($trip), 403);
 
         $validated = $this->validate([
             'pinPlaceName'   => 'required|string|max:255',
