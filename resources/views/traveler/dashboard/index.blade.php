@@ -189,6 +189,22 @@
     </div>
 </div>
 
+{{-- Footer --}}
+<div class="dash-footer">
+    <a href="mailto:Budgetra@gmail.com" class="dash-footer-link">Contact us</a>
+    <a href="#" class="dash-footer-link" onclick="document.getElementById('aboutModal').style.display='flex';return false;">About</a>
+</div>
+
+<div id="aboutModal" class="footer-modal-backdrop" style="display:none;" onclick="if(event.target===this)this.style.display='none';">
+    <div class="footer-modal-card">
+        <h3 style="margin:0 0 10px;font-size:18px;font-weight:800;color:var(--dark);">About Budgetra</h3>
+        <p style="margin:0 0 18px;font-size:14px;color:var(--muted);line-height:1.6;">
+            Budgetra helps Filipino travelers plan smarter trips — budgeting, itineraries, and AI-powered trip suggestions all in one place, so you can spend less time guessing and more time traveling.
+        </p>
+        <button type="button" class="btn btn-primary" style="width:100%;" onclick="document.getElementById('aboutModal').style.display='none';">Close</button>
+    </div>
+</div>
+
 <script>
     let deleteTripFormId = null;
 

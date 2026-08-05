@@ -117,7 +117,7 @@
                     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">
                         @foreach ($sec['items'] ?? [] as $att)
                         <span style="display:inline-flex;align-items:center;background:#F5F0EB;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;color:var(--primary);">
-                            {{ $att[0] }} ({{ $att[1] }})
+                            {{ $att[0] ?? '' }} ({{ $att[1] ?? 'Free' }})
                         </span>
                         @endforeach
                     </div>

@@ -1,8 +1,5 @@
 @props(['active' => ''])
 @php
-    $user   = auth()->user();
-    $unread = $user ? $user->notifications()->where('is_read', false)->count() : 0;
-
     $links = [
         ['href' => url('/dashboard'),  'icon' => 'fa-solid fa-house',            'label' => 'Dashboard',    'key' => 'dashboard',   'segment' => 'dashboard'],
         ['href' => url('/trips'),      'icon' => 'fa-solid fa-map-location-dot', 'label' => 'Planner',      'key' => 'trips',       'segment' => 'trips'],
@@ -10,7 +7,7 @@
         ['href' => url('/savings'),    'icon' => 'fa-solid fa-piggy-bank',       'label' => 'Saving Goals', 'key' => 'savings',     'segment' => 'savings'],
         ['href' => url('/itinerary'),  'icon' => 'fa-regular fa-calendar-days',  'label' => 'Itinerary',    'key' => 'itinerary',   'segment' => 'itinerary'],
         ['href' => url('/expenses'),   'icon' => 'fa-solid fa-receipt',          'label' => 'Expenses',     'key' => 'expenses',    'segment' => 'expenses'],
-        ['href' => url('/alerts'),     'icon' => 'fa-regular fa-bell',           'label' => 'Notifications','key' => 'alerts',      'segment' => 'alerts', 'badge' => $unread],
+        ['href' => url('/alerts'),     'icon' => 'fa-regular fa-bell',           'label' => 'Notifications','key' => 'alerts',      'segment' => 'alerts'],
         ['href' => route('multi-trips.index'), 'icon' => 'fa-solid fa-layer-group', 'label' => 'Multi Trips', 'key' => 'multi-trips', 'segment' => 'multi-trips'],
         ['href' => route('moments.index'), 'icon' => 'fa-regular fa-images',    'label' => 'Moments',      'key' => 'moments',     'segment' => 'moments'],
     ];
@@ -54,8 +51,8 @@
            title="{{ $link['label'] }}">
             <i class="{{ $link['icon'] }}"></i>
             <span class="sidebar-link-label">{{ $link['label'] }}</span>
-            @if (!empty($link['badge']) && $link['badge'] > 0)
-                <span class="sidebar-badge sidebar-link-label">{{ $link['badge'] > 99 ? '99+' : $link['badge'] }}</span>
+            @if ($link['key'] === 'alerts')
+                <livewire:traveler.notification-badge />
             @endif
         </a>
         @endforeach
