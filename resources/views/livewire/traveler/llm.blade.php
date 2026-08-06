@@ -32,6 +32,9 @@
         </div>
         <div style="background:var(--primary);color:#fff;border-radius:12px;padding:16px 22px;font-size:14px;font-weight:600;line-height:1.5;">
             {{ $aiFrom }} to {{ $aiTo }}
+            @if ($aiTravelers > 0)
+                &nbsp;·&nbsp; {{ $aiTravelers }} {{ \Illuminate\Support\Str::plural('traveler', $aiTravelers) }}
+            @endif
             @if ($aiBudgetMin || $aiBudgetMax)
                 &nbsp;·&nbsp;
                 @if ($aiBudgetMin && $aiBudgetMax && $aiBudgetMin !== $aiBudgetMax)
