@@ -1032,7 +1032,7 @@ PROMPT;
 
                 if (!empty($rawPackage['attractions']['items'])) {
                     $rawPackage['attractions']['cost'] = array_sum(array_map(
-                        fn($a) => is_numeric(str_replace(['₱',','], '', $a[1])) ? (int)str_replace(['₱',','], '', $a[1]) : 0,
+                        fn($a) => is_numeric(str_replace(['₱',','], '', $a[1] ?? '')) ? (int)str_replace(['₱',','], '', $a[1]) : 0,
                         $rawPackage['attractions']['items']
                     ));
                 }

@@ -1,5 +1,5 @@
-<span wire:poll.30s>
+<span wire:poll.15s>
     @if ($count > 0)
-    <span style="background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;">{{ $count > 99 ? '99+' : $count }}</span>
+    <span class="sidebar-badge sidebar-link-label">{{ $count > 99 ? '99+' : $count }}</span>
     @endif
 </span>
