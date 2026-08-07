@@ -73,8 +73,9 @@
                         default    => 'var(--muted)',
                     };
                     $statusLabel = match ($trip->status) { 'active' => 'Ongoing', 'upcoming' => 'Upcoming', 'past' => 'Finished', default => ucfirst($trip->status) };
+                    $isPickedForCompare = in_array($trip->id, $compareIds, true);
                 @endphp
-                <div class="card" style="overflow:hidden;border-radius:14px;width:340px;flex-shrink:0;">
+                <div class="card" style="overflow:hidden;border-radius:14px;width:340px;flex-shrink:0;{{ $isPickedForCompare ? 'border-color:var(--primary);box-shadow:0 0 0 2px var(--primary);' : '' }}">
                     <div style="position:relative;height:200px;background:linear-gradient(135deg,var(--primary),#C8874A);">
                         @if ($trip->cover_image)
                         <img src="{{ $trip->cover_image }}" style="width:100%;height:100%;object-fit:cover;display:block;" alt="{{ $trip->destination }}">
@@ -117,7 +118,12 @@
 
                         <div style="display:flex;gap:10px;">
                             <button type="button" class="btn btn-secondary" style="flex:1;text-transform:uppercase;letter-spacing:.05em;font-size:12px;" wire:click="showDetail({{ $trip->id }})">Details</button>
-                            <button type="button" class="btn btn-primary" style="flex:1;text-transform:uppercase;letter-spacing:.05em;font-size:12px;" wire:click="compareWith({{ $trip->id }})">Compare</button>
+                            <button type="button" class="btn {{ $isPickedForCompare ? '' : 'btn-primary' }}"
+                                    style="flex:1;text-transform:uppercase;letter-spacing:.05em;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;{{ $isPickedForCompare ? 'background:var(--primary-light);color:var(--primary);border:1.5px solid var(--primary);' : '' }}"
+                                    wire:click="toggleCompare({{ $trip->id }})">
+                                <i class="fa-solid {{ $isPickedForCompare ? 'fa-check' : 'fa-code-compare' }}" style="font-size:11px;"></i>
+                                {{ $isPickedForCompare ? 'Selected' : 'Compare' }}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -129,6 +135,17 @@
     @endforeach
 
     @endif {{-- end @else (has trips) --}}
+
+    {{-- Floating compare bar — appears once two cards are picked --}}
+    @if (count($compareIds) === 2)
+    <div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:1000;background:var(--bg-white);border:1.5px solid var(--primary);border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:12px 16px;display:flex;align-items:center;gap:14px;">
+        <span style="font-size:13px;font-weight:600;color:var(--dark);white-space:nowrap;">
+            <i class="fa-solid fa-code-compare" style="color:var(--primary);margin-right:6px;"></i> 2 trips selected
+        </span>
+        <button type="button" wire:click="clearCompareSelection" style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:8px 4px;">Clear</button>
+        <button type="button" wire:click="runComparison" class="btn btn-primary" style="white-space:nowrap;">Compare Trips</button>
+    </div>
+    @endif
 
     {{-- Details Modal --}}
     @if ($detailTrip)

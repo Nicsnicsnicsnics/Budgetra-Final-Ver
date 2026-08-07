@@ -40,12 +40,10 @@
         return ($trip->status ?? null) === 'past'
             || ($trip->end_date && $trip->end_date->lt(\Carbon\Carbon::today()));
     };
-    $draftGoals  = $goals->filter($isDraftGoal);
     $pastGoals   = $goals->filter(fn($g) => !$isDraftGoal($g) && $isPastGoal($g));
     $activeGoals = $goals->reject(fn($g) => $isDraftGoal($g) || $isPastGoal($g));
     $sgGroups = [
         ['key' => 'active', 'label' => 'Active Goals', 'icon' => 'fa-solid fa-piggy-bank',        'items' => $activeGoals, 'noun' => 'active goals'],
-        ['key' => 'draft',  'label' => 'Draft Goals',  'icon' => 'fa-regular fa-file-lines',      'items' => $draftGoals,  'noun' => 'draft goals'],
         ['key' => 'past',   'label' => 'Past Goals',   'icon' => 'fa-solid fa-clock-rotate-left', 'items' => $pastGoals,   'noun' => 'past goals'],
     ];
 @endphp

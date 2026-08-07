@@ -25,16 +25,37 @@ class MultiTripHub extends Component
         $this->detailTripId = null;
     }
 
-    public function compareWith(int $tripId): void
+    // Two-step selection: clicking a card's Compare button toggles it in/out
+    // of the pick list (max 2 — picking a third drops the oldest pick) and
+    // highlights the card, rather than instantly pairing it with whatever
+    // other trip happens to be first. The actual comparison only opens once
+    // two cards are picked, via the floating bar's own Compare button.
+    public function toggleCompare(int $tripId): void
     {
-        $partner = $this->fetchTrips()->reject(fn ($t) => $t->id === $tripId)->first();
-        if (!$partner) return; // nothing else to compare against yet
+        if (in_array($tripId, $this->compareIds, true)) {
+            $this->compareIds = array_values(array_diff($this->compareIds, [$tripId]));
+            return;
+        }
 
-        $this->compareIds     = [$tripId, $partner->id];
-        $this->showComparison = true;
+        if (count($this->compareIds) >= 2) {
+            array_shift($this->compareIds);
+        }
+        $this->compareIds[] = $tripId;
+    }
+
+    public function runComparison(): void
+    {
+        if (count($this->compareIds) === 2) {
+            $this->showComparison = true;
+        }
     }
 
     public function closeComparison(): void
+    {
+        $this->showComparison = false;
+    }
+
+    public function clearCompareSelection(): void
     {
         $this->showComparison = false;
         $this->compareIds     = [];

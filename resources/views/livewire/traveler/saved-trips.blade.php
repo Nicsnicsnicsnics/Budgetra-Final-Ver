@@ -102,10 +102,12 @@
                 default    => 'var(--muted)',
             };
             $spendColor = $trip->spend_pct >= 80 ? '#DC2626' : ($trip->spend_pct >= 50 ? '#D97706' : 'var(--dark)');
+            $isDraft = $trip->status === 'draft';
         @endphp
-        <div wire:key="trip-{{ $trip->id }}" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;width:420px;flex-shrink:0;transition:border-color .2s;"
+        <div wire:key="trip-{{ $trip->id }}" style="position:relative;background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;width:420px;flex-shrink:0;transition:border-color .2s;"
              onmouseenter="this.style.borderColor='var(--primary)'"
              onmouseleave="this.style.borderColor='var(--border)'">
+            <div @if($isDraft) style="filter:blur(6px);pointer-events:none;user-select:none;" @endif>
             {{-- Cover image --}}
             <div style="position:relative;height:200px;background:linear-gradient(135deg,var(--primary),#C8874A);overflow:hidden;">
                 @if($cover)
@@ -178,7 +180,7 @@
             </div>
 
             <div style="padding:20px;">
-                <div style="margin-bottom:16px;">
+                <div @if(!$isDraft) style="margin-bottom:16px;" @endif>
                     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px;">
                         <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Spent</div>
                         <div style="font-size:12px;font-weight:700;color:{{ $spendColor }};">{{ $trip->spend_pct }}%</div>
@@ -192,6 +194,7 @@
                     </div>
                 </div>
 
+                @if (!$isDraft)
                 <div style="display:flex;gap:10px;">
                     <button wire:click="showDetail({{ $trip->id }})"
                             style="flex:1;background:{{ $detailTripId === $trip->id ? 'var(--primary-dark)' : 'var(--primary)' }};color:#fff;border:none;border-radius:10px;padding:12px 8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .18s;"
@@ -204,7 +207,25 @@
                         <i class="fa-solid fa-receipt" style="font-size:11px;"></i>Add Expense
                     </a>
                 </div>
+                @endif
             </div>
+            </div>
+
+            @if ($isDraft)
+            {{-- Unblurred overlay, centered over the whole (blurred) card --}}
+            <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;">
+                <a href="{{ route('trips.plan') }}?draft={{ $trip->id }}" wire:navigate
+                   style="width:100%;max-width:220px;background:var(--primary);color:#fff;border:none;border-radius:10px;padding:12px 8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .18s;"
+                   onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
+                    <i class="fa-regular fa-pen-to-square" style="font-size:12px;"></i> Continue Editing
+                </a>
+                <button wire:click="confirmDelete({{ $trip->id }})"
+                        style="width:100%;max-width:220px;background:var(--bg-white);color:var(--danger);border:1.5px solid var(--danger);border-radius:10px;padding:12px 6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:5px;transition:background .18s;"
+                        onmouseenter="this.style.background='rgba(220,38,38,0.08)'" onmouseleave="this.style.background='var(--bg-white)'">
+                    <i class="fa-regular fa-trash-can" style="font-size:11px;"></i>Delete Trip
+                </button>
+            </div>
+            @endif
         </div>
 
         @if ($detailTripId === $trip->id)

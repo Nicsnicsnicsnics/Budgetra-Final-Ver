@@ -13,7 +13,9 @@ class ExpenseController extends Controller
     public function index(Request $request)
     {
         $user  = auth()->user();
-        $trips = $user->trips()->latest()->get();
+        $trips = $user->trips()->latest()->get()
+            ->filter(fn ($t) => in_array($t->resolved_status, ['active', 'upcoming'], true))
+            ->values();
         $query = $user->expenses()->with('trip')->latest('expense_date');
 
         // The page is built around viewing one trip's expenses at a time
@@ -45,7 +47,9 @@ class ExpenseController extends Controller
 
     public function create()
     {
-        $trips      = auth()->user()->trips()->latest()->get();
+        $trips      = auth()->user()->trips()->latest()->get()
+            ->filter(fn ($t) => in_array($t->resolved_status, ['active', 'upcoming'], true))
+            ->values();
         $categories = self::CATEGORIES;
         return view('traveler.expenses.create', compact('trips', 'categories'));
     }

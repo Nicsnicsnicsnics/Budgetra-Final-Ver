@@ -257,6 +257,11 @@ h1,h2,h3,h4,h5,h6 { font-weight: 700; line-height: 1.25; color: var(--dark); }
   border: 2px solid var(--border);
 }
 .btn-outline:hover { border-color: var(--dark); color: var(--dark); background: transparent; }
+.btn-secondary {
+  background: transparent; color: var(--primary);
+  border: 2px solid var(--primary);
+}
+.btn-secondary:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
 .btn-back {
   background: #A0785A; color: #fff;
   border: 2px solid #A0785A;

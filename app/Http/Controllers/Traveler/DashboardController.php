@@ -3,11 +3,24 @@ namespace App\Http\Controllers\Traveler;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attraction;
+use App\Models\Expense;
 use App\Models\Trip;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    // Same category->color mapping used throughout the app (itinerary
+    // calendar, trip summary breakdown) so the dashboard's donut reads as
+    // the same visual language rather than introducing a new palette.
+    private const CATEGORY_COLORS = [
+        'Transportation'     => '#3B82F6',
+        'Accommodation'      => '#0D9488',
+        'Food'                => '#EF4444',
+        'Activities'          => '#10B981',
+        'Shopping'            => '#A855F7',
+        'Emergency Expenses' => '#2563EB',
+    ];
+
     public function __invoke()
     {
         $user = auth()->user();
@@ -15,7 +28,10 @@ class DashboardController extends Controller
             ->orderByDesc('rating')->limit(4)->get();
 
         if (!$user) {
-            return view('traveler.dashboard.index', ['trips' => collect(), 'totalBudget' => 0, 'totalSpent' => 0, 'recommended' => $recommended]);
+            return view('traveler.dashboard.index', [
+                'trips' => collect(), 'totalBudget' => 0, 'totalSpent' => 0, 'recommended' => $recommended,
+                'categorySpend' => [], 'monthlySpend' => [],
+            ]);
         }
 
         $trips = $user->trips()->withSum('expenses', 'amount')->latest()->get()->map(function (Trip $trip) {
@@ -30,6 +46,40 @@ class DashboardController extends Controller
         });
         $totalBudget = $trips->sum('budget_limit');
         $totalSpent  = $trips->sum('total_spent');
-        return view('traveler.dashboard.index', compact('trips', 'totalBudget', 'totalSpent', 'recommended'));
+
+        // Donut: spend by category, across every trip.
+        $categorySpend = Expense::where('user_id', $user->id)
+            ->selectRaw('category, SUM(amount) as total')
+            ->groupBy('category')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($row) => [
+                'label' => $row->category,
+                'value' => (float) $row->total,
+                'color' => self::CATEGORY_COLORS[$row->category] ?? 'var(--muted)',
+            ])
+            ->values()
+            ->all();
+
+        // Bars: total spend per calendar month, last 6 months.
+        $monthlyRaw = Expense::where('user_id', $user->id)
+            ->where('expense_date', '>=', Carbon::today()->subMonths(5)->startOfMonth())
+            ->selectRaw("to_char(expense_date, 'YYYY-MM') as ym, SUM(amount) as total")
+            ->groupBy('ym')
+            ->pluck('total', 'ym');
+
+        $monthlySpend = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $cursor = Carbon::today()->subMonths($i);
+            $key    = $cursor->format('Y-m');
+            $monthlySpend[] = [
+                'label' => $cursor->format('M'),
+                'value' => (float) ($monthlyRaw[$key] ?? 0),
+            ];
+        }
+
+        return view('traveler.dashboard.index', compact(
+            'trips', 'totalBudget', 'totalSpent', 'recommended', 'categorySpend', 'monthlySpend'
+        ));
     }
 }

@@ -392,6 +392,36 @@ class TripPlannerWizard extends Component
             return;
         }
 
+        // "Continue Editing" from a Draft Trips card — resume the same draft
+        // row (so autosaving keeps updating it instead of spawning a
+        // duplicate) with its own From/To/Budget/Dates prefilled.
+        if (request()->filled('draft')) {
+            $draftTrip = Trip::where('id', (int) request()->query('draft'))
+                ->where('user_id', auth()->id())
+                ->where('status', 'draft')
+                ->first();
+
+            if ($draftTrip) {
+                $this->draftTripId     = $draftTrip->id;
+                $this->planningMode    = 'manual';
+                $this->manualFrom      = (string) ($draftTrip->origin ?? '');
+                $this->manualTo        = $draftTrip->destination !== 'Draft' ? (string) $draftTrip->destination : '';
+                $this->manualBudgetMin = $draftTrip->budget_limit > 0 ? (string) (int) $draftTrip->budget_limit : '';
+                $this->manualBudgetMax = $this->manualBudgetMin;
+                $this->startDate       = (string) $draftTrip->start_date?->toDateString();
+                $this->endDate         = (string) $draftTrip->end_date?->toDateString();
+                if ($this->startDate && $this->endDate) $this->flightTripType = 'round_trip';
+
+                $this->showList  = false;
+                $this->showEmpty = false;
+
+                if ($this->manualTo !== '' && $this->manualBudgetMin !== '' && $this->startDate !== '' && $this->endDate !== '') {
+                    $this->proceedFromTripDetails();
+                }
+                return;
+            }
+        }
+
         // Optional deep-link from the AI Trip Planner's "Edit" action, which
         // wants the traveler to land straight on flight selection with their
         // route/budget/dates already filled in instead of re-entering
@@ -2322,9 +2352,6 @@ class TripPlannerWizard extends Component
             $writeAiDays($leg2AiDays, $leg2Label, $leg2AiStart, $lastDate);
         }
 
-        // Custom activities the traveler added on the itinerary preview step,
-        // placed on whichever day they picked (day 1 = arrival, matching the
-        // same day-to-date mapping the preview itself displays).
         foreach ($this->customActivities as $ca) {
             $dayDate = $day1Date->copy()->addDays(max(0, $ca['day'] - 1));
             if ($dayDate->gt($lastDate)) continue;
@@ -2351,18 +2378,9 @@ class TripPlannerWizard extends Component
         $this->redirect(route('saved-trips'));
     }
 
-    // Silently saves (or updates) a draft once all of From/To/Budget/Start
-    // Date/End Date are filled in — no button, no redirect. Called from the
-    // Step 1 form whenever those fields are complete and again when the
-    // traveler navigates away (sidebar link, new tab, tab switch), so
-    // whatever they filled in is never lost even without an explicit save.
     public function autosaveDraft(): void
     {
-        // Before "Next" is clicked, manualBudgetMin still holds the raw
-        // combined field value (e.g. "10,000 - 50,000") and manualBudgetMax
-        // is empty — parseBudgetInput() alone would strip the "-" and
-        // concatenate both numbers into one huge figure. Pull the real max
-        // out of the combined string in that case instead.
+
         $budget = $this->manualBudgetMax !== ''
             ? $this->parseBudgetInput($this->manualBudgetMax)
             : $this->extractBudgetMax($this->manualBudgetMin);
