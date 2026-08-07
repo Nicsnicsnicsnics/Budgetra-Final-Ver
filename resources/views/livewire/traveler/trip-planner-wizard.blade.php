@@ -302,14 +302,14 @@ $allCities = array_merge(
              style="background:var(--bg-white);border-radius:24px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(26,10,0,0.35);overflow:hidden;">
 
             {{-- Header --}}
-            <div style="position:relative;padding:36px 28px 28px;text-align:center;background:linear-gradient(160deg,#FFF6EE 0%,#FDEDE3 100%);overflow:hidden;">
-                <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(241,165,61,0.12);"></div>
-                <div style="position:absolute;bottom:-40px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(147,75,25,0.08);"></div>
+            <div style="position:relative;padding:36px 28px 28px;text-align:center;background:linear-gradient(160deg,var(--bg-white) 0%,var(--bg) 100%);overflow:hidden;">
+                <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:var(--primary-light);opacity:.6;"></div>
+                <div style="position:absolute;bottom:-40px;left:-20px;width:100px;height:100px;border-radius:50%;background:var(--primary-light);opacity:.4;"></div>
                 <div style="position:relative;width:64px;height:64px;border-radius:50%;background:var(--bg-white);box-shadow:0 8px 20px rgba(220,38,38,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                     <i class="fa-solid fa-triangle-exclamation" style="font-size:26px;color:var(--danger);"></i>
                 </div>
                 <div style="position:relative;font-size:19px;font-weight:800;color:var(--dark);letter-spacing:-.01em;">Missing Trip Details</div>
-                <div style="position:relative;font-size:13px;color:#8A7A6E;margin-top:4px;">A few things need your attention</div>
+                <div style="position:relative;font-size:13px;color:var(--muted);margin-top:4px;">A few things need your attention</div>
             </div>
 
             {{-- Field list --}}
@@ -598,7 +598,7 @@ $allCities2 = array_merge(
     {{-- Page header --}}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px;flex-wrap:wrap;">
         <div>
-            <button wire:click="$set('step', 1)"
+            <button wire:click="backFromEdit(1)"
                     style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
                 <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Trip Details
             </button>
@@ -1260,7 +1260,7 @@ window.sortVenues = function(dir) {
     {{-- Page header --}}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px;flex-wrap:wrap;">
         <div>
-            <button wire:click="backToFlights"
+            <button wire:click="backFromEdit(2)"
                     style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
                 <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Flights
             </button>
@@ -1487,7 +1487,7 @@ window.sortVenues = function(dir) {
     {{-- Header --}}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px;flex-wrap:wrap;">
         <div>
-            <button wire:click="$set('step', 3)"
+            <button wire:click="backFromEdit(3)"
                     style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
                 <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Accommodations
             </button>
@@ -1742,7 +1742,7 @@ window.sortVenues = function(dir) {
     {{-- Header --}}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px;flex-wrap:wrap;">
         <div>
-            <button wire:click="$set('step', 4)"
+            <button wire:click="backFromEdit(4)"
                     style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
                 <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Planner
             </button>

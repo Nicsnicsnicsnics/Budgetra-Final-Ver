@@ -143,15 +143,15 @@
 </div>
 
 {{-- ── Bottom bar ── --}}
-<div style="position:fixed;bottom:0;left:var(--sidebar-width,220px);right:0;background:var(--bg-white);border-top:1.5px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:20px;z-index:100;">
+<div class="fixed-bottom-bar" style="position:fixed;bottom:0;right:0;background:var(--bg-white);border-top:1.5px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:20px;z-index:100;transition:left .2s ease;">
     <div style="flex:1;min-width:0;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:5px;">Estimated Cost (Total)</div>
         <div style="font-size:18px;font-weight:800;color:var(--dark);margin-bottom:6px;">
             {{ currency_symbol() }}{{ number_format($total) }} of {{ currency_symbol() }}{{ number_format($budget) }} budget
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-            <div style="flex:1;height:6px;background:#EDE8E3;border-radius:99px;overflow:hidden;">
-                <div style="height:100%;background:var(--primary);border-radius:99px;width:{{ $pct }}%;"></div>
+            <div style="flex:1;height:6px;background:var(--border-light);border-radius:99px;overflow:hidden;">
+                <div style="height:100%;background:{{ $pct >= 100 ? 'var(--danger)' : 'var(--primary)' }};border-radius:99px;width:{{ $pct }}%;"></div>
             </div>
             <span style="font-size:12px;font-weight:600;color:var(--muted);">{{ $pct }}%</span>
         </div>

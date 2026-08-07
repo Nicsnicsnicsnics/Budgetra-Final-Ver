@@ -693,6 +693,47 @@ class TripPlannerWizard extends Component
             $this->manualBudgetMax = $single;
         }
 
+        // The manual-typing path autosaves as the traveler fills in Trip
+        // Details (see the Alpine $watch in the blade). The two deep-link
+        // paths that jump straight here — "Continue Editing" a draft, and
+        // "Edit" from the AI Planner results — set From/To/Budget/Dates
+        // programmatically and skip that step entirely, so without this
+        // call a traveler who abandons mid-flow (e.g. on Food & Dining)
+        // would leave no draft behind at all.
+        $this->autosaveDraft();
+
+        // Editing one specific card from the AI Planner results ("Edit" on
+        // Accommodation, Food, etc.) should land the traveler straight on
+        // that section instead of always restarting at flight search —
+        // otherwise "Edit Accommodation" would make them pick a flight
+        // first just to reach the accommodation list they actually wanted.
+        $editSection = session('ai_edit_section');
+        if ($editSection && $editSection !== 'transport') {
+            $intlKeywords = ['singapore','bangkok','phuket','bali','kuala lumpur','hong kong','tokyo','osaka','seoul','taipei','dubai','london','paris','new york','sydney','rome','barcelona','amsterdam','maldives','vietnam','hanoi','ho chi minh','jakarta','yangon','colombo','kathmandu','delhi','mumbai','beijing','shanghai','auckland'];
+            $toLower = strtolower($this->manualTo);
+            $isIntl  = false;
+            foreach ($intlKeywords as $kw) {
+                if (str_contains($toLower, $kw)) { $isIntl = true; break; }
+            }
+            $this->tripScope = $isIntl ? 'international' : 'local';
+
+            if ($editSection === 'accommodation') {
+                $this->step = 3;
+                $this->searchAccommodations();
+                return;
+            }
+            if ($editSection === 'food') {
+                $this->step = 4;
+                $this->searchVenues();
+                return;
+            }
+            if ($editSection === 'attractions') {
+                $this->step = 5;
+                $this->searchAttractionsList();
+                return;
+            }
+        }
+
         $this->step = 2;
         $this->searchManualFlights();
     }
@@ -1347,6 +1388,25 @@ class TripPlannerWizard extends Component
     public function backToFlights(): void
     {
         $this->step = 2;
+    }
+
+    // A traveler who reached this step via the AI Planner's per-card "Edit"
+    // (accommodation/food/attractions) skipped straight past the earlier
+    // steps — they were never searched, so the normal "Back to Flights" /
+    // "Back to Accommodations" / etc. target would land on an empty or
+    // stale results list. In that case, abandon the edit and return to the
+    // AI Planner results screen instead (same destination "Back to Chat"
+    // uses) — manual planning is completely untouched, since this only
+    // triggers when ai_edit_section was actually set.
+    public function backFromEdit(int $normalStep): mixed
+    {
+        if (session('ai_edit_section')) {
+            session()->forget(['ai_edit_return', 'ai_edit_section']);
+            return $this->redirect(route('trips.plan.ai'), navigate: true);
+        }
+
+        $this->step = $normalStep;
+        return null;
     }
 
     // Belt-and-braces server-side guard: the client-side calendars already
@@ -2084,11 +2144,6 @@ class TripPlannerWizard extends Component
             'leg2_attraction_selection' => $isMultiCitySaved ? ($this->selectedMcAttractions ?: null) : null,
         ]);
 
-        // autosaveDraft() silently saved a placeholder Trip (status=draft)
-        // as soon as Trip Details was filled in, tracked via $draftTripId.
-        // Now that the traveler has finished the whole flow and a real
-        // trip has been saved, that draft is a leftover duplicate — remove
-        // it instead of leaving it to linger in the Draft Trips group.
         if ($this->draftTripId && $this->draftTripId !== $trip->id) {
             Trip::where('id', $this->draftTripId)
                 ->where('user_id', auth()->id())

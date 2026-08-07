@@ -266,7 +266,7 @@
                 <span class="rv-edit" wire:click="$set('step', 1)">Edit</span>
             </div>
             <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $homeCity ?: '—' }}</div>
-            <div style="font-size:11px;color:var(--muted);">Luzon, Philippines</div>
+            <div style="font-size:11px;color:var(--muted);">Philippines</div>
         </div>
 
         {{-- Budget --}}
@@ -566,6 +566,69 @@
     </button>
     @endif
 </div>
+
+{{-- Missing fields modal — mirrors the trip planner's "Missing Trip Details" modal --}}
+@if ($showMissingFieldsModal)
+@php
+    $missingFieldMeta = [
+        'Home Location'  => ['icon' => 'fa-location-dot',  'color' => '#F1A53D'],
+        'Preferred Budget Range' => ['icon' => 'fa-money-bill-wave', 'color' => '#22A06B'],
+        'Travel Style'   => ['icon' => 'fa-people-group',  'color' => '#6D5DD3'],
+        'At least one Group Member' => ['icon' => 'fa-user-group', 'color' => '#6D5DD3'],
+        'Travel Interests' => ['icon' => 'fa-heart', 'color' => '#E0607E'],
+        'Preferred Transportation' => ['icon' => 'fa-plane', 'color' => '#3B82F6'],
+        'Preferred Accommodation'  => ['icon' => 'fa-bed', 'color' => '#0D9488'],
+    ];
+    $pbFieldMeta = function (string $field) use ($missingFieldMeta) {
+        foreach ($missingFieldMeta as $prefix => $meta) {
+            if (str_starts_with($field, $prefix)) return $meta;
+        }
+        return ['icon' => 'fa-circle-exclamation', 'color' => 'var(--primary)'];
+    };
+@endphp
+<div x-data="{ show: false }" x-init="requestAnimationFrame(() => show = true)"
+     style="position:fixed;inset:0;background:rgba(26,10,0,0.55);backdrop-filter:blur(2px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div x-show="show" x-transition.scale.95
+         style="background:var(--bg-white);border-radius:24px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(26,10,0,0.35);overflow:hidden;">
+
+        {{-- Header --}}
+        <div style="position:relative;padding:36px 28px 28px;text-align:center;background:linear-gradient(160deg,var(--bg-white) 0%,var(--bg) 100%);overflow:hidden;">
+            <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:var(--primary-light);opacity:.6;"></div>
+            <div style="position:absolute;bottom:-40px;left:-20px;width:100px;height:100px;border-radius:50%;background:var(--primary-light);opacity:.4;"></div>
+            <div style="position:relative;width:64px;height:64px;border-radius:50%;background:var(--bg-white);box-shadow:0 8px 20px rgba(220,38,38,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size:26px;color:var(--danger);"></i>
+            </div>
+            <div style="position:relative;font-size:19px;font-weight:800;color:var(--dark);letter-spacing:-.01em;">Missing Information</div>
+            <div style="position:relative;font-size:13px;color:var(--muted);margin-top:4px;">A few things need your attention</div>
+        </div>
+
+        {{-- Field list --}}
+        <div style="padding:20px 20px 4px;">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 6px 10px;">Please fill up the following</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                @foreach ($missingProfileFields as $field)
+                @php $meta = $pbFieldMeta($field); @endphp
+                <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg-white);border:1px solid #F0E8DF;border-radius:14px;">
+                    <div style="width:34px;height:34px;border-radius:10px;background:{{ $meta['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fa-solid {{ $meta['icon'] }}" style="font-size:14px;color:{{ $meta['color'] }};"></i>
+                    </div>
+                    <span style="font-size:13.5px;font-weight:600;color:var(--dark);">{{ $field }}</span>
+                </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Action --}}
+        <div style="padding:22px 20px 24px;">
+            <button type="button" wire:click="$set('showMissingFieldsModal', false)"
+                    style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#A85A20,var(--primary-dark));color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 16px rgba(106,53,0,0.3);transition:transform .12s ease;"
+                    onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform='translateY(0)'">
+                Got It
+            </button>
+        </div>
+    </div>
+</div>
+@endif
 
 </div>
 

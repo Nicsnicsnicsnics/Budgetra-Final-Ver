@@ -15,6 +15,8 @@ class ProfileBuilder extends Component
     public string $travelStyle = '';
     public array  $memberEmailInputs = [''];
     public array  $groupMemberEmails = [];
+    public bool   $showMissingFieldsModal = false;
+    public array  $missingProfileFields   = [];
 
     public array  $selectedInterests    = [];
     public array  $selectedSubInterests = [];
@@ -134,19 +136,51 @@ class ProfileBuilder extends Component
         }
     }
 
+    // Same "Missing Trip Details" modal pattern as the trip planner wizard:
+    // every step is checked for its own required field(s) before advancing,
+    // and every missing one is listed together instead of blocking silently
+    // or one validation error at a time.
     public function nextStep(): void
     {
+        $missing = [];
+
         if ($this->step === 1) {
             $city = trim($this->homeCity);
             if (empty($city)) {
-                $this->addError('homeCity', 'Please enter your home city.');
-                return;
-            }
-            if (is_numeric(preg_replace('/[\s,₱]/', '', $city))) {
+                $missing[] = 'Home Location / Starting Point';
+            } elseif (is_numeric(preg_replace('/[\s,₱]/', '', $city))) {
                 $this->addError('homeCity', 'Please enter a city name (e.g. "Manila"), not a number.');
                 return;
             }
         }
+
+        if ($this->step === 2 && $this->dailyBudget <= 0) {
+            $missing[] = 'Preferred Budget Range';
+        }
+
+        if ($this->step === 3) {
+            if ($this->travelStyle === '') {
+                $missing[] = 'Travel Style (Solo or Group)';
+            } elseif ($this->travelStyle === 'Group' && empty($this->groupMemberEmails)) {
+                $missing[] = 'At least one Group Member';
+            }
+        }
+
+        if ($this->step === 4 && empty($this->selectedInterests)) {
+            $missing[] = 'Travel Interests';
+        }
+
+        if ($this->step === 5) {
+            if ($this->preferredTransportation === '') $missing[] = 'Preferred Transportation';
+            if ($this->preferredAccommodation === '')  $missing[] = 'Preferred Accommodation';
+        }
+
+        if ($missing) {
+            $this->missingProfileFields  = $missing;
+            $this->showMissingFieldsModal = true;
+            return;
+        }
+
         $this->resetErrorBag();
         $this->step++;
     }

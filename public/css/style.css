@@ -884,6 +884,12 @@ body.dashboard-body {
 }
 .sidebar-logout-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
 
+/* A viewport-fixed bar (not a normal document-flow child) still needs to
+   know the sidebar's real width to avoid overlapping it or leaving a gap
+   when the sidebar collapses. */
+.fixed-bottom-bar { left: 240px; }
+.sidebar-collapsed .fixed-bottom-bar { left: 58px; }
+
 /* ── Collapsed sidebar ─────────────────────────── */
 .sidebar-collapsed .sidebar { width: 58px; min-width: 58px; overflow-y: hidden; }
 
