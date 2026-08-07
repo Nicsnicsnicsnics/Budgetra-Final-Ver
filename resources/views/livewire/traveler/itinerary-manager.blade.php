@@ -465,8 +465,13 @@
                 <template x-if="mi === {{ $mIdx }}">
                     <div>
                         @foreach($weeks as $wRow)
-                        @php $rowDates = array_filter($wRow); @endphp
-                        <div x-show="{{ json_encode(array_values($rowDates)) }}.includes(selDate)" class="itin-cal-grid-wide">
+                        @php
+                            $rowDates    = array_filter($wRow);
+                            $weekHasItems = collect($rowDates)->contains(fn ($d) => !empty($itemsByDate[$d] ?? []));
+                        @endphp
+                        <div x-show="{{ json_encode(array_values($rowDates)) }}.includes(selDate)">
+                        @if ($weekHasItems)
+                        <div class="itin-cal-grid-wide">
                             @foreach($wRow as $dateStr)
                             @php
                                 $dc     = $dateStr ? \Carbon\Carbon::parse($dateStr) : null;
@@ -488,6 +493,10 @@
                             </div>
                             @endforeach
                         </div>
+                        @else
+                        <p style="font-size:13px;color:var(--muted);text-align:center;padding:40px 0;margin:0;">No trips planned on this date.</p>
+                        @endif
+                        </div>
                         @endforeach
                     </div>
                 </template>
@@ -497,12 +506,12 @@
             {{-- DAY VIEW — full agenda for the selected date --}}
             <div x-show="view==='day'">
                 @foreach($itemsByDate as $iDate => $iItems)
-                <div x-show="selDate==='{{ $iDate }}'" style="display:flex;flex-direction:column;gap:10px;">
+                <div x-show="selDate==='{{ $iDate }}'" style="display:flex;flex-direction:column;">
                     @foreach($iItems as $it)
                     @php $cat = array_search($it['color'], $catColor) ?: 'activity'; @endphp
                     <div x-show="show{{ ucfirst($cat === 'hotel' ? 'Hotel' : ($cat==='food'?'Food':($cat==='flight'?'Flight':'Activity'))) }}"
-                         style="display:flex;align-items:center;gap:14px;background:{{ $it['color'] }}0D;border-left:3px solid {{ $it['color'] }};border-radius:10px;padding:14px 16px;">
-                        <div style="font-size:12px;font-weight:700;color:{{ $it['color'] }};width:80px;flex-shrink:0;">{{ $it['time'] }}</div>
+                         style="display:flex;flex-direction:column;gap:4px;background:{{ $it['color'] }}0D;border-left:3px solid {{ $it['color'] }};border-radius:10px;padding:14px 18px;margin-bottom:18px;">
+                        <div style="font-size:12px;font-weight:700;color:{{ $it['color'] }};">{{ $it['time'] }}</div>
                         <div style="font-size:14px;font-weight:600;color:var(--dark);">{{ $it['title'] }}</div>
                     </div>
                     @endforeach

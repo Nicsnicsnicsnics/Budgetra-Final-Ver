@@ -1,14 +1,17 @@
 <div>
 
 {{-- History button — floats above every screen state (landing, active
-     chat, loading, results), since a past conversation should always be
-     reachable regardless of where the current one is at. --}}
+     chat, loading), since a past conversation should always be
+     reachable regardless of where the current one is at. Hidden on the
+     results screen, where "Back to Chat" already covers going back. --}}
+@unless ($aiStep === 'results' && !empty($aiPackage))
 <button type="button" wire:click="openHistory" title="Past conversations"
         style="position:fixed;top:20px;right:24px;z-index:900;width:38px;height:38px;border-radius:50%;background:var(--bg-white);border:1.5px solid var(--border);color:var(--primary);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(45,27,20,.08);transition:border-color .15s ease,box-shadow .15s ease;"
         onmouseenter="this.style.borderColor='var(--primary)';this.style.boxShadow='0 4px 12px rgba(147,75,25,.14)';"
         onmouseleave="this.style.borderColor='var(--border)';this.style.boxShadow='0 2px 8px rgba(45,27,20,.08)';">
     <i class="fa-solid fa-clock-rotate-left" style="font-size:14px;"></i>
 </button>
+@endunless
 
 {{-- ═══════════════════════════════════════════════════════════════
      AI PLANNER — results
@@ -21,6 +24,13 @@
     $pct    = $budget > 0 ? min(100, round($total / $budget * 100)) : 0;
 @endphp
 <div style="padding-bottom:110px;">
+
+    <div style="text-align:left;margin-bottom:14px;">
+        <button wire:click="backToConversation"
+                style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;">
+            <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Chat
+        </button>
+    </div>
 
     {{-- YOUR REQUEST --}}
     <div style="margin-bottom:24px;">
@@ -50,25 +60,11 @@
     </div>
 
     {{-- Heading --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;">
+    <div style="margin:0 0 20px;">
         <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0;display:flex;align-items:center;gap:10px;">
             <span style="width:28px;height:28px;background:#F5F0EB;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:var(--primary);flex-shrink:0;">✦</span>
             Your trip package for {{ $aiTo }}
         </h2>
-        <div style="display:flex;gap:8px;flex-shrink:0;">
-            <button wire:click="backToConversation"
-                    style="background:#fff;border:1.5px solid var(--border);color:#934B19;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;"
-                    onmouseenter="this.style.background='#F5F0EB'"
-                    onmouseleave="this.style.background='#fff'">
-                <i class="fa-solid fa-arrow-left"></i> Back to Chat
-            </button>
-            <button wire:click="editWithWizard" wire:loading.attr="disabled" wire:target="editWithWizard"
-                    style="background:#fff;border:1.5px solid var(--border);color:#934B19;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;"
-                    onmouseenter="this.style.background='#F5F0EB'"
-                    onmouseleave="this.style.background='#fff'">
-                <i class="fa-solid fa-pen"></i> Edit
-            </button>
-        </div>
     </div>
 
     {{-- Package cards --}}
@@ -129,6 +125,12 @@
 
             {{-- Cost --}}
             <div style="text-align:right;flex-shrink:0;min-width:80px;">
+                <button wire:click="editWithWizard('{{ $card['key'] }}')" wire:loading.attr="disabled" wire:target="editWithWizard"
+                        title="Edit {{ $card['label'] }}"
+                        style="background:none;border:none;padding:0;margin:0 0 4px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--primary);"
+                        onmouseenter="this.style.textDecoration='underline'" onmouseleave="this.style.textDecoration='none'">
+                    <i class="fa-solid fa-pen" style="font-size:9px;"></i> Edit
+                </button>
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:4px;">Est. Cost</div>
                 <div style="font-size:18px;font-weight:800;color:var(--dark);">{{ currency_symbol() }}{{ number_format($sec['cost'] ?? 0) }}</div>
             </div>

@@ -707,10 +707,16 @@ PROMPT;
             }
         }
 
+        // The model is only trusted with a budget it read off actual digits
+        // in the traveler's own message — guards against it hallucinating a
+        // number out of a letters-only reply (e.g. random keyboard mashing),
+        // while still allowing currency mentions like "$500" or "5k USD"
+        // since those always carry a digit alongside the currency word.
         if ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0
-            && (!empty($data['budget_min']) || !empty($data['budget_max']))) {
-            $this->aiBudgetMin = (int) ($data['budget_min'] ?? $data['budget_max']);
-            $this->aiBudgetMax = (int) ($data['budget_max'] ?? $data['budget_min']);
+            && (!empty($data['budget_min']) || !empty($data['budget_max']))
+            && preg_match('/\d/', $userText)) {
+            $this->aiBudgetMin = min(self::MAX_BUDGET, (int) ($data['budget_min'] ?? $data['budget_max']));
+            $this->aiBudgetMax = min(self::MAX_BUDGET, (int) ($data['budget_max'] ?? $data['budget_min']));
         }
 
         if (($this->aiDateFrom === '' || $this->aiDateTo === '')
@@ -1458,7 +1464,7 @@ PROMPT;
         $this->aiStep = '';
     }
 
-    public function editWithWizard(): mixed
+    public function editWithWizard(?string $section = null): mixed
     {
 
         $year = date('Y');
@@ -1467,6 +1473,13 @@ PROMPT;
         }
         $start = $this->aiDateFrom ? date('Y-m-d', strtotime($this->aiDateFrom . ', ' . $year)) : '';
         $end   = $this->aiDateTo   ? date('Y-m-d', strtotime($this->aiDateTo)) : '';
+
+        // Editing a package card from the AI results screen — as soon as
+        // the traveler picks a replacement for this specific section, the
+        // wizard patches it straight into the AiConversationDraft and sends
+        // them back here (mount() restores this exact results screen)
+        // instead of continuing on through the rest of the wizard's steps.
+        session(['ai_edit_return' => true, 'ai_edit_section' => $section]);
 
         return $this->redirect(route('trips.plan', array_filter([
             'from'       => $this->aiFrom,
@@ -1478,13 +1491,19 @@ PROMPT;
         ])), navigate: true);
     }
 
+    // Budget column is a plain `integer` (max ~2.1B), and no realistic
+    // travel budget approaches that anyway — clamp here so a stray long
+    // digit string (e.g. someone typing numbers into the destination
+    // field) can never reach the database and blow up the column's range.
+    private const MAX_BUDGET = 10_000_000;
+
     private function parseMoneyToken(string $token): int
     {
         $token = trim($token);
         if (preg_match('/^(\d+(?:,\d{3})*)\s*[kK]$/', $token, $m)) {
-            return (int) str_replace(',', '', $m[1]) * 1000;
+            return min(self::MAX_BUDGET, (int) str_replace(',', '', $m[1]) * 1000);
         }
-        return (int) str_replace(',', '', $token);
+        return min(self::MAX_BUDGET, (int) str_replace(',', '', $token));
     }
 
     private function cleanCityName(string $name): string
@@ -1590,7 +1609,7 @@ PROMPT;
 
         if ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0
             && ($conversion = $this->detectAndConvertCurrency($withoutDate)) !== null) {
-            $this->aiBudgetMin = $this->aiBudgetMax = $conversion['pesoAmount'];
+            $this->aiBudgetMin = $this->aiBudgetMax = min(self::MAX_BUDGET, $conversion['pesoAmount']);
             $this->currencyNotice = "Got it — {$conversion['displayLabel']} is about ₱" . number_format($conversion['pesoAmount']) . ", I'll plan around that.";
 
         } elseif (

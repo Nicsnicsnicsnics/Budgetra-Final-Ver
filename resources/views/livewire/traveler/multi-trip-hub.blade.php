@@ -1,4 +1,5 @@
 <div style="display:flex;flex-direction:column;flex:1;">
+    @php $fmtDate = fn ($d, $f) => str_replace('Sep', 'Sept', $d->format($f)); @endphp
     @if ($trips->isEmpty() && !$search)
     {{-- Pure empty state — no header, no stats --}}
     <div class="empty-state-center" style="min-height:80vh;">
@@ -22,11 +23,7 @@
     @else
 
     {{-- Header --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;" class="mb-24">
-        <div>
-            <h1>Multi Trip Hub</h1>
-            <p class="text-muted">Organizing your journeys, together.</p>
-        </div>
+    <div style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;" class="mb-24">
         <div style="display:flex;align-items:center;gap:12px;">
             <input type="text" wire:model.live.debounce.300ms="search"
                    class="form-control" placeholder="Search by destination..." style="max-width:220px;">
@@ -78,7 +75,7 @@
             <div style="padding:18px 20px;">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:2px;">
                     <div style="font-size:17px;font-weight:700;color:var(--dark);">{{ $trip->trip_name ?? $trip->destination }}</div>
-                    <div class="text-muted" style="font-size:12px;white-space:nowrap;">{{ $trip->start_date->format('M j') }} - {{ $trip->end_date->format('M j, Y') }}</div>
+                    <div class="text-muted" style="font-size:12px;white-space:nowrap;">{{ $fmtDate($trip->start_date, 'M j') }} - {{ $fmtDate($trip->end_date, 'M j, Y') }}</div>
                 </div>
                 <div class="text-muted" style="font-size:13px;margin-bottom:16px;">
                     <i class="fa-solid fa-plane" style="font-size:11px;"></i> {{ $trip->origin_code ?? 'MNL' }} &rarr; {{ $trip->destination_code ?? '—' }}
@@ -126,7 +123,7 @@
                 </div>
                 <button wire:click="closeDetail" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;">&times;</button>
             </div>
-            <div class="text-muted" style="font-size:13px;margin-bottom:16px;">{{ $dt->start_date->format('M j') }} - {{ $dt->end_date->format('M j, Y') }}</div>
+            <div class="text-muted" style="font-size:13px;margin-bottom:16px;">{{ $fmtDate($dt->start_date, 'M j') }} - {{ $fmtDate($dt->end_date, 'M j, Y') }}</div>
 
             <div style="height:170px;border-radius:14px;overflow:hidden;margin-bottom:18px;background:linear-gradient(135deg,var(--primary),#C8874A);">
                 @if ($dt->cover_image)
@@ -137,11 +134,11 @@
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;">
                 <div>
                     <div class="text-muted" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;">Start Date</div>
-                    <div style="font-size:13px;font-weight:600;">{{ $dt->start_date->format('M j') }}</div>
+                    <div style="font-size:13px;font-weight:600;">{{ $fmtDate($dt->start_date, 'M j') }}</div>
                 </div>
                 <div>
                     <div class="text-muted" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;">End Date</div>
-                    <div style="font-size:13px;font-weight:600;">{{ $dt->end_date->format('M j') }}</div>
+                    <div style="font-size:13px;font-weight:600;">{{ $fmtDate($dt->end_date, 'M j') }}</div>
                 </div>
                 <div>
                     <div class="text-muted" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;">Duration</div>
@@ -215,7 +212,7 @@
                         </div>
                     </div>
                     <div style="font-weight:700;">{{ $t->origin_code ?? 'MNL' }} &rarr; {{ $t->destination_code ?? '—' }}</div>
-                    <div class="text-muted" style="font-size:12px;margin-bottom:14px;">{{ $t->destination }} · {{ $t->start_date->format('M j') }} - {{ $t->end_date->format('M j, Y') }}</div>
+                    <div class="text-muted" style="font-size:12px;margin-bottom:14px;">{{ $t->destination }} · {{ $fmtDate($t->start_date, 'M j') }} - {{ $fmtDate($t->end_date, 'M j, Y') }}</div>
                     <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">
                         <span class="text-muted">Budget</span><span class="text-muted">Actual Spend</span>
                     </div>

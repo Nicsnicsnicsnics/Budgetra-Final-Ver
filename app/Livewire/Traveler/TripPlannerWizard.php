@@ -1,6 +1,7 @@
 <?php
 namespace App\Livewire\Traveler;
 
+use App\Models\AiConversationDraft;
 use App\Models\Destination;
 use App\Models\SavingsGoal;
 use App\Models\Trip;
@@ -713,6 +714,33 @@ class TripPlannerWizard extends Component
         $this->flightLoading = false;
     }
 
+    // Patches a single card of the AI planner's package (transport /
+    // accommodation / food / attractions) with a freshly picked item and
+    // sends the traveler straight back to the AI results screen, instead of
+    // letting the wizard carry on to its next step. Only fires when the
+    // wizard was opened via the results screen's per-card "Edit" link for
+    // this exact section — a normal walk through the wizard is unaffected.
+    private function maybeReturnToAiEdit(string $section, array $patch): bool
+    {
+        if (session('ai_edit_section') !== $section) return false;
+
+        $draft = AiConversationDraft::where('user_id', auth()->id())->first();
+        if (!$draft) {
+            session()->forget(['ai_edit_return', 'ai_edit_section']);
+            return false;
+        }
+
+        $pkg = $draft->ai_package ?? [];
+        $pkg[$section] = array_merge($pkg[$section] ?? [], $patch);
+        $pkg['total'] = collect(['transport', 'accommodation', 'food', 'attractions'])
+            ->sum(fn ($key) => $pkg[$key]['cost'] ?? 0);
+        $draft->update(['ai_package' => $pkg]);
+
+        session()->forget(['ai_edit_return', 'ai_edit_section']);
+        $this->redirect(route('trips.plan.ai'), navigate: true);
+        return true;
+    }
+
     public function selectFlight(int $index): void
     {
         $this->selectedFlight = $this->flightResults[$index] ?? null;
@@ -721,6 +749,15 @@ class TripPlannerWizard extends Component
         // a null selection.
         if ($this->selectedFlight === null) {
             $this->flightError = 'That flight is no longer available. Please pick another.';
+            return;
+        }
+
+        if ($this->maybeReturnToAiEdit('transport', [
+            'from_code' => $this->selectedFlight['dep_id'] ?? $this->resolveCode($this->manualFrom ?? $this->aiFrom ?? ''),
+            'to_code'   => $this->selectedFlight['arr_id'] ?? $this->resolveCode($this->manualTo ?? ''),
+            'detail'    => trim(($this->selectedFlight['airline'] ?? 'Airline') . ' ' . ($this->selectedFlight['number'] ?? '')) . ' · ' . ($this->selectedFlight['type'] ?? 'Round Trip'),
+            'cost'      => (int) ($this->selectedFlight['price'] ?? 0),
+        ])) {
             return;
         }
 
@@ -941,6 +978,15 @@ class TripPlannerWizard extends Component
             return;
         }
 
+        if ($this->maybeReturnToAiEdit('accommodation', [
+            'name'   => $this->selectedHotel['name'] ?? 'Hotel',
+            'stars'  => $this->selectedHotel['stars'] ?? 3,
+            'detail' => ($this->selectedHotel['nights'] ?? 1) . ' Nights · ' . ($this->selectedHotel['typeLabel'] ?? 'Standard Room') . ' · ' . $this->manualTo,
+            'cost'   => (int) ($this->selectedHotel['total'] ?? 0),
+        ])) {
+            return;
+        }
+
         if ($this->flightTripType === 'multi_city' && $this->mcTo) {
             $this->mcHotelStep    = true;
             $this->mcHotelResults = [];
@@ -1065,6 +1111,16 @@ class TripPlannerWizard extends Component
                 return;
             }
             $this->selectedVenues = [$item['name'] => $item];
+
+            $days = max(1, $this->days);
+            if ($this->maybeReturnToAiEdit('food', [
+                'name'   => $item['name'] ?? 'Restaurant',
+                'detail' => $days . ' Days · Breakfast, Lunch, & Dinner · ' . $this->manualTo,
+                'cost'   => (int) ($item['priceMax'] ?? $item['priceMin'] ?? 0) * $days,
+            ])) {
+                return;
+            }
+
             if ($this->flightTripType === 'multi_city' && $this->mcTo) {
                 $this->mcVenueStep    = true;
                 $this->mcVenueResults = [];
@@ -1203,6 +1259,15 @@ class TripPlannerWizard extends Component
                 return;
             }
             $this->selectedAttractions = [$item['name'] => $item];
+
+            $attrCost = ($item['isFree'] ?? false) ? 0 : (int) preg_replace('/[^\d]/', '', $item['price'] ?? '0');
+            if ($this->maybeReturnToAiEdit('attractions', [
+                'items' => [[$item['name'] ?? 'Attraction', ($item['isFree'] ?? false) ? 'Free' : (currency_symbol() . number_format($attrCost))]],
+                'cost'  => $attrCost,
+            ])) {
+                return;
+            }
+
             if ($this->flightTripType === 'multi_city' && $this->mcTo) {
                 $this->mcAttractionStep    = true;
                 $this->mcAttractionResults = [];
@@ -2276,6 +2341,11 @@ class TripPlannerWizard extends Component
                 'location'       => $destLabel,
                 'notes'          => $ca['description'] ?: null,
             ]);
+        }
+
+        if (session()->pull('ai_edit_return')) {
+            $this->redirect(route('trips.plan.ai'));
+            return;
         }
 
         $this->redirect(route('saved-trips'));
