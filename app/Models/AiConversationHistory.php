@@ -8,7 +8,7 @@ class AiConversationHistory extends Model
     protected $fillable = [
         'user_id', 'messages',
         'ai_from', 'ai_to', 'ai_budget_min', 'ai_budget_max',
-        'ai_date_from', 'ai_date_to', 'ai_days', 'ai_travelers', 'ai_package',
+        'ai_date_from', 'ai_date_to', 'ai_days', 'ai_travelers', 'ai_currency', 'ai_package',
     ];
 
     protected function casts(): array
