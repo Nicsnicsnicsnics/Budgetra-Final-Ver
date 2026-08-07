@@ -28,6 +28,13 @@ class Llm extends Component
     public string $aiDateTo      = '';
     public int    $aiDays        = 0;
     public int    $aiTravelers   = 0;
+    // 3-letter ISO code, e.g. 'PHP'/'USD' — resolved in mount() to the
+    // traveler's own profile currency preference (currency_code()) if not
+    // already set, so "the application's default currency" (Currency
+    // Validation Rule 2) means THEIR default, not a hardcoded assumption.
+    // Overridden for the rest of the conversation the moment the traveler
+    // explicitly names a different supported currency (Rule 1).
+    public string $aiCurrency    = '';
     public array  $aiPackage     = [];
     public int    $aiGenCount    = 0;
 
@@ -43,7 +50,21 @@ class Llm extends Component
 
     private ?string $currencyNotice = null;
 
+    // Set inside parseAiPrompt()'s budget step when the traveler names a
+    // currency marker that isn't one of the twelve SUPPORTED_CURRENCIES
+    // (Currency Validation Rule 5) — never synced, same reasoning as
+    // $ambiguityNotice above.
+    private ?string $unsupportedCurrencyNotice = null;
+
     private array $aiPlaceCache = [];
+
+    // Set inside aiPlaceFallback() specifically when every AI provider
+    // failed to respond at all (not when one responded and said "not a real
+    // place") — lets the missing-destination message tell the traveler
+    // "we couldn't check right now" instead of implying they made a typo,
+    // without loosening the actual accept/reject gate itself. Reset at the
+    // top of every turn in automateTrip().
+    private bool $placeVerificationFailed = false;
 
     public bool $aiBudgetIsDaily = false;
 
@@ -121,6 +142,14 @@ class Llm extends Component
 
     public function mount(): void
     {
+        // The traveler's own profile preference is "the application's
+        // default currency" (Currency Validation Rule 2) — set here,
+        // unconditionally, before the no-draft early return below, so a
+        // brand-new conversation still starts from THEIR default rather
+        // than a hardcoded PHP assumption. A resumed draft's own stored
+        // currency (set below) overrides this once one exists.
+        $this->aiCurrency = currency_code();
+
         $draft = AiConversationDraft::where('user_id', auth()->id())->first();
         if (!$draft) return;
 
@@ -133,6 +162,7 @@ class Llm extends Component
         $this->aiDateTo      = $draft->ai_date_to;
         $this->aiDays        = $draft->ai_days;
         $this->aiTravelers   = $draft->ai_travelers;
+        $this->aiCurrency    = $draft->ai_currency ?: $this->aiCurrency;
         $this->awaitingSlot  = $draft->awaiting_slot;
         $this->missCount     = $draft->miss_count;
         $this->aiStep        = $draft->ai_step;
@@ -161,6 +191,7 @@ class Llm extends Component
                 'ai_date_to'    => $this->aiDateTo,
                 'ai_days'       => $this->aiDays,
                 'ai_travelers'  => $this->aiTravelers,
+                'ai_currency'   => $this->aiCurrency,
                 'awaiting_slot' => $this->awaitingSlot,
                 'miss_count'    => $this->missCount,
                 'ai_step'       => $this->aiStep,
@@ -181,6 +212,7 @@ class Llm extends Component
         }
 
         $previouslyAwaiting = $this->awaitingSlot;
+        $this->placeVerificationFailed = false;
 
         $this->messages[] = ['role' => 'user', 'text' => $userText];
 
@@ -214,6 +246,18 @@ class Llm extends Component
         if ($this->ambiguityNotice !== null) {
             $notice = $this->ambiguityNotice;
             $this->ambiguityNotice = null;
+            $this->aiPrompt = '';
+            $this->messages[] = ['role' => 'assistant', 'text' => $notice];
+            $this->dispatch('message-added');
+            return;
+        }
+
+        // Currency Validation Rule 5 — stop the turn here, before any
+        // budget value gets set from the same message, so an unsupported
+        // currency is never silently treated as pesos.
+        if ($this->unsupportedCurrencyNotice !== null) {
+            $notice = $this->unsupportedCurrencyNotice;
+            $this->unsupportedCurrencyNotice = null;
             $this->aiPrompt = '';
             $this->messages[] = ['role' => 'assistant', 'text' => $notice];
             $this->dispatch('message-added');
@@ -334,9 +378,30 @@ class Llm extends Component
         $stillMissing = $this->missingSlotKey();
 
         if ($stillMissing !== '') {
-            $this->missCount = $stillMissing === $previouslyAwaiting ? $this->missCount + 1 : 0;
+            // A slot failing to resolve for the first time ever ($stillMissing
+            // !== $previouslyAwaiting) isn't automatically the SAME as the
+            // traveler never having tried it — "I want to go to abcsd city"
+            // is a real (if unresolved) attempt at destination, not silence
+            // about it, and deserves the "I didn't catch that" phrasing
+            // immediately rather than the neutral first-ask question, which
+            // reads as if the attempt was never even seen.
+            $this->missCount = match (true) {
+                $stillMissing === $previouslyAwaiting => $this->missCount + 1,
+                $this->looksLikeAttempt($stillMissing, $userText) => 1,
+                default => 0,
+            };
             $this->awaitingSlot = $stillMissing;
-            $this->messages[] = ['role' => 'assistant', 'text' => $this->questionFor($stillMissing, $this->missCount)];
+
+            // A place-verification service outage means we genuinely never
+            // found out whether what the traveler typed is real — telling
+            // them "I didn't catch that" would wrongly imply THEY got it
+            // wrong, when it's on us. Only overrides destination/origin,
+            // the only slots aiPlaceFallback() is ever involved in.
+            $reply = ($this->placeVerificationFailed && in_array($stillMissing, ['destination', 'origin'], true))
+                ? "I'm having trouble verifying that place right now — could you try again in a moment, or double-check the spelling?"
+                : $this->questionFor($stillMissing, $this->missCount);
+
+            $this->messages[] = ['role' => 'assistant', 'text' => $reply];
             $this->dispatch('message-added');
             return;
         }
@@ -386,6 +451,7 @@ class Llm extends Component
         $this->aiDateTo        = '';
         $this->aiDays          = 0;
         $this->aiTravelers     = 0;
+        $this->aiCurrency      = currency_code();
         $this->aiPackage       = [];
         $this->aiGenCount      = 0;
         $this->aiBudgetIsDaily = false;
@@ -778,6 +844,46 @@ PROMPT;
         };
     }
 
+    // Whether $userText looks like a genuine (even if it ultimately failed
+    // to resolve) attempt at answering $slot — cheap, deliberately loose
+    // heuristics per slot, not another AI call. Only reached after the
+    // greeting/filler/off-topic checks earlier in automateTrip() already
+    // returned, so anything landing here is already known to be real,
+    // substantive text — this just asks whether that text was actually
+    // AIMED at the slot in question.
+    private function looksLikeAttempt(string $slot, string $userText): bool
+    {
+        return match ($slot) {
+            'destination', 'origin' => $this->hasPlaceLikeCandidate($userText),
+            'travelers' => (bool) preg_match('/\d|\bsolo\b|\balone\b|\bjust me\b|\bmyself\b/i', $userText),
+            'budget'    => (bool) preg_match('/\d/', $userText),
+            'dates'     => (bool) preg_match(
+                '/\d|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec/i',
+                $userText
+            ),
+            default => false,
+        };
+    }
+
+    // A capitalized word run is always worth treating as a place attempt
+    // (same "looks like a proper noun" heuristic this file's own city regex
+    // relies on elsewhere). Otherwise, only count a bare "to/in/at/from..."
+    // preposition as an attempt when it's followed by a word that ISN'T one
+    // of the common verbs/connectors that show up after it in perfectly
+    // ordinary sentences having nothing to do with naming a place — a bare
+    // "\bto\b" check alone would wrongly flag "I want to plan a trip" as an
+    // attempted destination just because it contains the word "to".
+    private function hasPlaceLikeCandidate(string $text): bool
+    {
+        if (preg_match('/[A-Z][a-z]+/', $text)) return true;
+
+        $notPlaceWords = 'plan|book|go|travel|visit|find|get|make|do|have|see|know|ask|try|be|buy|spend|save|figure|decide|somewhere|anywhere|someplace';
+        return (bool) preg_match(
+            '/\b(?:to|in|at|from|visit(?:ing)?|travel(?:l?ing)?\s+to|fly(?:ing)?\s+to|go(?:ing)?\s+to|stay(?:ing)?\s+(?:in|at))\s+(?!(?:' . $notPlaceWords . ')\b)[a-z]{2,}\b/iu',
+            $text
+        );
+    }
+
     private function conversationSummary(): string
     {
         $summary = collect($this->messages)
@@ -830,8 +936,22 @@ PROMPT;
         }
 
         if ($package && !empty($package['to'])) {
-            $this->aiFrom      = $this->cleanCityName($package['from']      ?? $this->aiFrom);
-            $this->aiTo        = $this->cleanCityName($package['to']        ?? $this->aiTo);
+            // By the time this runs, aiFrom/aiTo are already a validated
+            // destination from earlier in the conversation — this free-
+            // generation step's OWN 'from'/'to' fields are just its echo of
+            // that request, not a fresh decision, and generation can drift
+            // (a known LLM failure mode, not malice). Only ever fills in if
+            // still genuinely empty, gated the same as every other path, so
+            // a generation echo can never silently overwrite an already-
+            // validated destination with something unverified.
+            if ($this->aiFrom === '') {
+                $resolved = $this->knownPlaceName($this->cleanCityName($package['from'] ?? ''));
+                if ($resolved !== '') $this->aiFrom = $resolved;
+            }
+            if ($this->aiTo === '') {
+                $resolved = $this->knownPlaceName($this->cleanCityName($package['to'] ?? ''));
+                if ($resolved !== '') $this->aiTo = $resolved;
+            }
             if ($this->aiTravelers === 0 && !empty($package['travelers'])) {
                 $v = (int) $package['travelers'];
                 if ($v > 0) $this->aiTravelers = $v;
@@ -1221,10 +1341,26 @@ PROMPT;
         if (in_array($key, self::NON_ANSWER_FILLERS, true)) return null;
         if (array_key_exists($key, $this->aiPlaceCache)) return $this->aiPlaceCache[$key];
 
+        // Deterministic shape check, no AI call needed — catches the exact
+        // class of bug that slipped through the AI's own judgment ("asavc123
+        // city" got hallucinated as real). Cheap, free, and never wrong: no
+        // real place name fuses digits into a word or repeats one character
+        // 4+ times in a row, so this can only ever reject, never falsely
+        // accept, and never needs to guess the way the AI check below does.
+        if ($this->looksLikeGibberish($key)) return $this->aiPlaceCache[$key] = null;
+
         set_time_limit(90);
 
+        // "Be skeptical... only if confident" is deliberate, not filler —
+        // the plain "is this real?" version of this prompt is exactly what
+        // let a single confidently-wrong answer ("Nicsland" hallucinated as
+        // real) straight through. Asking for genuine confidence instead of
+        // plausibility makes a lone guess less likely to pass even before
+        // the second opinion below gets involved.
         $prompt = <<<PROMPT
-        Is "{$key}" a real, specific travel destination — an actual city, town, or island (not a made-up place, not a generic word or phrase, and not just a whole country by itself)?
+        Is "{$key}" a real, specific travel destination — an actual city, town, or island that genuinely exists?
+
+        Be skeptical. Only answer yes if you are genuinely confident this is a real place you have real knowledge of — not just because the name sounds plausible or place-like. If you don't specifically recognize it, or aren't sure, answer no. This is NOT a made-up place, NOT a generic word or phrase, and NOT a whole country by itself.
 
         If yes, return its most common English city/town/island name and the IATA code of the real airport travelers would realistically fly into to reach it (the nearest major one, if it has none of its own).
         If no, return false and null for both fields.
@@ -1233,28 +1369,98 @@ PROMPT;
         {"is_real_place": true or false, "name": "city name or null", "iata_code": "CODE or null"}
         PROMPT;
 
-        try {
-            $raw = (new GeminiService())->generate($prompt);
-            if (!$raw) { $raw = (new GroqService())->generate($prompt); }
-            if (!$raw) { $raw = (new OpenRouterService())->generate($prompt); }
-            if (!$raw) return $this->aiPlaceCache[$key] = null;
+        $providers = [GeminiService::class, GroqService::class, OpenRouterService::class];
 
-            $raw  = trim(preg_replace('/```json\s*|```\s*/i', '', $raw));
-            $data = json_decode($raw, true);
-
-            if (!is_array($data) || empty($data['is_real_place']) || empty($data['name']) || empty($data['iata_code'])) {
-                return $this->aiPlaceCache[$key] = null;
-            }
-
-            $code = strtoupper(trim((string) $data['iata_code']));
-            if (!preg_match('/^[A-Z]{3}$/', $code)) {
-                return $this->aiPlaceCache[$key] = null;
-            }
-
-            return $this->aiPlaceCache[$key] = ['name' => strtolower(trim((string) $data['name'])), 'code' => $code];
-        } catch (\Throwable) {
+        $first = $this->askPlaceVerifier($prompt, $providers);
+        if ($first === null) {
+            $this->placeVerificationFailed = true;
             return $this->aiPlaceCache[$key] = null;
         }
+
+        // Cross-check with a genuinely DIFFERENT provider than whichever
+        // just answered — a single model confidently inventing a
+        // plausible-sounding place is exactly what slipped through before;
+        // requiring a second, independent model to also confirm it is a
+        // much stronger bar than trusting one answer alone.
+        $second = $this->askPlaceVerifier($prompt, array_values(array_diff($providers, [$first['provider']])));
+        if ($second === null) {
+            $this->placeVerificationFailed = true;
+            return $this->aiPlaceCache[$key] = null;
+        }
+
+        if ($first['data'] === null || $second['data'] === null) {
+            // Either one said no, or one gave back something unusable —
+            // both must agree it's real, so anything short of that is a
+            // reject, not just whichever answered first.
+            return $this->aiPlaceCache[$key] = null;
+        }
+
+        $code = strtoupper(trim((string) $first['data']['iata_code']));
+        if (!preg_match('/^[A-Z]{3}$/', $code)) {
+            return $this->aiPlaceCache[$key] = null;
+        }
+
+        return $this->aiPlaceCache[$key] = ['name' => strtolower(trim((string) $first['data']['name'])), 'code' => $code];
+    }
+
+    // Tries each provider class in order, stopping at the first one that
+    // responds at all — returns null only when NONE of them responded
+    // (a real outage), never when one responded with a "no" or bad JSON,
+    // since that's a genuine answer aiPlaceFallback() needs to see, not a
+    // failure to get one.
+    private function askPlaceVerifier(string $prompt, array $providerClasses): ?array
+    {
+        foreach ($providerClasses as $class) {
+            try {
+                $raw = (new $class())->generate($prompt);
+            } catch (\Throwable) {
+                continue;
+            }
+            if (!$raw) continue;
+
+            $raw  = trim(preg_replace('/```json\s*|```\s*/i', '', $raw));
+            $json = json_decode($raw, true);
+            $valid = is_array($json) && !empty($json['is_real_place']) && !empty($json['name']) && !empty($json['iata_code']);
+
+            return ['provider' => $class, 'data' => $valid ? $json : null];
+        }
+
+        return null;
+    }
+
+    // Conservative on purpose: only flags shapes that are essentially NEVER
+    // a real place, nothing borderline or uncertain. Anything not caught
+    // here still goes through the actual AI check as before — this only
+    // ever short-circuits an obvious reject, it never decides an accept.
+    private function looksLikeGibberish(string $text): bool
+    {
+        // Letters with digits fused directly into them, no space between
+        // ("asavc123", "abc123def") — real place names don't do this.
+        if (preg_match('/[a-zA-Z]{2,}\d+|\d+[a-zA-Z]{2,}/', $text)) return true;
+
+        // The same character repeated 4+ times in a row ("aaaa", "xxxxxxx")
+        // — keyboard mashing, never a real place name.
+        if (preg_match('/(.)\1{3,}/i', $text)) return true;
+
+        // A short (2-4 char) chunk repeated 3+ times in a row ("asdasdasd",
+        // "lolol") — same keyboard-mashing signal as above, just a repeated
+        // PATTERN instead of a single repeated character.
+        if (preg_match('/(.{2,4})\1{2,}/i', $text)) return true;
+
+        // Mostly symbols/punctuation rather than actual letters ("%@!#",
+        // "???city"). \p{L} (any Unicode letter, not just a-z) so a real
+        // place with an apostrophe, hyphen, or accented letter — "Coeur
+        // d'Alene", "São Paulo", "St. Petersburg" — is never caught by
+        // this: verified empirically, those all sit at 75%+ letters. The
+        // 0.7 cutoff leaves comfortable margin above every real place
+        // tested while still catching anything symbol-dominant.
+        $nonSpace = preg_replace('/\s+/u', '', $text);
+        if ($nonSpace !== '') {
+            $letters = preg_replace('/[^\p{L}]/u', '', $nonSpace);
+            if (mb_strlen($letters) / mb_strlen($nonSpace) < 0.7) return true;
+        }
+
+        return false;
     }
 
     public function iataCode(string $city): string
@@ -1291,41 +1497,52 @@ PROMPT;
 
     private const MINIMUM_TOTAL_BUDGET = 10000;
 
-    private const NON_PESO_CURRENCY_NAMES = [
-        '$' => 'US dollars', '＄' => 'US dollars', 'usd' => 'US dollars',
-        '€' => 'euros', 'eur' => 'euros',
-        '£' => 'British pounds', '￡' => 'British pounds', 'gbp' => 'British pounds',
-        '¥' => 'Japanese yen', '￥' => 'Japanese yen', 'jpy' => 'Japanese yen',
-        '₩' => 'Korean won', '￦' => 'Korean won', 'krw' => 'Korean won',
-        'sgd' => 'Singapore dollars', 'aud' => 'Australian dollars',
-        'hkd' => 'Hong Kong dollars', 'thb' => 'Thai baht',
-        'myr' => 'Malaysian ringgit', 'aed' => 'UAE dirhams',
+    // Single source of truth for the Currency Validation Rules' exact
+    // supported list (PHP + 11 others) — name, display symbol, and the
+    // peso exchange rate (pesos per 1 unit of that currency; PHP's own
+    // rate is 1 by definition) all live together per code, instead of
+    // three separate maps that could silently drift out of sync with each
+    // other. "Supported" for Rule 3/5 purposes means "a key in this array."
+    private const SUPPORTED_CURRENCIES = [
+        'PHP' => ['name' => 'Philippine pesos',   'symbol' => '₱',    'rate' => 1],
+        'USD' => ['name' => 'US dollars',         'symbol' => '$',    'rate' => 56],
+        'EUR' => ['name' => 'euros',              'symbol' => '€',    'rate' => 61],
+        'GBP' => ['name' => 'British pounds',     'symbol' => '£',    'rate' => 71],
+        'JPY' => ['name' => 'Japanese yen',       'symbol' => '¥',    'rate' => 0.38],
+        'SGD' => ['name' => 'Singapore dollars',  'symbol' => 'S$',   'rate' => 42],
+        'AUD' => ['name' => 'Australian dollars', 'symbol' => 'A$',   'rate' => 37],
+        'KRW' => ['name' => 'Korean won',         'symbol' => '₩',    'rate' => 0.041],
+        'HKD' => ['name' => 'Hong Kong dollars',  'symbol' => 'HK$',  'rate' => 7.2],
+        'THB' => ['name' => 'Thai baht',          'symbol' => '฿',    'rate' => 1.6],
+        'MYR' => ['name' => 'Malaysian ringgit',  'symbol' => 'RM',   'rate' => 12.5],
+        'AED' => ['name' => 'UAE dirhams',        'symbol' => 'AED ', 'rate' => 15.3],
     ];
 
-    private const NON_PESO_CURRENCY_RATES = [
-        'US dollars'         => 56,
-        'euros'              => 61,
-        'British pounds'     => 71,
-        'Japanese yen'       => 0.38,
-        'Korean won'         => 0.041,
-        'Singapore dollars'  => 42,
-        'Australian dollars' => 37,
-        'Hong Kong dollars'  => 7.2,
-        'Thai baht'          => 1.6,
-        'Malaysian ringgit'  => 12.5,
-        'UAE dirhams'        => 15.3,
+    // Free-text symbol/name variants (including fullwidth Unicode
+    // lookalikes some keyboards/IMEs produce, e.g. U+FFE5 ¥ instead of the
+    // standard U+00A5) that all resolve to one SUPPORTED_CURRENCIES code.
+    private const CURRENCY_ALIASES = [
+        '$' => 'USD', '＄' => 'USD', 'usd' => 'USD',
+        '€' => 'EUR', 'eur' => 'EUR',
+        '£' => 'GBP', '￡' => 'GBP', 'gbp' => 'GBP',
+        '¥' => 'JPY', '￥' => 'JPY', 'jpy' => 'JPY',
+        '₩' => 'KRW', '￦' => 'KRW', 'krw' => 'KRW',
+        'sgd' => 'SGD', 'aud' => 'AUD',
+        'hkd' => 'HKD', 'thb' => 'THB',
+        'myr' => 'MYR', 'aed' => 'AED',
+        '₱' => 'PHP', 'php' => 'PHP', 'peso' => 'PHP', 'pesos' => 'PHP',
     ];
 
-    private const CURRENCY_DISPLAY_SYMBOLS = [
-        'US dollars' => '$', 'euros' => '€', 'British pounds' => '£',
-        'Japanese yen' => '¥', 'Korean won' => '₩', 'Singapore dollars' => 'S$',
-        'Australian dollars' => 'A$', 'Hong Kong dollars' => 'HK$',
-        'Thai baht' => '฿', 'Malaysian ringgit' => 'RM', 'UAE dirhams' => 'AED ',
-    ];
-
+    // Detects an explicitly-named NON-peso currency (Currency Validation
+    // Rule 1) alongside a budget figure, converts it to pesos for internal
+    // budget tracking, and — as a side effect — locks $this->aiCurrency to
+    // that currency for the rest of the conversation. Returns null for a
+    // bare peso mention (₱/pesos/php): those already have their own
+    // dedicated regex branches in parseAiPrompt() and need no conversion,
+    // so this function's only job is the NON-peso case.
     private function detectAndConvertCurrency(string $text): ?array
     {
-        $symbolOrCode = '(?:\$|＄|€|£|￡|¥|￥|₩|￦|USD|EUR|GBP|JPY|SGD|AUD|KRW|HKD|THB|MYR|AED)';
+        $symbolOrCode = '(?:\$|＄|€|£|￡|¥|￥|₩|￦|₱|USD|EUR|GBP|JPY|SGD|AUD|KRW|HKD|THB|MYR|AED|PHP|pesos?)';
 
         $number = '(?:\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)';
 
@@ -1337,20 +1554,68 @@ PROMPT;
             return null;
         }
 
-        $currencyName = self::NON_PESO_CURRENCY_NAMES[strtolower($marker)] ?? null;
-        $rate         = $currencyName !== null ? (self::NON_PESO_CURRENCY_RATES[$currencyName] ?? null) : null;
-        if ($currencyName === null || $rate === null) return null;
+        $code = self::CURRENCY_ALIASES[strtolower($marker)] ?? null;
+        if ($code === null || $code === 'PHP') return null;
+
+        $currency = self::SUPPORTED_CURRENCIES[$code] ?? null;
+        if ($currency === null) return null;
 
         $foreignAmount = (float) str_replace(',', '', $amountRaw);
         if ($foreignAmount <= 0) return null;
 
-        $symbol = self::CURRENCY_DISPLAY_SYMBOLS[$currencyName] ?? '';
+        $this->aiCurrency = $code;
 
         return [
-            'currencyName' => $currencyName,
-            'pesoAmount'   => (int) round($foreignAmount * $rate),
-            'displayLabel' => $symbol . number_format($foreignAmount),
+            'code'         => $code,
+            'currencyName' => $currency['name'],
+            'pesoAmount'   => (int) round($foreignAmount * $currency['rate']),
+            'displayLabel' => $currency['symbol'] . number_format($foreignAmount),
         ];
+    }
+
+    // Currency Validation Rule 5: a currency marker the traveler named that
+    // ISN'T one of the twelve supported ones — never silently misread as
+    // pesos or invented on our end (Rule 3). Two shapes checked: a 3-letter
+    // ISO-style code adjacent to a number ("500 CAD", "CAD 500" — the same
+    // adjacency requirement SUPPORTED_CURRENCIES detection uses, so a
+    // random unrelated 3-letter acronym elsewhere in the message is never
+    // mistaken for a currency), and a small set of other real currency
+    // symbols not in our supported list. Returns the unrecognized code, or
+    // null when nothing currency-shaped-but-unsupported is present.
+    private function detectUnsupportedCurrency(string $text): ?string
+    {
+        $number = '(?:\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)';
+
+        if (preg_match('/\b([A-Z]{3})\b\s*' . $number . '/', $text, $m)
+            || preg_match('/' . $number . '\s*\b([A-Z]{3})\b/', $text, $m)) {
+            $code = strtoupper($m[1]);
+            if (!isset(self::SUPPORTED_CURRENCIES[$code])) return $code;
+        }
+
+        foreach (['₹' => 'INR', '₫' => 'VND', '₴' => 'UAH', 'R$' => 'BRL'] as $sym => $code) {
+            if (str_contains($text, $sym)) return $code;
+        }
+
+        return null;
+    }
+
+    // Currency Validation Rule 4: every cost shown to the traveler must be
+    // in $this->aiCurrency, not raw pesos with an unrelated symbol slapped
+    // on front. Every cost is generated/stored internally in pesos
+    // (rewriting the whole generation pipeline — Gemini prompts, SerpAPI
+    // cost parsing, the static Layer 3 table — to think natively in
+    // foreign currencies is a far larger change than this fix); this is
+    // the single conversion point the view calls instead of formatting a
+    // raw peso number with currency_symbol() (that helper reads the
+    // traveler's PROFILE display preference, which is a different,
+    // unrelated setting from the currency actually selected for this
+    // trip — that mismatch was the bonus bug found while reviewing this).
+    // PHP's own rate is 1, so callers see byte-identical output to before
+    // this feature existed whenever no other currency was ever selected.
+    public function displayAmount(int|float $pesoAmount, ?string $currencyCode = null): string
+    {
+        $currency = self::SUPPORTED_CURRENCIES[$currencyCode ?? $this->aiCurrency] ?? self::SUPPORTED_CURRENCIES['PHP'];
+        return $currency['symbol'] . number_format($pesoAmount / $currency['rate']);
     }
 
     private function pickFromPool(array $pool, int $gen, int $poolSize = 3): array
@@ -1607,7 +1872,13 @@ PROMPT;
 
         $big = '(?:\d{1,3}(?:,\d{3})+|\d{4,}|\d+\s*[kK]\b)';
 
-        if ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0
+        // Checked before every other budget branch below — an unsupported
+        // currency must never fall through and get silently misread as a
+        // bare peso number by the generic patterns further down.
+        if (($unsupported = $this->detectUnsupportedCurrency($withoutDate)) !== null) {
+            $this->unsupportedCurrencyNotice = "I couldn't recognize the selected currency. Please choose one of the supported currencies from the list.";
+
+        } elseif ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0
             && ($conversion = $this->detectAndConvertCurrency($withoutDate)) !== null) {
             $this->aiBudgetMin = $this->aiBudgetMax = min(self::MAX_BUDGET, $conversion['pesoAmount']);
             $this->currencyNotice = "Got it — {$conversion['displayLabel']} is about ₱" . number_format($conversion['pesoAmount']) . ", I'll plan around that.";
@@ -1655,26 +1926,41 @@ PROMPT;
         $hasTwoCities = !$ambiguousFrom && !$ambiguousTo
             && preg_match('/(' . $city . ')\s+to\s+(' . $city . ')/u', $withoutDate, $m2);
 
+        // Every branch below resolves through knownPlaceName() before ever
+        // touching aiFrom/aiTo — the capitalized-word shape ($city, above)
+        // only means "this looks like a proper noun", not "this is a real
+        // place". A raw trim($mt[1])-style assignment here was the actual
+        // bug behind "Plan a trip to Nicsland" sailing straight past every
+        // other check built today: it's properly capitalized, so it always
+        // matched this exact pattern and got assigned with zero
+        // verification, while any lowercase or off-pattern phrasing of the
+        // same fake place fell through to the (already-gated) paths below
+        // instead. A resolution failure here just leaves aiFrom/aiTo
+        // untouched — missingSlotKey() then re-asks normally, same as any
+        // other unresolved destination.
         if ($hasFrom && $hasTo) {
-            $this->aiFrom = trim($mf[1]);
-            $this->aiTo   = trim($mt[1]);
+            $resolvedFrom = $this->knownPlaceName($this->cleanCityName(trim($mf[1])));
+            $resolvedTo   = $this->knownPlaceName($this->cleanCityName(trim($mt[1])));
+            if ($resolvedFrom !== '') $this->aiFrom = $resolvedFrom;
+            if ($resolvedTo !== '')   $this->aiTo   = $resolvedTo;
         } elseif ($hasTwoCities) {
-            $this->aiFrom = trim($m2[1]);
-            $this->aiTo   = trim($m2[2]);
+            $resolvedFrom = $this->knownPlaceName($this->cleanCityName(trim($m2[1])));
+            $resolvedTo   = $this->knownPlaceName($this->cleanCityName(trim($m2[2])));
+            if ($resolvedFrom !== '' && $resolvedTo !== '' && strtolower($resolvedFrom) !== strtolower($resolvedTo)) {
+                $this->aiFrom = $resolvedFrom;
+                $this->aiTo   = $resolvedTo;
+            }
         } elseif ($hasFrom) {
-            $this->aiFrom = trim($mf[1]);
-
+            $resolved = $this->knownPlaceName($this->cleanCityName(trim($mf[1])));
+            if ($resolved !== '') $this->aiFrom = $resolved;
         } elseif ($hasTo) {
-
-            $this->aiTo = trim($mt[1]);
+            $resolved = $this->knownPlaceName($this->cleanCityName(trim($mt[1])));
+            if ($resolved !== '') $this->aiTo = $resolved;
         }
 
         if ($ambiguousTo || $ambiguousFrom) {
             $this->ambiguityNotice = "Looks like you named more than one option there — could you tell me just the one you'd like to go with?";
         }
-
-        $this->aiFrom = $this->cleanCityName($this->aiFrom);
-        $this->aiTo   = $this->cleanCityName($this->aiTo);
 
         $anyCase = '[A-Za-z]+(?: [A-Za-z]+){0,2}';
 

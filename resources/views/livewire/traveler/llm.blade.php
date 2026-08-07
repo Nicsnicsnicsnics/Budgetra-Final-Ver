@@ -48,9 +48,9 @@
             @if ($aiBudgetMin || $aiBudgetMax)
                 &nbsp;·&nbsp;
                 @if ($aiBudgetMin && $aiBudgetMax && $aiBudgetMin !== $aiBudgetMax)
-                    {{ currency_symbol() }}{{ number_format($aiBudgetMin) }}–{{ currency_symbol() }}{{ number_format($aiBudgetMax) }}
+                    {{ $this->displayAmount($aiBudgetMin) }}–{{ $this->displayAmount($aiBudgetMax) }}
                 @else
-                    {{ currency_symbol() }}{{ number_format($aiBudgetMax ?: $aiBudgetMin) }}
+                    {{ $this->displayAmount($aiBudgetMax ?: $aiBudgetMin) }}
                 @endif
             @endif
             @if ($aiDateFrom && $aiDateTo)
@@ -132,7 +132,7 @@
                     <i class="fa-solid fa-pen" style="font-size:9px;"></i> Edit
                 </button>
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:4px;">Est. Cost</div>
-                <div style="font-size:18px;font-weight:800;color:var(--dark);">{{ currency_symbol() }}{{ number_format($sec['cost'] ?? 0) }}</div>
+                <div style="font-size:18px;font-weight:800;color:var(--dark);">{{ $this->displayAmount($sec['cost'] ?? 0) }}</div>
             </div>
 
         </div>
@@ -147,7 +147,7 @@
     <div style="flex:1;min-width:0;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:5px;">Estimated Cost (Total)</div>
         <div style="font-size:18px;font-weight:800;color:var(--dark);margin-bottom:6px;">
-            {{ currency_symbol() }}{{ number_format($total) }} of {{ currency_symbol() }}{{ number_format($budget) }} budget
+            {{ $this->displayAmount($total) }} of {{ $this->displayAmount($budget) }} budget
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
             <div style="flex:1;height:6px;background:var(--border-light);border-radius:99px;overflow:hidden;">
@@ -371,7 +371,7 @@
                 <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);font-size:12px;color:var(--muted);">
                     <i class="fa-regular fa-calendar" style="margin-right:5px;"></i>{{ $entry->ai_date_from }} – {{ $entry->ai_date_to }}
                     @if ($entry->ai_budget_min || $entry->ai_budget_max)
-                        &nbsp;·&nbsp;{{ currency_symbol() }}{{ number_format($entry->ai_budget_max ?: $entry->ai_budget_min) }}
+                        &nbsp;·&nbsp;{{ $this->displayAmount($entry->ai_budget_max ?: $entry->ai_budget_min, $entry->ai_currency) }}
                     @endif
                 </div>
                 @endif
