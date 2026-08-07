@@ -1035,6 +1035,19 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 /* Hide topnav globally since it's been removed from all pages */
 .dash-topnav { display: none; }
 
+/* Dashboard footer */
+.dash-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px; border-top: 1px solid var(--border);
+  font-size: 14px; font-weight: 700; color: var(--dark); flex-shrink: 0;
+  margin-top: auto;
+}
+.dash-footer-link { color: var(--dark); text-decoration: none; }
+.dash-footer-link:hover { color: var(--primary); }
+
+.footer-modal-backdrop { position: fixed; inset: 0; background: rgba(20,10,4,.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.footer-modal-card { background: var(--bg-white); border-radius: 20px; width: 100%; max-width: 380px; padding: 26px; box-shadow: 0 24px 70px rgba(45,27,20,.2); }
+
 /* OCR Banner */
 .ocr-banner {
   background: linear-gradient(135deg, var(--primary-light) 0%, #FFF 60%);

@@ -84,8 +84,20 @@
 
             <div class="moments-float-chip moments-float-hint">
                 <i class="fa-solid fa-circle-info" style="color:#F5C97A;"></i>
-                Click anywhere to post a Moment
+                @if ($this->hasOngoingTrip)
+                    Click anywhere to post a Moment
+                @else
+                    No ongoing trips yet — moments can be added once a trip starts
+                @endif
             </div>
+
+            @if ($momentBlockedMessage)
+            <div class="moments-float-chip" wire:key="moment-blocked-overview"
+                 style="top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(185,28,28,.92);color:#fff;padding:10px 16px;font-size:12px;display:flex;align-items:center;gap:8px;text-align:center;"
+                 x-data x-init="setTimeout(() => $wire.set('momentBlockedMessage', ''), 3500)">
+                <i class="fa-solid fa-triangle-exclamation"></i> {{ $momentBlockedMessage }}
+            </div>
+            @endif
         </div>
     </div>
 
@@ -232,8 +244,19 @@
         <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);">
             <p style="margin:0 0 12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
                 <i class="fa-solid fa-circle-info" style="color:#C8874A;"></i>
-                Click anywhere on the map to drop a pin for a place you visited.
+                @if ($this->selectedTrip && $this->selectedTrip->resolved_status === 'active')
+                    Click anywhere on the map to drop a pin for a place you visited.
+                @else
+                    Moments can only be added once this trip is ongoing.
+                @endif
             </p>
+
+            @if ($momentBlockedMessage)
+            <div class="alert alert-danger" wire:key="moment-blocked-trip" style="margin-bottom:12px;text-align:center;"
+                 x-data x-init="setTimeout(() => $wire.set('momentBlockedMessage', ''), 3500)">
+                <i class="fa-solid fa-triangle-exclamation"></i> {{ $momentBlockedMessage }}
+            </div>
+            @endif
             <div
                 wire:key="moments-map-{{ $selectedTripId }}"
                 wire:ignore
