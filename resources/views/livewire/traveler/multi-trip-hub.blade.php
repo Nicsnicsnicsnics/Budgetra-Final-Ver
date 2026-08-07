@@ -22,92 +22,111 @@
     </div>
     @else
 
-    {{-- Header --}}
-    <div style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;" class="mb-24">
-        <div style="display:flex;align-items:center;gap:12px;">
-            <input type="text" wire:model.live.debounce.300ms="search"
-                   class="form-control" placeholder="Search by destination..." style="max-width:220px;">
-            <a href="{{ route('trips.plan') }}" class="btn btn-primary">
-                <i class="fa-solid fa-plus"></i> New Trip
-            </a>
-        </div>
-    </div>
-
-    {{-- Aggregate stat tiles --}}
-    <div class="stats-row mb-24">
-        <div class="stat-card">
-            <div class="stat-card-accent" style="background:var(--primary);"></div>
-            <div class="stat-label"><i class="fa-solid fa-suitcase-rolling"></i> Total Trips</div>
-            <div class="stat-value">{{ $totals['count'] }}</div>
-            <div class="stat-sub" style="color:var(--primary);">All time</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-card-accent" style="background:var(--secondary);"></div>
-            <div class="stat-label"><i class="fa-solid fa-coins"></i> Total Budget</div>
-            <div class="stat-value" style="color:var(--secondary);">{{ currency_symbol() }}{{ number_format($totals['budget'], 0) }}</div>
-            <div class="stat-sub">Across all trips</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-card-accent" style="background:var(--tertiary);"></div>
-            <div class="stat-label"><i class="fa-regular fa-credit-card"></i> Total Spent</div>
-            <div class="stat-value" style="color:var(--tertiary);">{{ currency_symbol() }}{{ number_format($totals['spent'], 0) }}</div>
-            <div class="stat-sub">Across all trips</div>
-        </div>
-    </div>
-
-    {{-- Trip grid --}}
-    @if ($trips->isNotEmpty())
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;">
-        @foreach ($trips as $trip)
-        @php
-            $tType = strtoupper($trip->travel_type ?? 'Solo');
-            $pct   = min(100, $trip->pct_used);
-        @endphp
-        <div class="card" style="overflow:hidden;border-radius:14px;">
-            <div style="position:relative;height:210px;background:linear-gradient(135deg,var(--primary),#C8874A);">
-                @if ($trip->cover_image)
-                <img src="{{ $trip->cover_image }}" style="width:100%;height:100%;object-fit:cover;display:block;" alt="{{ $trip->destination }}">
-                @endif
-                <span style="position:absolute;top:14px;left:14px;background:#FDF3EB;color:var(--primary);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px;">
-                    {{ $tType }}
-                </span>
+    {{-- Trips accordion --}}
+    @php
+        $mthActiveTrips = $trips->whereIn('status', ['active', 'upcoming']);
+        $mthPastTrips   = $trips->where('status', 'past');
+        $mthGroups = [
+            ['key' => 'active', 'label' => 'Active Trips', 'icon' => 'fa-solid fa-suitcase-rolling',  'items' => $mthActiveTrips],
+            ['key' => 'past',   'label' => 'Past Trips',   'icon' => 'fa-solid fa-clock-rotate-left', 'items' => $mthPastTrips],
+        ];
+    @endphp
+    @foreach ($mthGroups as $mthGroup)
+    <div x-data="{ open: {{ $mthGroup['key'] === 'active' ? 'true' : 'false' }} }" style="margin-bottom:20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:999px;transition:border-radius .2s,border-color .2s;"
+         :style="open ? 'border-radius:22px;border-color:var(--primary);' : ''">
+        <button @click="open=!open" type="button" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:none;border:none;cursor:pointer;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:32px;height:32px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="{{ $mthGroup['icon'] }}" style="color:#fff;font-size:13px;"></i>
+                </div>
+                <span style="font-size:15px;font-weight:700;color:var(--dark);">{{ $mthGroup['label'] }}</span>
+                @php $mthCount = $mthGroup['items']->count(); @endphp
+                <span style="font-size:11px;font-weight:800;{{ $mthCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:var(--muted);background:var(--bg);' }}border-radius:99px;min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $mthCount }}</span>
             </div>
-            <div style="padding:18px 20px;">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:2px;">
-                    <div style="font-size:17px;font-weight:700;color:var(--dark);">{{ $trip->trip_name ?? $trip->destination }}</div>
-                    <div class="text-muted" style="font-size:12px;white-space:nowrap;">{{ $fmtDate($trip->start_date, 'M j') }} - {{ $fmtDate($trip->end_date, 'M j, Y') }}</div>
+            <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
+        </button>
+        <div x-show="open" x-transition style="padding:16px 18px 20px;border-top:1px solid var(--border);">
+            @if ($mthGroup['items']->isEmpty())
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
+                <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+                    <i class="{{ $mthGroup['icon'] }}" style="font-size:24px;color:#fff;"></i>
                 </div>
-                <div class="text-muted" style="font-size:13px;margin-bottom:16px;">
-                    <i class="fa-solid fa-plane" style="font-size:11px;"></i> {{ $trip->origin_code ?? 'MNL' }} &rarr; {{ $trip->destination_code ?? '—' }}
-                </div>
-
-                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-                    <span class="text-muted" style="font-size:12px;">Budget Used</span>
-                    <span style="font-weight:700;font-size:13px;color:var(--dark);">{{ $trip->pct_used }}%</span>
-                </div>
-                <div style="height:6px;background:var(--border-light);border-radius:99px;overflow:hidden;margin-bottom:12px;">
-                    <div style="height:100%;width:{{ $pct }}%;background:var(--primary);border-radius:99px;"></div>
-                </div>
-                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:18px;">
-                    <span>Spent: <strong style="color:var(--primary);">{{ currency_symbol() }}{{ number_format($trip->total_spent, 2) }}</strong></span>
-                    <span class="text-muted">Allocated Budget: {{ currency_symbol() }}{{ number_format($trip->budget_limit, 2) }}</span>
-                </div>
-
-                <div style="display:flex;gap:10px;">
-                    <button type="button" class="btn btn-secondary" style="flex:1;text-transform:uppercase;letter-spacing:.05em;font-size:12px;" wire:click="showDetail({{ $trip->id }})">Details</button>
-                    <button type="button" class="btn btn-primary" style="flex:1;text-transform:uppercase;letter-spacing:.05em;font-size:12px;" wire:click="compareWith({{ $trip->id }})">Compare</button>
-                </div>
+                <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No {{ $mthGroup['label'] }} yet</h3>
+                <p style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">
+                    @if ($mthGroup['key'] === 'active')
+                    Plan a trip first to see your active trips.
+                    @else
+                    Plan a trip first to see your past trips.
+                    @endif
+                </p>
             </div>
+            @else
+            <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;">
+                @foreach ($mthGroup['items'] as $trip)
+                @php
+                    $tType      = strtoupper($trip->travel_type ?? 'Solo');
+                    $pct        = min(100, $trip->pct_used);
+                    $typeColor  = $tType === 'GROUP' ? '#A855F7' : '#14B8A6';
+                    $statusColor = match ($trip->status) {
+                        'active'   => '#22C55E',
+                        'upcoming' => '#3B82F6',
+                        default    => 'var(--muted)',
+                    };
+                    $statusLabel = match ($trip->status) { 'active' => 'Ongoing', 'upcoming' => 'Upcoming', 'past' => 'Finished', default => ucfirst($trip->status) };
+                @endphp
+                <div class="card" style="overflow:hidden;border-radius:14px;width:340px;flex-shrink:0;">
+                    <div style="position:relative;height:200px;background:linear-gradient(135deg,var(--primary),#C8874A);">
+                        @if ($trip->cover_image)
+                        <img src="{{ $trip->cover_image }}" style="width:100%;height:100%;object-fit:cover;display:block;" alt="{{ $trip->destination }}">
+                        @endif
+                        <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.15),rgba(0,0,0,0.55));"></div>
+
+                        {{-- Stacked badges top-left --}}
+                        <div style="position:absolute;top:14px;left:14px;display:flex;flex-direction:column;gap:6px;">
+                            <span style="background:{{ $typeColor }};color:#fff;font-size:11px;font-weight:700;letter-spacing:0.5px;padding:4px 12px;border-radius:20px;display:inline-block;text-align:center;">{{ $tType }}</span>
+                            <span style="background:{{ $statusColor }};color:#fff;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;text-transform:uppercase;display:inline-block;">{{ $statusLabel }}</span>
+                        </div>
+
+                        {{-- Trip info overlay --}}
+                        <div style="position:absolute;bottom:12px;left:16px;right:16px;">
+                            <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:8px;">
+                                {{ $trip->trip_name ?? $trip->destination }}
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:5px;">
+                                <div style="display:flex;align-items:center;gap:14px;font-size:12px;color:rgba(255,255,255,0.9);flex-wrap:wrap;">
+                                    <span style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-plane" style="font-size:11px;color:#F5C97A;"></i>{{ $trip->origin_code ?? 'MNL' }} to {{ $trip->destination_code ?? '—' }}</span>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:14px;font-size:12px;color:rgba(255,255,255,0.9);flex-wrap:wrap;">
+                                    <span style="display:flex;align-items:center;gap:6px;"><i class="fa-regular fa-calendar-days" style="font-size:11px;color:#F5C97A;"></i>{{ $fmtDate($trip->start_date, 'M j') }} - {{ $fmtDate($trip->end_date, 'M j, Y') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding:18px 20px;">
+                        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+                            <span class="text-muted" style="font-size:12px;">Budget Used</span>
+                            <span style="font-weight:700;font-size:13px;color:var(--dark);">{{ $trip->pct_used }}%</span>
+                        </div>
+                        <div style="height:6px;background:var(--border-light);border-radius:99px;overflow:hidden;margin-bottom:12px;">
+                            <div style="height:100%;width:{{ $pct }}%;background:var(--primary);border-radius:99px;"></div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:18px;">
+                            <span>Spent: <strong style="color:var(--primary);">{{ currency_symbol() }}{{ number_format($trip->total_spent, 2) }}</strong></span>
+                            <span class="text-muted">Allocated Budget: {{ currency_symbol() }}{{ number_format($trip->budget_limit, 2) }}</span>
+                        </div>
+
+                        <div style="display:flex;gap:10px;">
+                            <button type="button" class="btn btn-secondary" style="flex:1;text-transform:uppercase;letter-spacing:.05em;font-size:12px;" wire:click="showDetail({{ $trip->id }})">Details</button>
+                            <button type="button" class="btn btn-primary" style="flex:1;text-transform:uppercase;letter-spacing:.05em;font-size:12px;" wire:click="compareWith({{ $trip->id }})">Compare</button>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @endif
         </div>
-        @endforeach
     </div>
-    @elseif ($search)
-    <div style="text-align:center;padding:40px 24px;">
-        <div style="font-size:40px;margin-bottom:12px;">🔍</div>
-        <h3 style="font-weight:700;margin-bottom:8px;">No trips match "{{ $search }}"</h3>
-        <p class="text-muted" style="margin-bottom:20px;">Try a different search term.</p>
-    </div>
-    @endif
+    @endforeach
 
     @endif {{-- end @else (has trips) --}}
 

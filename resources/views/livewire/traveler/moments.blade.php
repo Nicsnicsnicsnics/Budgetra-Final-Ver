@@ -847,7 +847,19 @@
                 Livewire.on('pin-deleted', function (payload) { removePin(payload.id); })
             );
 
+            // A one-shot timeout can't know how long the surrounding layout
+            // (sidebar collapse/expand, tab switch transitions, wire:navigate)
+            // takes to settle, so it sometimes fires before the container has
+            // reached its final size — leaving the map canvas short of the
+            // right/bottom edge until something else nudges a resize. A
+            // ResizeObserver instead reacts to the container's actual size
+            // every time it changes, so the map always fills it automatically.
             setTimeout(function () { map.resize(); }, 200);
+            if (typeof ResizeObserver !== 'undefined') {
+                var mapResizeObserver = new ResizeObserver(function () { map.resize(); });
+                mapResizeObserver.observe(el);
+                window.__momentsMapUnsub.push(function () { mapResizeObserver.disconnect(); });
+            }
         });
     };
 
@@ -1090,7 +1102,19 @@
                 Livewire.on('pin-deleted', function (payload) { removeMemory(payload.id); })
             );
 
+            // A one-shot timeout can't know how long the surrounding layout
+            // (sidebar collapse/expand, tab switch transitions, wire:navigate)
+            // takes to settle, so it sometimes fires before the container has
+            // reached its final size — leaving the map canvas short of the
+            // right/bottom edge until something else nudges a resize. A
+            // ResizeObserver instead reacts to the container's actual size
+            // every time it changes, so the map always fills it automatically.
             setTimeout(function () { map.resize(); }, 200);
+            if (typeof ResizeObserver !== 'undefined') {
+                var mapResizeObserver = new ResizeObserver(function () { map.resize(); });
+                mapResizeObserver.observe(el);
+                window.__momentsOverviewMapUnsub.push(function () { mapResizeObserver.disconnect(); });
+            }
         });
     };
 </script>
