@@ -51,7 +51,7 @@ class TripPlannerWizard extends Component
             return;
         }
         if ($sourceTrip->user_id === auth()->id()) {
-            $this->importCodeError = "That's your own trip — you can't import it.";
+            // Still blocked — just no error message shown for it.
             return;
         }
         if (!$importer->isShareable($sourceTrip)) {

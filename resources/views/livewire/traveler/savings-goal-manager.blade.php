@@ -13,6 +13,7 @@
         $dateFrom   = $trip?->start_date?->format('M j');
         $dateTo     = $trip?->end_date?->format('M j, Y');
         $targetCost = $trip?->total_cost ?? $goal->target_amount;
+        $isPastGoal = $tripStatus === 'past';
     @endphp
 
     {{-- Cover image --}}
@@ -27,7 +28,7 @@
         {{-- Stacked badges top-left --}}
         <div style="position:absolute;top:14px;left:14px;display:flex;flex-direction:column;gap:6px;">
             <span style="background:{{ $typeColor }};color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:0.5px;display:inline-block;text-align:center;">{{ $tType }}</span>
-            @php $statusLabel = match($tripStatus) { 'active' => 'Ongoing', 'upcoming' => 'Upcoming', default => ucfirst($tripStatus) }; @endphp
+            @php $statusLabel = match($tripStatus) { 'active' => 'Ongoing', 'upcoming' => 'Upcoming', 'past' => 'Finished', default => ucfirst($tripStatus) }; @endphp
             <span style="background:{{ $statusColor }};color:#fff;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;text-transform:uppercase;display:inline-block;">{{ $statusLabel }}</span>
         </div>
 
@@ -102,6 +103,11 @@
             <div style="width:100%;padding:14px;border-radius:12px;background:#F0FDF4;color:#16A34A;font-size:14px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;">
                 <i class="fa-solid fa-check"></i> Goal Reached!
             </div>
+            @elseif($isPastGoal)
+            <button type="button" disabled title="This trip has already finished — savings can no longer be added."
+                    style="width:100%;background:var(--border-light);color:var(--muted);border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:7px;font-family:'Hanken Grotesk',sans-serif;">
+                Trip Finished
+            </button>
             @else
             <button wire:click="openDeposit"
                     style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:'Hanken Grotesk',sans-serif;transition:background .18s,gap .18s;"

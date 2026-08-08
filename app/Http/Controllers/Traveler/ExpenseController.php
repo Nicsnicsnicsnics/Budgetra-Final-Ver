@@ -14,7 +14,7 @@ class ExpenseController extends Controller
     {
         $user  = auth()->user();
         $trips = $user->trips()->latest()->get()
-            ->filter(fn ($t) => in_array($t->resolved_status, ['active', 'upcoming'], true))
+            ->filter(fn ($t) => in_array($t->resolved_status, ['active', 'upcoming', 'past'], true))
             ->values();
         $query = $user->expenses()->with('trip')->latest('expense_date');
 
@@ -48,7 +48,7 @@ class ExpenseController extends Controller
     public function create()
     {
         $trips      = auth()->user()->trips()->latest()->get()
-            ->filter(fn ($t) => in_array($t->resolved_status, ['active', 'upcoming'], true))
+            ->filter(fn ($t) => in_array($t->resolved_status, ['active', 'upcoming', 'past'], true))
             ->values();
         $categories = self::CATEGORIES;
         return view('traveler.expenses.create', compact('trips', 'categories'));

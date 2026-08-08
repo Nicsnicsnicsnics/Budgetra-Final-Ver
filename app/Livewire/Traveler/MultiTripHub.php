@@ -63,7 +63,17 @@ class MultiTripHub extends Component
 
     private function fetchTrips()
     {
-        $query = auth()->user()->trips()->withSum('expenses', 'amount')->latest('start_date');
+        // Multi Trip Hub has no Draft group — a draft is an unfinished trip
+        // with no real data yet, so it doesn't belong in Active or Past here
+        // (unlike Saved Trips, which does group them separately).
+        // A real (non-draft) trip's status column is usually left NULL
+        // (only set when a draft is created, or when a status is manually
+        // overridden from Saved Trips) — `!= 'draft'` alone would silently
+        // exclude every one of those NULL rows too, so NULL has to be
+        // allowed through explicitly.
+        $query = auth()->user()->trips()
+            ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'draft'))
+            ->withSum('expenses', 'amount')->latest('start_date');
         if ($this->search) {
             $query->where('destination', 'like', "%{$this->search}%");
         }
@@ -74,9 +84,7 @@ class MultiTripHub extends Component
             $trip->setAttribute('total_spent', (float) $spent);
             $trip->setAttribute('pct_used',    $trip->budget_limit > 0 ? round($spent / $trip->budget_limit * 100) : 0);
             $trip->setAttribute('days',        $days);
-            $trip->setAttribute('status',
-                $trip->start_date->gt($today) ? 'upcoming' :
-                ($trip->end_date->lt($today)  ? 'past'     : 'active'));
+            $trip->setAttribute('status', $trip->resolved_status);
             return $trip;
         });
     }

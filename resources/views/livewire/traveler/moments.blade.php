@@ -355,6 +355,17 @@
     .moments-btn-outline:hover:not(:disabled) { background: var(--border-light); border-color: var(--muted); color: var(--dark); }
     .moments-btn-danger { transition: background .15s ease, transform .12s ease, box-shadow .15s ease; }
     .moments-btn-danger:hover:not(:disabled) { background: #B91C1C; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(220,38,38,.25); }
+    .moments-photo-dropzone:hover { border-color: var(--primary); background: var(--primary-light); }
+
+    /* Leaflet's default popup bubble is a fixed white card regardless of
+       page theme — without this, the pin popups' var(--dark)/var(--muted)
+       text (which turns light in dark theme) becomes nearly invisible
+       against that always-white background. */
+    .leaflet-popup-content-wrapper { background: var(--bg-white); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+    .leaflet-popup-content { margin: 14px 16px; }
+    .leaflet-popup-tip { background: var(--bg-white); }
+    .leaflet-popup-close-button { color: var(--muted) !important; font-size: 18px !important; padding: 6px 8px 0 0 !important; }
+    .leaflet-popup-close-button:hover { color: var(--dark) !important; }
 </style>
 
 {{-- ── Add/Edit Travel Pin modal ──────────────────────── --}}
@@ -363,27 +374,21 @@
     <div class="moments-modal-card" style="background:var(--bg-white);border-radius:20px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(45,27,20,.18);padding:24px 24px 20px;">
 
         {{-- Header --}}
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-            <div style="width:36px;height:36px;border-radius:10px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fa-solid fa-map-pin" style="color:var(--primary);font-size:15px;"></i>
+        @php $pinTripLabel = $this->selectedTrip?->trip_name ?? $this->selectedTrip?->destination; @endphp
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--primary),#C8874A);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(147,75,25,.25);">
+                <i class="fa-solid fa-map-pin" style="color:#fff;font-size:18px;"></i>
             </div>
-            <span style="font-size:17px;font-weight:800;color:var(--dark);font-family:'Hanken Grotesk',sans-serif;">
-                {{ $pinModalMode === 'edit' ? 'Edit Travel Pin' : 'Add Travel Pin' }}
-            </span>
+            <div style="min-width:0;">
+                <div style="font-size:17px;font-weight:800;color:var(--dark);font-family:'Hanken Grotesk',sans-serif;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    {{ $pinModalMode === 'edit' ? 'Edit Moment' : 'Moments in ' . ($pinTripLabel ?: 'this trip') }}
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);margin-top:2px;">
+                    <i class="fa-solid fa-location-dot" style="color:#C8874A;font-size:10px;"></i>
+                    {{ number_format((float) $pinLat, 5) }}, {{ number_format((float) $pinLng, 5) }}
+                </div>
+            </div>
         </div>
-        <p style="margin:0 0 6px;font-size:11px;color:var(--muted);">
-            <i class="fa-solid fa-location-dot" style="color:#C8874A;"></i>
-            {{ number_format((float) $pinLat, 5) }}, {{ number_format((float) $pinLng, 5) }}
-        </p>
-        @if ($momentsMode === 'overview' && $this->selectedTrip)
-        {{-- Posted from the overview map, which spans every trip — make the
-             auto-resolved (nearest-destination) trip assignment explicit. --}}
-        <p style="margin:0 0 12px;font-size:11px;color:var(--primary);font-weight:600;">
-            <i class="fa-solid fa-suitcase-rolling"></i> For: {{ $this->selectedTrip->destination }}
-        </p>
-        @else
-        <div style="margin-bottom:18px;"></div>
-        @endif
 
         {{-- Place Name --}}
         <div style="margin-bottom:14px;">
@@ -441,8 +446,27 @@
             </div>
             @endif
 
-            <input type="file" wire:model="pinPhotos" accept="image/*" multiple style="width:100%;font-size:12px;color:var(--text);">
-            <div wire:loading wire:target="pinPhotos" style="font-size:11px;color:var(--muted);margin-top:4px;"><i class="fa-solid fa-spinner fa-spin"></i> Uploading…</div>
+            <label for="pinPhotosInput" class="moments-photo-dropzone"
+                   x-data="{ over: false }"
+                   x-on:dragover.prevent="over = true"
+                   x-on:dragleave.prevent="over = false"
+                   x-on:drop.prevent="
+                        over = false;
+                        $refs.pinPhotosInput.files = $event.dataTransfer.files;
+                        $refs.pinPhotosInput.dispatchEvent(new Event('change'));
+                   "
+                   :style="over ? 'border-color:var(--primary);background:var(--primary-light);' : ''"
+                   style="width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;border:1.5px dashed var(--border);border-radius:14px;padding:20px 14px;cursor:pointer;transition:border-color .15s ease,background .15s ease;">
+                <div style="width:34px;height:34px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;">
+                    <i class="fa-solid fa-cloud-arrow-up" style="color:var(--primary);font-size:14px;"></i>
+                </div>
+                <div style="font-size:12px;font-weight:700;color:var(--dark);">
+                    <span style="color:var(--primary);">Click to upload</span> or drag photos here
+                </div>
+                <div style="font-size:10.5px;color:var(--muted);">PNG or JPG, up to 6 photos</div>
+                <input id="pinPhotosInput" x-ref="pinPhotosInput" type="file" wire:model="pinPhotos" accept="image/*" multiple style="display:none;">
+            </label>
+            <div wire:loading wire:target="pinPhotos" style="font-size:11px;color:var(--muted);margin-top:6px;"><i class="fa-solid fa-spinner fa-spin"></i> Uploading…</div>
             @error('pinPhotos') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
             @error('pinPhotos.*') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
@@ -456,7 +480,7 @@
             <button wire:click="savePin" class="moments-btn-primary"
                     style="flex:2;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;"
                     wire:loading.attr="disabled" wire:target="savePin">
-                <span wire:loading.remove wire:target="savePin">{{ $pinModalMode === 'edit' ? 'Save Changes' : 'Add Pin' }}</span>
+                <span wire:loading.remove wire:target="savePin">{{ $pinModalMode === 'edit' ? 'Save Changes' : 'Add Moment' }}</span>
                 <span wire:loading wire:target="savePin"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>
         </div>
@@ -635,9 +659,9 @@
             var marker = window.__momentsMarkersById && window.__momentsMarkersById[momentId];
             if (!map || !marker) return;
 
-            map.resize();
-            map.flyTo({ center: marker.getLngLat(), zoom: 15, essential: true });
-            marker.togglePopup();
+            map.invalidateSize();
+            map.flyTo(marker.getLatLng(), 15);
+            marker.openPopup();
 
             var el = marker.getElement();
             el.classList.add('marker-pulse');
@@ -664,14 +688,10 @@
     // on a wire:ignore + wire:key-ed div, so a trip switch always gets a
     // fresh element (and therefore a fresh map + pin state).
     //
-    // Uses MapLibre GL JS (vector tiles) rather than Leaflet + raster tiles.
-    // Raster tiles are pre-rendered images — the label language is baked
-    // into the picture, so there's no way to keep a raster basemap and also
-    // translate its labels. Vector tiles ship each place's name as data, so
-    // the style's label layers can be patched (below, in the 'load' handler)
-    // to always prefer the English name before anything is drawn.
+    // Uses Leaflet + CartoDB Voyager raster tiles (same source as the
+    // Profile Builder home-location map), for consistency across the app.
     window.initMomentsMap = function (el, wire, lat, lng, zoom, label, initialPins) {
-        if (typeof maplibregl === 'undefined' || !el) return;
+        if (typeof L === 'undefined' || !el) return;
 
         // Livewire.on(...) listeners are global, not scoped to this element.
         // A trip switch runs this function again on a brand-new element (via
@@ -686,18 +706,14 @@
             window.__momentsMapInstance = null;
         }
 
-        var map = new maplibregl.Map({
-            container: el,
-            style: 'https://tiles.openfreemap.org/styles/liberty', // free, no API key
-            center: [lng, lat], // MapLibre uses [lng, lat], not [lat, lng]
-            zoom: zoom,
-            attributionControl: false,
-        });
-        map.addControl(new maplibregl.AttributionControl({
-            compact: true,
-            customAttribution: '&copy; OpenStreetMap contributors &copy; OpenFreeMap',
-        }));
-        map.addControl(new maplibregl.NavigationControl(), 'top-right');
+        var map = L.map(el, { attributionControl: false, zoomControl: false }).setView([lat, lng], zoom);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; <a href="https://carto.com/">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20,
+        }).addTo(map);
+        L.control.attribution({ prefix: false, position: 'bottomright' }).addTo(map);
+        L.control.zoom({ position: 'topright' }).addTo(map);
         window.__momentsMapInstance = map;
 
         var pinsById    = {};
@@ -708,15 +724,15 @@
 
         function buildPopup(pin) {
             var wrap = document.createElement('div');
-            wrap.style.cssText = 'min-width:180px;font-family:\'Hanken Grotesk\',sans-serif;';
+            wrap.style.cssText = 'min-width:190px;font-family:\'Hanken Grotesk\',sans-serif;';
 
             if (pin.photo_urls && pin.photo_urls.length) {
                 var gallery = document.createElement('div');
-                gallery.style.cssText = 'display:flex;gap:4px;overflow-x:auto;max-width:220px;margin-bottom:8px;';
+                gallery.style.cssText = 'display:flex;gap:5px;overflow-x:auto;max-width:220px;margin-bottom:10px;';
                 pin.photo_urls.forEach(function (url) {
                     var img = document.createElement('img');
                     img.src = url;
-                    img.style.cssText = 'width:70px;height:70px;object-fit:cover;border-radius:6px;flex-shrink:0;cursor:pointer;';
+                    img.style.cssText = 'width:72px;height:72px;object-fit:cover;border-radius:10px;flex-shrink:0;cursor:pointer;';
                     img.title = 'Open full size';
                     img.addEventListener('click', function () { window.open(url, '_blank'); });
                     gallery.appendChild(img);
@@ -724,25 +740,25 @@
                 wrap.appendChild(gallery);
             } else {
                 var noPhoto = document.createElement('div');
-                noPhoto.style.cssText = 'width:70px;height:70px;border-radius:6px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:8px;';
+                noPhoto.style.cssText = 'width:72px;height:72px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:10px;';
                 noPhoto.innerHTML = '<i class="fa-solid fa-camera" style="font-size:18px;color:var(--primary);"></i>';
                 wrap.appendChild(noPhoto);
             }
 
             var title = document.createElement('div');
             title.textContent = pin.place_name;
-            title.style.cssText = 'font-size:14px;font-weight:700;color:var(--dark);margin-bottom:2px;';
+            title.style.cssText = 'font-size:14px;font-weight:800;color:var(--dark);margin-bottom:3px;';
             wrap.appendChild(title);
 
             var date = document.createElement('div');
-            date.textContent = pin.visited_date;
-            date.style.cssText = 'font-size:11px;color:var(--muted);margin-bottom:4px;';
+            date.innerHTML = '<i class="fa-regular fa-calendar" style="font-size:10px;margin-right:4px;"></i>' + pin.visited_date;
+            date.style.cssText = 'font-size:11px;color:var(--muted);margin-bottom:6px;';
             wrap.appendChild(date);
 
             if (pin.description) {
                 var desc = document.createElement('div');
                 desc.textContent = pin.description;
-                desc.style.cssText = 'font-size:12px;color:var(--text);margin:4px 0 8px;line-height:1.5;';
+                desc.style.cssText = 'font-size:12px;color:var(--dark);opacity:.85;margin:0 0 10px;line-height:1.5;';
                 wrap.appendChild(desc);
             }
 
@@ -752,13 +768,17 @@
             var editBtn = document.createElement('button');
             editBtn.type = 'button';
             editBtn.textContent = 'Edit';
-            editBtn.style.cssText = 'flex:1;background:#FDF3EB;color:var(--primary);border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:700;cursor:pointer;';
+            editBtn.style.cssText = 'flex:1;background:var(--primary-light);color:var(--primary);border:none;border-radius:8px;padding:7px 0;font-size:11px;font-weight:700;cursor:pointer;transition:filter .15s;';
+            editBtn.onmouseenter = function () { this.style.filter = 'brightness(0.95)'; };
+            editBtn.onmouseleave = function () { this.style.filter = 'none'; };
             editBtn.addEventListener('click', function () { wire.call('openEditPinModal', pin.id); });
 
             var delBtn = document.createElement('button');
             delBtn.type = 'button';
             delBtn.textContent = 'Delete';
-            delBtn.style.cssText = 'flex:1;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:700;cursor:pointer;';
+            delBtn.style.cssText = 'flex:1;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;padding:7px 0;font-size:11px;font-weight:700;cursor:pointer;transition:filter .15s;';
+            delBtn.onmouseenter = function () { this.style.filter = 'brightness(0.95)'; };
+            delBtn.onmouseleave = function () { this.style.filter = 'none'; };
             delBtn.addEventListener('click', function () { wire.call('confirmDeletePin', pin.id); });
 
             actions.appendChild(editBtn);
@@ -767,44 +787,37 @@
             return wrap;
         }
 
-        var ROUTE_ID = 'moments-route';
+        var routeLine = null;
 
         function rebuildPolyline() {
             var ordered = Object.values(pinsById).sort(function (a, b) {
                 return a.visited_date_sort < b.visited_date_sort ? -1 : (a.visited_date_sort > b.visited_date_sort ? 1 : 0);
             });
-            var coords = ordered.map(function (p) { return [p.lng, p.lat]; });
+            var latlngs = ordered.map(function (p) { return [p.lat, p.lng]; });
 
-            if (coords.length < 2) {
-                if (map.getLayer(ROUTE_ID))  map.removeLayer(ROUTE_ID);
-                if (map.getSource(ROUTE_ID)) map.removeSource(ROUTE_ID);
+            if (latlngs.length < 2) {
+                if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
                 return;
             }
-            var geojson = { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } };
-            if (map.getSource(ROUTE_ID)) {
-                map.getSource(ROUTE_ID).setData(geojson);
+            if (routeLine) {
+                routeLine.setLatLngs(latlngs);
             } else {
-                map.addSource(ROUTE_ID, { type: 'geojson', data: geojson });
-                map.addLayer({
-                    id: ROUTE_ID, type: 'line', source: ROUTE_ID,
-                    paint: { 'line-color': 'var(--primary)', 'line-width': 3, 'line-opacity': 0.7, 'line-dasharray': [2, 2] },
-                });
+                routeLine = L.polyline(latlngs, { color: 'var(--primary)', weight: 3, opacity: 0.7, dashArray: '4,6' }).addTo(map);
             }
         }
 
         function renderPin(pin) {
             pinsById[pin.id] = pin;
-            var popup  = new maplibregl.Popup({ offset: 25 }).setDOMContent(buildPopup(pin));
             var marker = markersById[pin.id];
             if (marker) {
-                marker.setLngLat([pin.lng, pin.lat]).setPopup(popup);
+                marker.setLatLng([pin.lat, pin.lng]).bindPopup(buildPopup(pin));
             } else {
-                marker = new maplibregl.Marker().setLngLat([pin.lng, pin.lat]).setPopup(popup).addTo(map);
+                marker = L.marker([pin.lat, pin.lng]).addTo(map).bindPopup(buildPopup(pin));
                 markersById[pin.id] = marker;
                 // Jump to the matching Timeline entry — pin.id is a plain
                 // number, captured by value, so this stays correct even if
                 // the moment is later edited (its id never changes).
-                marker.getElement().addEventListener('click', function () {
+                marker.on('click', function () {
                     if (window.focusTimelineOnMoment) window.focusTimelineOnMoment(pin.id);
                 });
             }
@@ -813,54 +826,39 @@
 
         function removePin(pinId) {
             var marker = markersById[pinId];
-            if (marker) { marker.remove(); delete markersById[pinId]; }
+            if (marker) { map.removeLayer(marker); delete markersById[pinId]; }
             delete pinsById[pinId];
             rebuildPolyline();
         }
 
-        map.on('load', function () {
-            // Force every label layer to prefer the English name. OpenFreeMap's
-            // "liberty" style otherwise renders each place in its own local
-            // script — this is the actual fix for the original problem.
-            map.getStyle().layers.forEach(function (layer) {
-                if (layer.layout && layer.layout['text-field']) {
-                    map.setLayoutProperty(layer.id, 'text-field', ['coalesce', ['get', 'name_en'], ['get', 'name']]);
-                }
-            });
+        L.marker([lat, lng]).addTo(map).bindPopup(label).openPopup();
 
-            new maplibregl.Marker()
-                .setLngLat([lng, lat])
-                .setPopup(new maplibregl.Popup().setText(label))
-                .addTo(map)
-                .togglePopup();
+        (initialPins || []).forEach(renderPin);
 
-            (initialPins || []).forEach(renderPin);
-
-            // A marker's own DOM element captures the click, so this only
-            // fires when clicking empty map area — never an existing pin.
-            map.on('click', function (e) {
-                wire.call('openAddPinModal', e.lngLat.lat, e.lngLat.lng);
-            });
-
-            window.__momentsMapUnsub.push(
-                Livewire.on('pin-saved', function (payload) { renderPin(payload.pin); }),
-                Livewire.on('pin-deleted', function (payload) { removePin(payload.id); })
-            );
-
-            // A one-shot timeout can't know how long the surrounding layout
-            // (sidebar collapse/expand, tab switch transitions, wire:navigate)
-            // takes to settle, so it sometimes fires before the container has
-            // reached its final size — leaving the map canvas short of the
-            // right/bottom edge until something else nudges a resize. A
-            // ResizeObserver instead reacts to the container's actual size
-            // every time it changes, so the map always fills it automatically.
-            setTimeout(function () { map.resize(); }, 200);
-            if (typeof ResizeObserver !== 'undefined') {
-                var mapResizeObserver = new ResizeObserver(function () { map.resize(); });
-                mapResizeObserver.observe(el);
-                window.__momentsMapUnsub.push(function () { mapResizeObserver.disconnect(); });
-            }
+        // A marker's own click handler captures the click, so this only
+        // fires when clicking empty map area — never an existing pin.
+        map.on('click', function (e) {
+            wire.call('openAddPinModal', e.latlng.lat, e.latlng.lng);
         });
+
+        window.__momentsMapUnsub.push(
+            Livewire.on('pin-saved', function (payload) { renderPin(payload.pin); }),
+            Livewire.on('pin-deleted', function (payload) { removePin(payload.id); })
+        );
+
+        // A one-shot timeout can't know how long the surrounding layout
+        // (sidebar collapse/expand, tab switch transitions, wire:navigate)
+        // takes to settle, so it sometimes fires before the container has
+        // reached its final size — leaving the map canvas short of the
+        // right/bottom edge until something else nudges a resize. A
+        // ResizeObserver instead reacts to the container's actual size
+        // every time it changes, so the map always fills it automatically.
+        setTimeout(function () { map.invalidateSize(); }, 200);
+        if (typeof ResizeObserver !== 'undefined') {
+            var mapResizeObserver = new ResizeObserver(function () { map.invalidateSize(); });
+            mapResizeObserver.observe(el);
+            window.__momentsMapUnsub.push(function () { mapResizeObserver.disconnect(); });
+        }
     };
 
     // Destination overview map — trip-status pins (visual only) plus a
@@ -869,7 +867,7 @@
     // above (mutually exclusive: only one of the two map divs exists in the
     // DOM at a time, switched via wire:key when momentsMode changes).
     window.initOverviewMap = function (el, wire, pins, allMoments) {
-        if (typeof maplibregl === 'undefined' || !el) return;
+        if (typeof L === 'undefined' || !el) return;
 
         if (window.__momentsOverviewMapUnsub) {
             window.__momentsOverviewMapUnsub.forEach(function (off) { off(); });
@@ -881,59 +879,57 @@
             window.__momentsOverviewMapInstance = null;
         }
 
-        var map = new maplibregl.Map({
-            container: el,
-            style: 'https://tiles.openfreemap.org/styles/liberty',
-            center: [121.7740, 12.8797],
-            zoom: 5,
-            attributionControl: false,
-        });
-        map.addControl(new maplibregl.AttributionControl({
-            compact: true,
-            customAttribution: '&copy; OpenStreetMap contributors &copy; OpenFreeMap',
-        }));
-        map.addControl(new maplibregl.NavigationControl(), 'top-right');
+        var map = L.map(el, { attributionControl: false, zoomControl: false }).setView([12.8797, 121.7740], 5);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; <a href="https://carto.com/">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20,
+        }).addTo(map);
+        L.control.attribution({ prefix: false, position: 'bottomright' }).addTo(map);
+        L.control.zoom({ position: 'topright' }).addTo(map);
         window.__momentsOverviewMapInstance = map;
 
         var STATUS_COLORS = { active: '#22C55E', upcoming: '#3B82F6', past: '#6B7280' };
         var STATUS_LABELS = { active: 'Ongoing', upcoming: 'Upcoming', past: 'Completed' };
 
         // Pure visual indicator — hover tooltip only, no click, no popup.
-        function buildTripMarkerElement(pin) {
+        function buildTripMarkerIcon(pin) {
             var color = STATUS_COLORS[pin.status] || '#6B7280';
-            var statusLabel = STATUS_LABELS[pin.status] || pin.status;
-
-            var el = document.createElement('div');
-            el.style.cssText = 'width:22px;height:22px;border-radius:50% 50% 50% 0;background:' + color + ';transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);';
-            el.title = pin.destination + ' · ' + pin.start_date + ' – ' + pin.end_date + ' · ' + statusLabel;
-
-            return el;
+            return L.divIcon({
+                className: '',
+                html: '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:' + color + ';transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);"></div>',
+                iconSize: [22, 22],
+                iconAnchor: [11, 22],
+            });
         }
 
         // Memory markers: a small round pin showing the first photo (or a
         // camera icon if none), clickable to view/edit/delete that Moment.
-        function buildMemoryMarkerElement(pin) {
+        function buildMemoryMarkerIcon(pin) {
             var hasPhoto = pin.photo_urls && pin.photo_urls.length > 0;
-            var el = document.createElement('div');
-            el.style.cssText = 'width:30px;height:30px;border-radius:50%;border:3px solid var(--primary);box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer;background-color:#FDF3EB;background-size:cover;background-position:center;'
-                + (hasPhoto ? "background-image:url('" + pin.photo_urls[0] + "');" : '');
-            if (!hasPhoto) {
-                el.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-camera" style="font-size:12px;color:var(--primary);"></i></div>';
-            }
-            return el;
+            var inner = hasPhoto
+                ? ''
+                : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-camera" style="font-size:12px;color:var(--primary);"></i></div>';
+            var bg = hasPhoto ? "background-image:url('" + pin.photo_urls[0] + "');" : '';
+            return L.divIcon({
+                className: '',
+                html: '<div style="width:30px;height:30px;border-radius:50%;border:3px solid var(--primary);box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer;background-color:#FDF3EB;background-size:cover;background-position:center;' + bg + '">' + inner + '</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+            });
         }
 
         function buildMemoryPopup(pin) {
             var wrap = document.createElement('div');
-            wrap.style.cssText = 'min-width:180px;font-family:\'Hanken Grotesk\',sans-serif;';
+            wrap.style.cssText = 'min-width:190px;font-family:\'Hanken Grotesk\',sans-serif;';
 
             if (pin.photo_urls && pin.photo_urls.length) {
                 var gallery = document.createElement('div');
-                gallery.style.cssText = 'display:flex;gap:4px;overflow-x:auto;max-width:220px;margin-bottom:8px;';
+                gallery.style.cssText = 'display:flex;gap:5px;overflow-x:auto;max-width:220px;margin-bottom:10px;';
                 pin.photo_urls.forEach(function (url) {
                     var img = document.createElement('img');
                     img.src = url;
-                    img.style.cssText = 'width:70px;height:70px;object-fit:cover;border-radius:6px;flex-shrink:0;cursor:pointer;';
+                    img.style.cssText = 'width:72px;height:72px;object-fit:cover;border-radius:10px;flex-shrink:0;cursor:pointer;';
                     img.title = 'Open full size';
                     img.addEventListener('click', function () { window.open(url, '_blank'); });
                     gallery.appendChild(img);
@@ -941,25 +937,25 @@
                 wrap.appendChild(gallery);
             } else {
                 var noPhoto = document.createElement('div');
-                noPhoto.style.cssText = 'width:70px;height:70px;border-radius:6px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:8px;';
+                noPhoto.style.cssText = 'width:72px;height:72px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:10px;';
                 noPhoto.innerHTML = '<i class="fa-solid fa-camera" style="font-size:18px;color:var(--primary);"></i>';
                 wrap.appendChild(noPhoto);
             }
 
             var title = document.createElement('div');
             title.textContent = pin.place_name;
-            title.style.cssText = 'font-size:14px;font-weight:700;color:var(--dark);margin-bottom:2px;';
+            title.style.cssText = 'font-size:14px;font-weight:800;color:var(--dark);margin-bottom:3px;';
             wrap.appendChild(title);
 
             var date = document.createElement('div');
-            date.textContent = pin.visited_date;
-            date.style.cssText = 'font-size:11px;color:var(--muted);margin-bottom:4px;';
+            date.innerHTML = '<i class="fa-regular fa-calendar" style="font-size:10px;margin-right:4px;"></i>' + pin.visited_date;
+            date.style.cssText = 'font-size:11px;color:var(--muted);margin-bottom:6px;';
             wrap.appendChild(date);
 
             if (pin.description) {
                 var desc = document.createElement('div');
                 desc.textContent = pin.description;
-                desc.style.cssText = 'font-size:12px;color:var(--text);margin:4px 0 8px;line-height:1.5;';
+                desc.style.cssText = 'font-size:12px;color:var(--dark);opacity:.85;margin:0 0 10px;line-height:1.5;';
                 wrap.appendChild(desc);
             }
 
@@ -969,13 +965,17 @@
             var editBtn = document.createElement('button');
             editBtn.type = 'button';
             editBtn.textContent = 'Edit';
-            editBtn.style.cssText = 'flex:1;background:#FDF3EB;color:var(--primary);border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:700;cursor:pointer;';
+            editBtn.style.cssText = 'flex:1;background:var(--primary-light);color:var(--primary);border:none;border-radius:8px;padding:7px 0;font-size:11px;font-weight:700;cursor:pointer;transition:filter .15s;';
+            editBtn.onmouseenter = function () { this.style.filter = 'brightness(0.95)'; };
+            editBtn.onmouseleave = function () { this.style.filter = 'none'; };
             editBtn.addEventListener('click', function () { wire.call('openEditPinModalFromOverview', pin.id); });
 
             var delBtn = document.createElement('button');
             delBtn.type = 'button';
             delBtn.textContent = 'Delete';
-            delBtn.style.cssText = 'flex:1;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:700;cursor:pointer;';
+            delBtn.style.cssText = 'flex:1;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;padding:7px 0;font-size:11px;font-weight:700;cursor:pointer;transition:filter .15s;';
+            delBtn.onmouseenter = function () { this.style.filter = 'brightness(0.95)'; };
+            delBtn.onmouseleave = function () { this.style.filter = 'none'; };
             delBtn.addEventListener('click', function () { wire.call('confirmDeletePinFromOverview', pin.id); });
 
             actions.appendChild(editBtn);
@@ -986,53 +986,39 @@
 
         var memoryMarkersById = {};
         var momentsById = {};
-        var ROUTES_ID = 'moments-overview-routes';
+        var routeLines = [];
 
         // One dashed line per trip, connecting that trip's own memory markers
         // in visited-date order — mirrors initMomentsMap's rebuildPolyline,
         // just grouped by trip_id since this map spans every destination.
         function rebuildOverviewRoutes() {
+            routeLines.forEach(function (line) { map.removeLayer(line); });
+            routeLines = [];
+
             var byTrip = {};
             Object.values(momentsById).forEach(function (p) {
                 (byTrip[p.trip_id] = byTrip[p.trip_id] || []).push(p);
             });
 
-            var features = [];
             Object.keys(byTrip).forEach(function (tripId) {
                 var ordered = byTrip[tripId].sort(function (a, b) {
                     return a.visited_date_sort < b.visited_date_sort ? -1 : (a.visited_date_sort > b.visited_date_sort ? 1 : 0);
                 });
                 if (ordered.length < 2) return;
-                features.push({
-                    type: 'Feature',
-                    properties: {},
-                    geometry: { type: 'LineString', coordinates: ordered.map(function (p) { return [p.lng, p.lat]; }) },
-                });
+                var latlngs = ordered.map(function (p) { return [p.lat, p.lng]; });
+                routeLines.push(L.polyline(latlngs, { color: 'var(--primary)', weight: 3, opacity: 0.7, dashArray: '4,6' }).addTo(map));
             });
-
-            var geojson = { type: 'FeatureCollection', features: features };
-            if (map.getSource(ROUTES_ID)) {
-                map.getSource(ROUTES_ID).setData(geojson);
-            } else {
-                map.addSource(ROUTES_ID, { type: 'geojson', data: geojson });
-                map.addLayer({
-                    id: ROUTES_ID, type: 'line', source: ROUTES_ID,
-                    paint: { 'line-color': 'var(--primary)', 'line-width': 3, 'line-opacity': 0.7, 'line-dasharray': [2, 2] },
-                });
-            }
         }
 
         function renderMemory(pin) {
             momentsById[pin.id] = pin;
-            var popup  = new maplibregl.Popup({ offset: 20 }).setDOMContent(buildMemoryPopup(pin));
             var marker = memoryMarkersById[pin.id];
             if (marker) {
-                marker.setLngLat([pin.lng, pin.lat]).setPopup(popup);
+                marker.setLatLng([pin.lat, pin.lng]).bindPopup(buildMemoryPopup(pin));
             } else {
-                marker = new maplibregl.Marker({ element: buildMemoryMarkerElement(pin) })
-                    .setLngLat([pin.lng, pin.lat])
-                    .setPopup(popup)
-                    .addTo(map);
+                marker = L.marker([pin.lat, pin.lng], { icon: buildMemoryMarkerIcon(pin) })
+                    .addTo(map)
+                    .bindPopup(buildMemoryPopup(pin));
                 memoryMarkersById[pin.id] = marker;
             }
             rebuildOverviewRoutes();
@@ -1040,81 +1026,70 @@
 
         function removeMemory(pinId) {
             var marker = memoryMarkersById[pinId];
-            if (marker) { marker.remove(); delete memoryMarkersById[pinId]; }
+            if (marker) { map.removeLayer(marker); delete memoryMarkersById[pinId]; }
             delete momentsById[pinId];
             rebuildOverviewRoutes();
         }
 
-        map.on('load', function () {
-            // Same English-label fix as initMomentsMap — this is a separate
-            // style load, so it needs the same layout-property patch applied.
-            map.getStyle().layers.forEach(function (layer) {
-                if (layer.layout && layer.layout['text-field']) {
-                    map.setLayoutProperty(layer.id, 'text-field', ['coalesce', ['get', 'name_en'], ['get', 'name']]);
-                }
+        var bounds = L.latLngBounds([]);
+        var seenCoords = [];
+        function trackCoord(lat, lng) {
+            var isDup = seenCoords.some(function (c) {
+                return Math.abs(c[0] - lat) < 1e-9 && Math.abs(c[1] - lng) < 1e-9;
             });
+            if (!isDup) seenCoords.push([lat, lng]);
+        }
 
-            var bounds = new maplibregl.LngLatBounds();
-            var seenCoords = [];
-            function trackCoord(lng, lat) {
-                var isDup = seenCoords.some(function (c) {
-                    return Math.abs(c[0] - lng) < 1e-9 && Math.abs(c[1] - lat) < 1e-9;
-                });
-                if (!isDup) seenCoords.push([lng, lat]);
-            }
-
-            (pins || []).forEach(function (pin) {
-                new maplibregl.Marker({ element: buildTripMarkerElement(pin) })
-                    .setLngLat([pin.lng, pin.lat])
-                    .addTo(map);
-                bounds.extend([pin.lng, pin.lat]);
-                trackCoord(pin.lng, pin.lat);
-            });
-            (allMoments || []).forEach(function (pin) {
-                renderMemory(pin);
-                bounds.extend([pin.lng, pin.lat]);
-                trackCoord(pin.lng, pin.lat);
-            });
-
-            if (seenCoords.length === 1) {
-                // fitBounds() on a zero-area bounds (every pin at the exact
-                // same spot — the common case being just one trip with no
-                // photos logged yet) is unreliable across MapLibre versions:
-                // it can leave the view at whatever the map's initial
-                // center/zoom was instead of actually moving to the pin,
-                // which is what made a brand-new single-trip overview show
-                // a random default location instead of that trip's own
-                // destination. Jumping straight to the one known point
-                // sidesteps the degenerate-bounds case entirely.
-                map.jumpTo({ center: seenCoords[0], zoom: 8 });
-            } else if (pins && pins.length) {
-                map.fitBounds(bounds, { padding: 60, maxZoom: 8 });
-            }
-
-            // A marker's own DOM element captures the click, so this only
-            // fires when clicking empty map area — never an existing pin.
-            map.on('click', function (e) {
-                wire.call('openAddPinModalFromOverview', e.lngLat.lat, e.lngLat.lng);
-            });
-
-            window.__momentsOverviewMapUnsub.push(
-                Livewire.on('pin-saved', function (payload) { renderMemory(payload.pin); }),
-                Livewire.on('pin-deleted', function (payload) { removeMemory(payload.id); })
-            );
-
-            // A one-shot timeout can't know how long the surrounding layout
-            // (sidebar collapse/expand, tab switch transitions, wire:navigate)
-            // takes to settle, so it sometimes fires before the container has
-            // reached its final size — leaving the map canvas short of the
-            // right/bottom edge until something else nudges a resize. A
-            // ResizeObserver instead reacts to the container's actual size
-            // every time it changes, so the map always fills it automatically.
-            setTimeout(function () { map.resize(); }, 200);
-            if (typeof ResizeObserver !== 'undefined') {
-                var mapResizeObserver = new ResizeObserver(function () { map.resize(); });
-                mapResizeObserver.observe(el);
-                window.__momentsOverviewMapUnsub.push(function () { mapResizeObserver.disconnect(); });
-            }
+        (pins || []).forEach(function (pin) {
+            L.marker([pin.lat, pin.lng], { icon: buildTripMarkerIcon(pin) })
+                .addTo(map)
+                .bindTooltip(pin.destination + ' · ' + pin.start_date + ' – ' + pin.end_date + ' · ' + (STATUS_LABELS[pin.status] || pin.status));
+            bounds.extend([pin.lat, pin.lng]);
+            trackCoord(pin.lat, pin.lng);
         });
+        (allMoments || []).forEach(function (pin) {
+            renderMemory(pin);
+            bounds.extend([pin.lat, pin.lng]);
+            trackCoord(pin.lat, pin.lng);
+        });
+
+        if (seenCoords.length === 1) {
+            // fitBounds() on a zero-area bounds (every pin at the exact same
+            // spot — the common case being just one trip with no photos
+            // logged yet) is unreliable: it can leave the view at whatever
+            // the map's initial center/zoom was instead of actually moving
+            // to the pin, which is what made a brand-new single-trip
+            // overview show a random default location instead of that
+            // trip's own destination. Jumping straight to the one known
+            // point sidesteps the degenerate-bounds case entirely.
+            map.setView(seenCoords[0], 8);
+        } else if (pins && pins.length) {
+            map.fitBounds(bounds, { padding: [60, 60], maxZoom: 8 });
+        }
+
+        // A marker's own click handler captures the click, so this only
+        // fires when clicking empty map area — never an existing pin.
+        map.on('click', function (e) {
+            wire.call('openAddPinModalFromOverview', e.latlng.lat, e.latlng.lng);
+        });
+
+        window.__momentsOverviewMapUnsub.push(
+            Livewire.on('pin-saved', function (payload) { renderMemory(payload.pin); }),
+            Livewire.on('pin-deleted', function (payload) { removeMemory(payload.id); })
+        );
+
+        // A one-shot timeout can't know how long the surrounding layout
+        // (sidebar collapse/expand, tab switch transitions, wire:navigate)
+        // takes to settle, so it sometimes fires before the container has
+        // reached its final size — leaving the map canvas short of the
+        // right/bottom edge until something else nudges a resize. A
+        // ResizeObserver instead reacts to the container's actual size
+        // every time it changes, so the map always fills it automatically.
+        setTimeout(function () { map.invalidateSize(); }, 200);
+        if (typeof ResizeObserver !== 'undefined') {
+            var mapResizeObserver = new ResizeObserver(function () { map.invalidateSize(); });
+            mapResizeObserver.observe(el);
+            window.__momentsOverviewMapUnsub.push(function () { mapResizeObserver.disconnect(); });
+        }
     };
 </script>

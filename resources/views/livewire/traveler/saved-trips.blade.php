@@ -1,12 +1,12 @@
 <div style="display:flex;flex-direction:column;flex:1;">
 
 @if (session('success'))
-<div style="background:#F0FDF4;border:1.5px solid #BBF7D0;color:#16A34A;border-radius:12px;padding:12px 18px;margin-bottom:16px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;">
+<div style="color:#16A34A;font-size:13px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:7px;">
     <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
 </div>
 @endif
 @if (session('error'))
-<div style="background:#FEF2F2;border:1.5px solid #FECACA;color:#DC2626;border-radius:12px;padding:12px 18px;margin-bottom:16px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;">
+<div style="color:var(--danger);font-size:13px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:7px;">
     <i class="fa-solid fa-circle-exclamation"></i> {{ session('error') }}
 </div>
 @endif
@@ -55,7 +55,7 @@
     @endphp
 
     @foreach ($stGroups as $stGroup)
-    <div x-data="{ open: {{ $stGroup['items']->isNotEmpty() ? 'true' : 'false' }} }" style="margin-bottom:20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:999px;transition:border-radius .2s,border-color .2s,box-shadow .2s;"
+    <div x-data="{ open: {{ ($stGroup['key'] === 'active' && $stGroup['items']->isNotEmpty()) ? 'true' : 'false' }} }" style="margin-bottom:20px;background:var(--bg-white);border:2px solid var(--border);border-radius:999px;box-shadow:none;transition:border-radius .2s,border-color .2s;"
          :style="open ? 'border-radius:22px;border-color:var(--primary);' : ''">
         <button @click="open=!open" type="button" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:none;border:none;cursor:pointer;">
             <div style="display:flex;align-items:center;gap:12px;">
@@ -220,8 +220,8 @@
                     <i class="fa-regular fa-pen-to-square" style="font-size:12px;"></i> Continue Editing
                 </a>
                 <button wire:click="confirmDelete({{ $trip->id }})"
-                        style="width:100%;max-width:220px;background:var(--bg-white);color:var(--danger);border:1.5px solid var(--danger);border-radius:10px;padding:12px 6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:5px;transition:background .18s;"
-                        onmouseenter="this.style.background='rgba(220,38,38,0.08)'" onmouseleave="this.style.background='var(--bg-white)'">
+                        style="width:100%;max-width:220px;background:var(--bg-white);color:var(--primary);border:1.5px solid var(--primary);border-radius:10px;padding:12px 6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:5px;transition:background .18s;"
+                        onmouseenter="this.style.background='var(--primary-light)'" onmouseleave="this.style.background='var(--bg-white)'">
                     <i class="fa-regular fa-trash-can" style="font-size:11px;"></i>Delete Trip
                 </button>
             </div>

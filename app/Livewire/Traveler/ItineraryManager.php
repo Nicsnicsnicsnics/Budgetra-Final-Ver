@@ -381,7 +381,7 @@ class ItineraryManager extends Component
     public function getTripsProperty()
     {
         return auth()->user()->trips()->orderByDesc('start_date')->get()
-            ->filter(fn (Trip $t) => in_array($t->resolved_status, ['active', 'upcoming'], true))
+            ->filter(fn (Trip $t) => in_array($t->resolved_status, ['active', 'upcoming', 'past'], true))
             ->values();
     }
 

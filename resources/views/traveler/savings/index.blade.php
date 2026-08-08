@@ -49,7 +49,7 @@
 @endphp
 
 @foreach ($sgGroups as $sgGroup)
-<div x-data="{ open: {{ $sgGroup['items']->isNotEmpty() ? 'true' : 'false' }} }" style="margin-bottom:20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:999px;transition:border-radius .2s,border-color .2s,box-shadow .2s;"
+<div x-data="{ open: {{ ($sgGroup['key'] === 'active' && $sgGroup['items']->isNotEmpty()) ? 'true' : 'false' }} }" style="margin-bottom:20px;background:var(--bg-white);border:2px solid var(--border);border-radius:999px;box-shadow:none;transition:border-radius .2s,border-color .2s;"
      :style="open ? 'border-radius:22px;border-color:var(--primary);' : ''">
     <button @click="open=!open" type="button" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:none;border:none;cursor:pointer;">
         <div style="display:flex;align-items:center;gap:12px;">

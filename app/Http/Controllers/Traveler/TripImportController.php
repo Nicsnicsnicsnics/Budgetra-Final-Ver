@@ -14,7 +14,8 @@ class TripImportController extends Controller
             return redirect()->route('saved-trips')->with('error', 'That share code or link is no longer valid.');
         }
         if ($sourceTrip->user_id === auth()->id()) {
-            return redirect()->route('saved-trips')->with('error', "That's your own trip — you can't import it.");
+            // Still blocked — just no error banner for it.
+            return redirect()->route('saved-trips');
         }
         if (!$importer->isShareable($sourceTrip)) {
             return redirect()->route('saved-trips')->with('error', 'This trip has nothing shareable saved on it.');
