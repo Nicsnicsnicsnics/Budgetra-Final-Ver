@@ -4,15 +4,20 @@ namespace App\Services;
 use App\Models\OcrLog;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 
 class OcrService
 {
     public function scan(UploadedFile $file, int $userId): array
     {
-        $path     = $file->store('receipts', 'public');
-        $filename = basename($path);
-        $apiKey   = config('services.ocr.key');
+        // This only ever needs the file's BYTES for the API call below, not
+        // a permanent copy — storing it here (as this used to) created a
+        // second, never-referenced file on every single scan, including
+        // ones the traveler never actually saves as an expense. The real
+        // receipt copy is stored exactly once, by ExpenseController::store()
+        // when the expense is actually created; reading straight from
+        // Laravel's own temp upload avoids ever creating the orphan.
+        $filename     = $file->getClientOriginalName();
+        $apiKey       = config('services.ocr.key');
 
         if (empty($apiKey)) {
             OcrLog::create([
@@ -24,7 +29,7 @@ class OcrService
             return ['amount' => null, 'date' => null, 'description' => null, 'confidence' => 0];
         }
 
-        $imageContent = Storage::disk('public')->get($path);
+        $imageContent = file_get_contents($file->getRealPath());
         $base64       = 'data:' . $file->getMimeType() . ';base64,' . base64_encode($imageContent);
 
         // No timeout means this can hang on a slow/unresponsive OCR endpoint

@@ -44,7 +44,7 @@
     @endif
 
     <div class="card"><div class="card-body">
-        <form method="POST" action="{{ route('expenses.update', $expense) }}" id="expenseEditForm">
+        <form method="POST" action="{{ route('expenses.update', $expense) }}" id="expenseEditForm" enctype="multipart/form-data">
             @csrf @method('PUT')
 
             <div class="form-group">
@@ -92,15 +92,23 @@
                 @error('expense_date')<div class="form-error">{{ $message }}</div>@enderror
             </div>
 
-            @if ($expense->receipt_path)
             <div class="form-group">
                 <label class="form-label">Receipt</label>
-                <a href="{{ Storage::url($expense->receipt_path) }}" target="_blank" rel="noopener" class="edit-receipt-preview">
+                @if ($expense->receipt_path)
+                <a href="{{ Storage::url($expense->receipt_path) }}" target="_blank" rel="noopener" class="edit-receipt-preview mb-8" style="display:flex;">
                     <img src="{{ Storage::url($expense->receipt_path) }}" alt="Receipt preview" loading="lazy">
                     <span><i class="fa-solid fa-paperclip"></i> View attached receipt</span>
                 </a>
+                <input type="file" name="receipt" id="receipt" accept="image/jpeg,image/png,image/webp"
+                       class="form-control {{ $errors->has('receipt') ? 'is-invalid' : '' }}">
+                <small class="text-muted" style="font-size:12px;">Choose a file to replace the receipt above.</small>
+                @else
+                <input type="file" name="receipt" id="receipt" accept="image/jpeg,image/png,image/webp"
+                       class="form-control {{ $errors->has('receipt') ? 'is-invalid' : '' }}">
+                <small class="text-muted" style="font-size:12px;">No receipt attached yet — optional.</small>
+                @endif
+                @error('receipt')<div class="form-error">{{ $message }}</div>@enderror
             </div>
-            @endif
 
             <div style="display:flex;gap:10px;" class="mt-8">
                 <button type="submit" class="btn btn-primary" style="flex:1;">
