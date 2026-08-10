@@ -18,7 +18,7 @@
      than stacking above it, so the map itself gets almost the whole card. --}}
 <style>
     .moments-overview-shell { position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 6px 28px rgba(45,27,20,.10); }
-    .moments-overview-map-el { width: 100%; height: 640px; }
+    .moments-overview-map-el { width: 100%; height: 560px; }
     @media (max-width: 900px) { .moments-overview-map-el { height: 480px; } }
     @media (max-width: 560px) { .moments-overview-map-el { height: 400px; } }
     .timeline-entry .timeline-card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
@@ -39,7 +39,7 @@
     }
     .moments-segmented {
         display: inline-flex; background: var(--bg, #F8F5F2); border: 1px solid var(--border, #E5E7EB);
-        border-radius: 999px; padding: 4px; gap: 2px; margin-bottom: 16px;
+        border-radius: 999px; padding: 4px; gap: 2px; margin-bottom: 10px;
     }
     .moments-segment {
         display: inline-flex; align-items: center; gap: 7px; border: none; background: transparent;
@@ -140,7 +140,7 @@
                     @foreach ($destMoments as $moment)
                     <div class="timeline-entry" style="position:relative;margin-bottom:14px;">
                         <div style="position:absolute;left:-24px;top:18px;width:10px;height:10px;border-radius:50%;background:#C8874A;"></div>
-                        <div class="timeline-card" style="background:#fff;border:1.5px solid #F0E8DF;border-radius:16px;padding:16px;">
+                        <div class="timeline-card" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;padding:16px;">
                             <div class="timeline-card-inner" style="display:flex;gap:12px;">
                                 @if (count($moment['photo_urls']))
                                 <img src="{{ $moment['photo_urls'][0] }}" alt="{{ $moment['place_name'] }}"
@@ -153,7 +153,7 @@
                                 <div style="flex:1;min-width:0;">
                                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
                                         <span style="font-size:14px;font-weight:700;color:var(--dark);">{{ $moment['place_name'] }}</span>
-                                        <span style="font-size:10px;font-weight:700;color:var(--primary);background:#FDF3EB;padding:2px 8px;border-radius:20px;">Day {{ $moment['day_number'] }}</span>
+                                        <span style="font-size:10px;font-weight:700;color:var(--primary);background:#FDF3EB;padding:2px 8px;border-radius:20px;">{{ $moment['day_number'] < 1 ? 'Pre-Trip' : 'Day ' . $moment['day_number'] }}</span>
                                     </div>
                                     @if ($moment['description'])
                                     <div style="font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:6px;">{{ $moment['description'] }}</div>
@@ -209,7 +209,7 @@
     }
     .moments-segmented {
         display: inline-flex; background: var(--bg, #F8F5F2); border: 1px solid var(--border, #E5E7EB);
-        border-radius: 999px; padding: 4px; gap: 2px; margin-bottom: 16px;
+        border-radius: 999px; padding: 4px; gap: 2px; margin-bottom: 10px;
     }
     .moments-segment {
         display: inline-flex; align-items: center; gap: 7px; border: none; background: transparent;
@@ -295,7 +295,7 @@
                     <div style="position:relative;margin-bottom:14px;">
                         <div style="position:absolute;left:-28px;top:2px;width:20px;height:20px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 0 0 2px var(--primary);"></div>
                         <div style="font-size:13px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.04em;">
-                            Day {{ $dayNumber }}
+                            {{ $dayNumber < 1 ? 'Pre-Trip' : 'Day ' . $dayNumber }}
                             <span style="font-weight:500;color:var(--muted);text-transform:none;">— {{ \Carbon\Carbon::parse($dayMoments->first()['visited_date'])->format('l, M j') }}</span>
                         </div>
                     </div>
@@ -305,7 +305,7 @@
                          style="position:relative;margin-bottom:14px;cursor:pointer;"
                          onclick="focusMapOnMoment({{ $moment['id'] }})">
                         <div style="position:absolute;left:-24px;top:18px;width:10px;height:10px;border-radius:50%;background:#C8874A;"></div>
-                        <div class="timeline-card" style="background:#fff;border:1.5px solid #F0E8DF;border-radius:16px;padding:16px;">
+                        <div class="timeline-card" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;padding:16px;">
                             <div class="timeline-card-inner" style="display:flex;gap:12px;">
                                 @if (count($moment['photo_urls']))
                                 <img src="{{ $moment['photo_urls'][0] }}" alt="{{ $moment['place_name'] }}"
@@ -370,14 +370,14 @@
 
 {{-- ── Add/Edit Travel Pin modal ──────────────────────── --}}
 @if ($showPinModal)
-<div class="moments-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closePinModal">
-    <div class="moments-modal-card" style="background:var(--bg-white);border-radius:20px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(45,27,20,.18);padding:24px 24px 20px;">
+<div class="moments-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:16px;" wire:click.self="closePinModal">
+    <div class="moments-modal-card" style="margin-top:4vh;background:var(--bg-white);border-radius:20px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(45,27,20,.18);padding:20px 22px 18px;">
 
         {{-- Header --}}
         @php $pinTripLabel = $this->selectedTrip?->trip_name ?? $this->selectedTrip?->destination; @endphp
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--primary),#C8874A);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(147,75,25,.25);">
-                <i class="fa-solid fa-map-pin" style="color:#fff;font-size:18px;"></i>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--primary),#C8874A);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(147,75,25,.25);">
+                <i class="fa-solid fa-map-pin" style="color:#fff;font-size:16px;"></i>
             </div>
             <div style="min-width:0;">
                 <div style="font-size:17px;font-weight:800;color:var(--dark);font-family:'Hanken Grotesk',sans-serif;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
@@ -391,31 +391,31 @@
         </div>
 
         {{-- Place Name --}}
-        <div style="margin-bottom:14px;">
-            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Place Name</label>
+        <div style="margin-bottom:10px;">
+            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;">Place Name</label>
             <input type="text" wire:model="pinPlaceName" placeholder="e.g. Magellan's Cross" class="moments-input"
-                   style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:var(--dark);box-sizing:border-box;">
+                   style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:9px 14px;font-size:13px;font-weight:600;color:var(--dark);box-sizing:border-box;">
             @error('pinPlaceName') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
 
         {{-- Description / memory --}}
-        <div style="margin-bottom:14px;">
-            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Description / Memory</label>
-            <textarea wire:model="pinDescription" rows="3" placeholder="What happened here?" class="moments-input"
-                      style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:13px;color:var(--dark);box-sizing:border-box;resize:vertical;font-family:inherit;"></textarea>
+        <div style="margin-bottom:10px;">
+            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;">Description / Memory</label>
+            <textarea wire:model="pinDescription" rows="2" placeholder="What happened here?" class="moments-input"
+                      style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:9px 14px;font-size:13px;color:var(--dark);box-sizing:border-box;resize:vertical;font-family:inherit;"></textarea>
             @error('pinDescription') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
 
         {{-- Date visited --}}
-        <div style="margin-bottom:14px;">
-            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Date Visited</label>
+        <div style="margin-bottom:10px;">
+            <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;">Date Visited</label>
             <input type="date" wire:model="pinVisitedDate" class="moments-input"
-                   style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:var(--dark);box-sizing:border-box;">
+                   style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:9px 14px;font-size:13px;font-weight:600;color:var(--dark);box-sizing:border-box;">
             @error('pinVisitedDate') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
 
         {{-- Photos --}}
-        <div style="margin-bottom:20px;">
+        <div style="margin-bottom:16px;">
             <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Photos (optional, up to 6)</label>
 
             @if (count($pinExistingPhotos))
@@ -456,9 +456,9 @@
                         $refs.pinPhotosInput.dispatchEvent(new Event('change'));
                    "
                    :style="over ? 'border-color:var(--primary);background:var(--primary-light);' : ''"
-                   style="width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;border:1.5px dashed var(--border);border-radius:14px;padding:20px 14px;cursor:pointer;transition:border-color .15s ease,background .15s ease;">
-                <div style="width:34px;height:34px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;">
-                    <i class="fa-solid fa-cloud-arrow-up" style="color:var(--primary);font-size:14px;"></i>
+                   style="width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;border:1.5px dashed var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:border-color .15s ease,background .15s ease;">
+                <div style="width:30px;height:30px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;">
+                    <i class="fa-solid fa-cloud-arrow-up" style="color:var(--primary);font-size:13px;"></i>
                 </div>
                 <div style="font-size:12px;font-weight:700;color:var(--dark);">
                     <span style="color:var(--primary);">Click to upload</span> or drag photos here
@@ -494,8 +494,8 @@
 <div class="moments-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
     <div class="moments-modal-card" style="background:var(--bg-white);border-radius:20px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
         {{-- Icon header --}}
-        <div style="background:#FEF2F2;padding:28px 24px 20px;text-align:center;">
-            <div style="width:52px;height:52px;border-radius:50%;background:#FEE2E2;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+        <div style="background:var(--bg);padding:28px 24px 20px;text-align:center;">
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(220,38,38,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
                 <i class="fa-solid fa-trash-can" style="font-size:22px;color:#DC2626;"></i>
             </div>
             <div style="font-size:17px;font-weight:700;color:var(--dark);margin-bottom:6px;">Delete This Pin?</div>

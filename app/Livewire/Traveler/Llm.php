@@ -607,9 +607,14 @@ class Llm extends Component
         PROMPT;
 
         try {
-            $raw = (new GeminiService())->generate($prompt);
-            if (!$raw) { $raw = (new GroqService())->generate($prompt); }
+            // Gemini's key is currently invalid (401) and tends to eat a
+            // full timeout before falling through — Mistral/OpenRouter are
+            // the reliable ones, so they go first; Gemini stays as a last
+            // resort in case the key gets fixed later.
+            $raw = (new MistralService())->generate($prompt);
             if (!$raw) { $raw = (new OpenRouterService())->generate($prompt); }
+            if (!$raw) { $raw = (new GroqService())->generate($prompt); }
+            if (!$raw) { $raw = (new GeminiService())->generate($prompt); }
             if (!$raw) return '';
 
             $raw = trim(preg_replace('/```json\s*|```\s*/i', '', $raw));
@@ -661,9 +666,14 @@ class Llm extends Component
         PROMPT;
 
         try {
-            $raw = (new GeminiService())->generate($prompt);
-            if (!$raw) { $raw = (new GroqService())->generate($prompt); }
+            // Gemini's key is currently invalid (401) and tends to eat a
+            // full timeout before falling through — Mistral/OpenRouter are
+            // the reliable ones, so they go first; Gemini stays as a last
+            // resort in case the key gets fixed later.
+            $raw = (new MistralService())->generate($prompt);
             if (!$raw) { $raw = (new OpenRouterService())->generate($prompt); }
+            if (!$raw) { $raw = (new GroqService())->generate($prompt); }
+            if (!$raw) { $raw = (new GeminiService())->generate($prompt); }
             if (!$raw) return [];
 
             $raw  = trim(preg_replace('/```json\s*|```\s*/i', '', $raw));
@@ -805,12 +815,15 @@ Rules:
 PROMPT;
 
         try {
-            $raw = (new GeminiService())->generate($prompt);
+            $raw = (new MistralService())->generate($prompt);
+            if (!$raw) {
+                $raw = (new OpenRouterService())->generate($prompt);
+            }
             if (!$raw) {
                 $raw = (new GroqService())->generate($prompt);
             }
             if (!$raw) {
-                $raw = (new OpenRouterService())->generate($prompt);
+                $raw = (new GeminiService())->generate($prompt);
             }
             if (!$raw) return '';
 
@@ -985,8 +998,11 @@ PROMPT;
 
         $summary = $this->conversationSummary();
         $package = null;
+        // OpenRouter/Groq go first — Gemini's project currently has zero
+        // free-tier quota (429 RESOURCE_EXHAUSTED on every call), so trying
+        // it first just wastes a request+timeout before falling through.
         try {
-            $package = (new GeminiService())->planTrip($summary);
+            $package = (new OpenRouterService())->planTrip($summary);
         } catch (\Throwable) {
 
         }
@@ -1001,7 +1017,7 @@ PROMPT;
 
         if (!$package || empty($package['to'])) {
             try {
-                $package = (new OpenRouterService())->planTrip($summary);
+                $package = (new GeminiService())->planTrip($summary);
             } catch (\Throwable) {
                 $package = null;
             }
@@ -1210,12 +1226,12 @@ PROMPT;
         ];
 
         try {
-            $enriched = (new GeminiService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
+            $enriched = (new OpenRouterService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
             if (!$enriched) {
                 $enriched = (new GroqService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
             }
             if (!$enriched) {
-                $enriched = (new OpenRouterService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
+                $enriched = (new GeminiService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
             }
             if ($enriched && is_array($enriched)) {
 
@@ -1479,14 +1495,14 @@ PROMPT;
 
         Be skeptical. Only answer yes if you are genuinely confident this is a real place you have real knowledge of — not just because the name sounds plausible or place-like. If you don't specifically recognize it, or aren't sure, answer no. This is NOT a made-up place, NOT a generic word or phrase, and NOT a whole country by itself.
 
-        If yes, return its most common English city/town/island name and the IATA code of the real airport travelers would realistically fly into to reach it (the nearest major one, if it has none of its own).
+        If yes, return its most common English city/town/island name, and its IATA code is REQUIRED — never leave it null when is_real_place is true. If the place has no airport of its own, you MUST still give the IATA code of the real nearest major airport travelers would actually fly into to reach it (e.g. a small town near a bigger city uses that city's airport code).
         If no, return false and null for both fields.
 
         Return JSON only, no markdown:
         {"is_real_place": true or false, "name": "city name or null", "iata_code": "CODE or null"}
         PROMPT;
 
-        $providers = [GeminiService::class, GroqService::class, OpenRouterService::class];
+        $providers = [GroqService::class, OpenRouterService::class, MistralService::class, GeminiService::class];
 
         $first = $this->askPlaceVerifier($prompt, $providers);
         if ($first === null) {
@@ -1514,7 +1530,16 @@ PROMPT;
             return $this->aiPlaceCache[$key] = null;
         }
 
-        $code = strtoupper(trim((string) $first['data']['iata_code']));
+        // Both providers can independently confirm a place is real while
+        // one of them still leaves iata_code null (a model just not
+        // bothering to resolve the nearest major airport for a small town,
+        // despite the prompt asking for it) — that used to reject an
+        // otherwise-confirmed-real destination outright. Accept either
+        // provider's code, not only the first one's.
+        $code = strtoupper(trim((string) ($first['data']['iata_code'] ?? '')));
+        if (!preg_match('/^[A-Z]{3}$/', $code)) {
+            $code = strtoupper(trim((string) ($second['data']['iata_code'] ?? '')));
+        }
         if (!preg_match('/^[A-Z]{3}$/', $code)) {
             return $this->aiPlaceCache[$key] = null;
         }

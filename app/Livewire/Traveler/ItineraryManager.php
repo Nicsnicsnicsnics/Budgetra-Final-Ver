@@ -533,8 +533,11 @@ class ItineraryManager extends Component
                 if ($trip) {
                     $tripStartOfDay     = $trip->start_date->copy()->startOfDay();
                     $visitedStartOfDay  = $m->visited_date->copy()->startOfDay();
-                    $dayNumber = (int) floor(($visitedStartOfDay->timestamp - $tripStartOfDay->timestamp) / 86400) + 1;
-                    $pin['day_number']        = max(1, $dayNumber);
+                    // Not clamped to 1 — a moment logged for a date before the
+                    // trip's start_date is a real, different day and must not
+                    // be lumped into "Day 1" alongside moments actually
+                    // visited on day one.
+                    $pin['day_number']        = (int) floor(($visitedStartOfDay->timestamp - $tripStartOfDay->timestamp) / 86400) + 1;
                     $pin['trip_destination']  = $trip->destination;
                 } else {
                     $pin['day_number']       = 1;
@@ -583,8 +586,11 @@ class ItineraryManager extends Component
                 $visitedStartOfDay = $m->visited_date->copy()->startOfDay();
                 // Raw timestamp math on purpose — Carbon's diffInDays sign
                 // convention isn't worth relying on here.
-                $dayNumber = (int) floor(($visitedStartOfDay->timestamp - $tripStartOfDay->timestamp) / 86400) + 1;
-                $pin['day_number'] = max(1, $dayNumber);
+                // Not clamped to 1 — a moment logged for a date before the
+                // trip's start_date is a real, different day and must not be
+                // lumped into "Day 1" alongside moments actually visited on
+                // day one.
+                $pin['day_number'] = (int) floor(($visitedStartOfDay->timestamp - $tripStartOfDay->timestamp) / 86400) + 1;
                 $pin['posted_at']  = $m->created_at->format('M j, Y g:i A');
                 return $pin;
             })

@@ -1,4 +1,4 @@
-<div>
+<div style="width:100%;">
 
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 1a — Have a trip code? (Manual Planning only, skippable)
@@ -108,7 +108,7 @@ $allCities = array_merge(
          possibly morph-reusing a stale DOM node and skipping Alpine's
          x-init — which is what actually re-seeds fromLabel/toLabel/dates/
          budget from the still-intact server-side values. --}}
-    <div wire:key="pyt-manual-card-{{ $step }}" x-data="pytManual()" x-init="init()"
+    <div wire:key="pyt-manual-card-{{ $step1VisitToken }}" x-data="pytManual()" x-init="init()"
          style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:24px;width:100%;max-width:720px;box-shadow:0 8px 36px rgba(45,27,20,.08);">
 
         <div style="padding:36px 36px 0;">
@@ -3127,12 +3127,12 @@ window.sortAttractions = function(dir) {
      EMPTY STATE — no trips yet
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($showEmpty && !auth()->user()?->userProfile)
-<div class="empty-state-center" style="min-height:80vh;">
+<div class="empty-state-center" style="width:100%;min-height:calc(100vh - 120px);">
     <div style="width:64px;height:64px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
         <i class="fa-solid fa-map-location-dot" style="font-size:28px;color:#fff;"></i>
     </div>
     <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">Set up your profile first</h2>
-    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile so we can tailor budget suggestions before you plan your first trip.</p>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile before planning your trip and view estimations for your trips.</p>
     <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
         <i class="fa-solid fa-user"></i> Set Up Your Profile First
     </a>

@@ -39,7 +39,7 @@
     </div>
 
     <div class="sidebar-brand" style="display:flex;align-items:center;gap:10px;padding:4px 16px 14px;">
-        <img src="{{ asset('systemicons/budgetra-main.png') }}" alt="Budgetra"
+        <img src="{{ asset('systemicons/budgetra-new-icon.png') }}" alt="Budgetra"
              style="width:38px;height:38px;border-radius:10px;object-fit:contain;flex-shrink:0;">
         <span class="sidebar-link-label" style="font-size:18px;font-weight:800;color:var(--primary);letter-spacing:0.01em;">Budgetra</span>
     </div>

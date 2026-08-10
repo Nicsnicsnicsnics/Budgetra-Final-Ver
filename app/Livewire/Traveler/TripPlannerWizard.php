@@ -82,6 +82,13 @@ class TripPlannerWizard extends Component
     }
 
     // ── Step 1: trip details form (new) ───────────────────
+    // Bumped every time we land back on step 1 from a later step, so the
+    // Alpine card's wire:key always changes and Livewire is forced to fully
+    // remount it — otherwise morphdom can end up reusing the previous DOM
+    // node and Alpine's x-init never re-runs, leaving From/To/dates blank
+    // even though the underlying manualFrom/manualTo/startDate/endDate
+    // properties on the server were never actually cleared.
+    public int $step1VisitToken    = 0;
     public string $manualFrom      = '';
     public string $manualTo        = '';
     public string $manualBudgetMin = '';
@@ -1405,6 +1412,9 @@ class TripPlannerWizard extends Component
             return $this->redirect(route('trips.plan.ai'), navigate: true);
         }
 
+        if ($normalStep === 1) {
+            $this->step1VisitToken++;
+        }
         $this->step = $normalStep;
         return null;
     }
@@ -1531,7 +1541,12 @@ class TripPlannerWizard extends Component
         // Neither leg of the trip has a hotel picked — ask the AI to
         // suggest one instead of leaving the itinerary with no lodging.
         $needsAccommodation = !$this->selectedHotel && !$this->selectedMcHotel;
-        foreach ([\App\Services\GeminiService::class, \App\Services\GroqService::class, \App\Services\CerebrasService::class, \App\Services\MistralService::class, \App\Services\OpenRouterService::class] as $serviceClass) {
+        // Mistral/OpenRouter/Groq tried first — Gemini's project currently
+        // has zero free-tier quota (429 on every call) and Cerebras's key
+        // has no billing (402), so both are pushed to the end instead of
+        // wasting a request+timeout on them before falling through to a
+        // provider that actually works.
+        foreach ([\App\Services\MistralService::class, \App\Services\OpenRouterService::class, \App\Services\GroqService::class, \App\Services\GeminiService::class, \App\Services\CerebrasService::class] as $serviceClass) {
             $remaining = $deadline - microtime(true);
             if ($remaining < 5) break;
 
