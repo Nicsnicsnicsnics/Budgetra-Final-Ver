@@ -14,7 +14,7 @@ class TripObserver
             'user_id' => $trip->user_id,
             'trip_id' => $trip->id,
             'type'    => 'trip_created',
-            'message' => "🎉 Congratulations! Your trip to {$trip->destination} has been saved.",
+            'message' => "Congratulations! Your trip to {$trip->destination} has been saved.",
             'is_read' => false,
         ]);
     }

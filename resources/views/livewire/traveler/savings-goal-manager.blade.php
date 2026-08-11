@@ -166,10 +166,9 @@
 
             <button wire:click="submitDeposit" x-data
                     :disabled="!$wire.depositAmount || $wire.depositAmount <= 0"
-                    :style="(!$wire.depositAmount || $wire.depositAmount <= 0) ? 'opacity:.5;cursor:not-allowed;' : 'cursor:pointer;'"
-                    style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:14px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:'Hanken Grotesk',sans-serif;margin-bottom:12px;transition:background .18s;"
+                    :style="'width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:14px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:\'Hanken Grotesk\',sans-serif;margin-bottom:12px;transition:background .18s;' + ((!$wire.depositAmount || $wire.depositAmount <= 0) ? 'opacity:.5;cursor:not-allowed;' : 'cursor:pointer;')"
                     onmouseenter="if(!this.disabled)this.style.background='var(--primary-dark)'" onmouseleave="if(!this.disabled)this.style.background='var(--primary)'">
-                Confirm Savings
+                Add Savings
             </button>
 
             <button wire:click="closeDeposit"

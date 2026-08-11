@@ -256,7 +256,7 @@
             {{-- Summary rows --}}
             <div style="margin:14px 16px;display:flex;flex-direction:column;gap:8px;">
                 @if(empty($sd))
-                <div style="padding:24px 14px;text-align:center;background:var(--bg-white);border:1px solid #F0E8DF;border-radius:14px;">
+                <div style="padding:24px 14px;text-align:center;background:var(--bg-white);border-radius:14px;">
                     <i class="fa-solid fa-circle-info" style="font-size:20px;color:#D4C5B5;margin-bottom:8px;display:block;"></i>
                     <div style="font-size:12px;color:var(--muted);">Detailed breakdown not available for this trip.</div>
                 </div>
@@ -269,7 +269,7 @@
                     $rowExtra  = $rowData['extra'] ?? 0;
                     if (!$rowCost && !$rowDetail) continue;
                 @endphp
-                <div class="st-sum-row" style="padding:12px 13px;background:var(--bg-white);border:1px solid #F0E8DF;border-radius:14px;display:flex;align-items:stretch;gap:11px;">
+                <div class="st-sum-row" style="padding:12px 13px;background:var(--bg-white);border-radius:14px;display:flex;align-items:stretch;gap:11px;">
                     <div style="width:42px;min-height:32px;border-radius:10px;background:{{ $meta['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:stretch;">
                         <i class="{{ $meta['icon'] }}" style="color:{{ $meta['color'] }};font-size:13px;"></i>
                     </div>
@@ -291,7 +291,7 @@
             </div>
 
             {{-- Total --}}
-            <div style="margin:0 16px 18px;padding:14px 16px;background:linear-gradient(135deg,#FDF3EB,#FBEADC);border-radius:14px;">
+            <div style="margin:0 16px 18px;padding:14px 16px;background:var(--primary-light);border-radius:14px;">
                 <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;">Total Cost</div>
                 <div style="font-size:23px;font-weight:800;color:var(--primary);">{{ currency_code() }} {{ number_format($dtTotal, 0) }}</div>
             </div>
