@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Attraction;
 use App\Models\Expense;
 use App\Models\Trip;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -34,6 +35,27 @@ class DashboardController extends Controller
             ]);
         }
 
+        return view('traveler.dashboard.index', array_merge(
+            $this->buildData($user), compact('recommended')
+        ));
+    }
+
+    public function downloadReport()
+    {
+        $user = auth()->user();
+        abort_if(!$user, 403);
+
+        $data = $this->buildData($user);
+        $data['generatedAt'] = now();
+
+        $pdf = Pdf::loadView('traveler.dashboard.report-pdf', $data);
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->download('dashboard-report-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function buildData($user): array
+    {
         $trips = $user->trips()->withSum('expenses', 'amount')->latest()->get()->map(function (Trip $trip) {
             $spent = $trip->expenses_sum_amount ?? 0;
             $today = Carbon::today();
@@ -78,8 +100,6 @@ class DashboardController extends Controller
             ];
         }
 
-        return view('traveler.dashboard.index', compact(
-            'trips', 'totalBudget', 'totalSpent', 'recommended', 'categorySpend', 'monthlySpend'
-        ));
+        return compact('trips', 'totalBudget', 'totalSpent', 'categorySpend', 'monthlySpend');
     }
 }

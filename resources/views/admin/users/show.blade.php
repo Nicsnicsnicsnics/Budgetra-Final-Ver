@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 @section('title', 'User Detail')
 @section('content')
 <a href="{{ route('admin.users.index') }}">&larr; Back</a>

@@ -1133,8 +1133,6 @@ class TripPlannerWizard extends Component
         $this->venueError          = '';
         $this->mcVenueStep         = false;
         $this->mcVenueResults      = [];
-        $this->selectedVenues      = [];
-        $this->selectedMcVenues    = [];
         $this->mcAttractionStep    = false;
         $this->mcAttractionResults = [];
         $dest = $this->manualTo ?: $this->mcTo ?: '';
@@ -1301,8 +1299,6 @@ class TripPlannerWizard extends Component
         $this->attractionLoading      = true;
         $this->attractionResults      = [];
         $this->mcAttractionResults    = [];
-        $this->selectedAttractions    = [];
-        $this->selectedMcAttractions  = [];
         $dest = $this->manualTo ?: $this->mcTo ?: '';
         if (!$dest) { $this->attractionLoading = false; return; }
         try {

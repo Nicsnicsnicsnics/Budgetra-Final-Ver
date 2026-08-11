@@ -9,11 +9,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     @livewireStyles
 </head>
-<body class="dashboard-body">
-    <div class="dashboard-wrapper">
+<body class="dashboard-body" data-theme="{{ auth()->user()->theme ?? 'daylight' }}">
+    <div class="dashboard-wrapper" id="dashWrapper">
         <x-admin-sidebar :active="$active ?? ''" />
         <div class="dash-main">
-            <div class="app-content">
+            <div class="dash-content">
                 @yield('content')
             </div>
         </div>

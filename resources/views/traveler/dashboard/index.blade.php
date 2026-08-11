@@ -38,6 +38,11 @@
         <h1>Dashboard</h1>
         <p class="text-muted">Welcome back, {{ auth()->user()?->full_name ?? '' }}!</p>
     </div>
+    <a href="{{ route('dashboard.report') }}"
+       style="display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;border-radius:10px;padding:11px 20px;font-size:13px;font-weight:700;text-decoration:none;transition:background .18s;"
+       onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
+        <i class="fa-solid fa-file-arrow-down"></i> Download Report
+    </a>
 </div>
 
 {{-- Aggregate stat cards --}}

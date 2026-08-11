@@ -37,7 +37,7 @@
 @php
 $localCities = [
     ['name'=>'Manila','code'=>'MNL'],['name'=>'Cebu City','code'=>'CEB'],['name'=>'Davao City','code'=>'DVO'],
-    ['name'=>'Boracay','code'=>'KLO'],['name'=>'Puerto Princesa','code'=>'PPS'],['name'=>'Tagbilaran (Bohol)','code'=>'TAG'],
+    ['name'=>'Boracay','code'=>'KLO'],['name'=>'Puerto Princesa','code'=>'PPS'],['name'=>'Tagbilaran','code'=>'TAG'],
     ['name'=>'Siargao','code'=>'IAO'],['name'=>'Iloilo City','code'=>'ILO'],['name'=>'Bacolod','code'=>'BCD'],
     ['name'=>'Zamboanga','code'=>'ZAM'],['name'=>'Cagayan de Oro','code'=>'CGY'],['name'=>'General Santos','code'=>'GES'],
     ['name'=>'Tacloban','code'=>'TAC'],['name'=>'Dumaguete','code'=>'DGT'],['name'=>'El Nido','code'=>'ENI'],
@@ -94,13 +94,7 @@ $allCities = array_merge(
 .pyt-budget-input::placeholder{color:#C4B8AC;font-weight:400;}
 </style>
 
-<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 24px;">
-
-    {{-- Title --}}
-    <div style="text-align:center;margin-bottom:20px;">
-        <h1 style="font-size:clamp(28px,3.6vw,36px);font-weight:800;color:var(--dark);margin:0 0 12px;">Trip Details</h1>
-        <p style="font-size:15px;color:var(--muted);line-height:1.6;max-width:520px;margin:0 auto;">Design your upcoming trip with your desired options, from origin and destination to start and end date.</p>
-    </div>
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 24px;min-height:100%;box-sizing:border-box;">
 
     {{-- Card --}}
     {{-- wire:key forces Livewire to treat this as a fresh element every time
@@ -544,7 +538,7 @@ window.pytManual = function() {
 @php
 $localCities2 = [
     ['name'=>'Manila','code'=>'MNL'],['name'=>'Cebu City','code'=>'CEB'],['name'=>'Davao City','code'=>'DVO'],
-    ['name'=>'Boracay','code'=>'KLO'],['name'=>'Puerto Princesa','code'=>'PPS'],['name'=>'Tagbilaran (Bohol)','code'=>'TAG'],
+    ['name'=>'Boracay','code'=>'KLO'],['name'=>'Puerto Princesa','code'=>'PPS'],['name'=>'Tagbilaran','code'=>'TAG'],
     ['name'=>'Siargao','code'=>'IAO'],['name'=>'Iloilo City','code'=>'ILO'],['name'=>'Bacolod','code'=>'BCD'],
     ['name'=>'Zamboanga','code'=>'ZAM'],['name'=>'Cagayan de Oro','code'=>'CGY'],['name'=>'General Santos','code'=>'GES'],
     ['name'=>'Tacloban','code'=>'TAC'],['name'=>'Dumaguete','code'=>'DGT'],['name'=>'El Nido','code'=>'ENI'],
@@ -947,7 +941,7 @@ $allCities2 = array_merge(
              onmouseenter="this.style.boxShadow='0 10px 30px rgba(45,27,20,0.10)';this.style.transform='translateY(-2px)';this.style.borderColor='#E7D4C4'"
              onmouseleave="this.style.boxShadow='none';this.style.transform='none';this.style.borderColor='var(--border)'">
             @if(!empty($flight['bags']))
-            <div style="padding:7px 20px;font-size:11px;font-weight:600;color:#7B5C3A;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);">
+            <div style="padding:7px 20px;font-size:11px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);">
                 <i class="fa-solid fa-suitcase" style="font-size:10px;"></i> {{ $flight['bags'] }}
             </div>
             @endif
@@ -1009,7 +1003,7 @@ $allCities2 = array_merge(
              onmouseleave="this.style.boxShadow='none';this.style.transform='none';this.style.borderColor='var(--border)'">
             {{-- Baggage strip --}}
             @if(!empty($flight['bags']))
-            <div style="padding:7px 20px;font-size:11px;font-weight:600;color:#7B5C3A;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);">
+            <div style="padding:7px 20px;font-size:11px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);">
                 <i class="fa-solid fa-suitcase" style="font-size:10px;"></i> {{ $flight['bags'] }}
             </div>
             @endif
@@ -1538,7 +1532,7 @@ window.sortVenues = function(dir) {
                      style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:200;min-width:180px;overflow:hidden;">
                     @foreach(['All Cuisines','Filipino','Asian','International','Seafood','BBQ','Fast Food','Cafe','Bakery'] as $cat)
                     <button type="button" wire:click="$set('venueCategory', '{{ $cat }}')" @click="catOpen=false"
-                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;cursor:pointer;{{ $venueCategory === $cat ? 'color:var(--primary);font-weight:700;background:var(--primary-light);' : 'color:var(--dark);' }}">
+                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;{{ $venueCategory === $cat ? 'color:var(--primary);font-weight:700;background:var(--primary-light);' : 'color:var(--dark);' }}">
                         {{ $cat }}
                     </button>
                     @endforeach
@@ -1824,7 +1818,7 @@ window.sortVenues = function(dir) {
                      style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:200;min-width:180px;overflow:hidden;">
                     @foreach(['All Attractions','Religious','Historical','Nature','Theme Park','Beach','Museum','Shopping'] as $t)
                     <button type="button" wire:click="$set('attractionType', '{{ $t }}')" @click="typeOpen=false"
-                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;cursor:pointer;{{ $attractionType === $t ? 'color:var(--primary);font-weight:700;background:var(--primary-light);' : 'color:var(--dark);' }}">
+                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;{{ $attractionType === $t ? 'color:var(--primary);font-weight:700;background:var(--primary-light);' : 'color:var(--dark);' }}">
                         {{ $t }}
                     </button>
                     @endforeach
@@ -3215,14 +3209,9 @@ window.sortAttractions = function(dir) {
 .mode-cta{font-size:13px;font-weight:800;letter-spacing:0.4px;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--primary);border-radius:12px;padding:13px 22px;width:100%;box-sizing:border-box;transition:background .2s,gap .2s;}
 .mode-card:hover .mode-cta{background:var(--primary-dark);gap:11px;}
 </style>
-<div style="display:flex;flex-direction:column;align-items:center;padding:16px 32px 20px;height:100%;box-sizing:border-box;position:relative;">
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 32px 20px;height:100%;box-sizing:border-box;position:relative;">
 
-    <h1 style="font-size:clamp(22px,2.6vw,28px);font-weight:800;color:var(--dark);margin:0 0 6px;text-align:center;flex-shrink:0;">Start Your Next Journey</h1>
-    <p style="font-size:13px;color:var(--muted);text-align:center;max-width:480px;line-height:1.4;margin:0 0 18px;flex-shrink:0;">
-        Choose your preferred method to plan your next travel with Budgetra's planning tools.
-    </p>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:32px;width:100%;max-width:1100px;flex:1;min-height:0;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:32px;width:100%;max-width:1100px;">
 
         {{-- Manual Planning --}}
         <div wire:click="selectPlanningMode('manual')" class="mode-card">

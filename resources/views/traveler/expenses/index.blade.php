@@ -197,7 +197,7 @@
     </div></div>
 
     {{-- Transactions --}}
-    <div class="card" style="overflow:hidden;display:flex;flex-direction:column;{{ (!$selectedTrip || $expenses->isEmpty()) ? 'min-height:calc(100vh - 340px);' : '' }}">
+    <div class="card" style="overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;{{ (!$selectedTrip || $expenses->isEmpty()) ? 'min-height:calc(100vh - 260px);' : '' }}">
         @if (!$selectedTrip || $expenses->isEmpty())
         <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;">
             <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:16px;">

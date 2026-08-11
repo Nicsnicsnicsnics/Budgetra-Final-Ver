@@ -74,29 +74,10 @@
     $grouped = $notifications->getCollection()->groupBy(fn ($n) => $n->created_at->isToday() ? 'Today' : 'Earlier');
 @endphp
 
-{{-- Trip filter pills --}}
-@if ($trips->count() > 1)
-<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:20px;">
-    @foreach ($trips as $trip)
-    @php $tripUnread = $unreadCounts[$trip->id] ?? 0; @endphp
-    <a href="{{ route('alerts.index', ['trip_id' => $trip->id]) }}"
-       style="position:relative;font-size:12px;font-weight:600;padding:5px 14px;border-radius:20px;text-decoration:none;
-              background:{{ $activeTrip?->id === $trip->id ? 'var(--primary)' : 'var(--border)' }};
-              color:{{ $activeTrip?->id === $trip->id ? '#fff' : 'var(--dark)' }};">
-        {{ $trip->destination }}
-        @if ($tripUnread > 0)
-        <span style="position:absolute;top:-7px;right:-6px;min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:#DC2626;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;border:1.5px solid var(--bg-white);">
-            {{ $tripUnread > 9 ? '9+' : $tripUnread }}
-        </span>
-        @endif
-    </a>
-    @endforeach
-</div>
-@endif
 
 {{-- Notifications card --}}
-<div x-data="{ tab: 'all' }" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--border);">
+<div x-data="{ tab: 'all' }" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;box-sizing:border-box;position:relative;{{ $unreadCount === 0 ? 'min-height:calc(100vh - 56px);' : '' }}display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:10px;">
             <span style="font-size:14px;font-weight:700;color:var(--dark);">Notifications</span>
             <div style="display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:2px;">
@@ -120,7 +101,7 @@
     </div>
 
     @if ($unreadCount === 0)
-    <div x-show="tab === 'unread'" style="width:100%;box-sizing:border-box;text-align:center;padding:48px 20px;">
+    <div x-show="tab === 'unread'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;box-sizing:border-box;text-align:center;padding:0 20px;">
         <div style="width:48px;height:48px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
             <i class="fa-solid fa-bell-slash" style="font-size:18px;color:var(--muted);"></i>
         </div>

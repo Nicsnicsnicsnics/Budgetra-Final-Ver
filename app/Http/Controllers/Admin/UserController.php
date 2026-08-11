@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Trip;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -9,7 +10,7 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::query();
+        $query = User::withCount('trips');
         if ($request->filled('search')) {
             $s = $request->search;
             $query->where(fn($q) => $q->where('full_name', 'like', "%$s%")->orWhere('email', 'like', "%$s%"));
@@ -18,7 +19,11 @@ class UserController extends Controller
             $query->where('role', $request->role);
         }
         $users = $query->latest()->paginate(25)->withQueryString();
-        return view('admin.users.index', compact('users'));
+
+        $totalActiveUsers = User::where('role', '!=', 'banned')->count();
+        $tripsThisMonth   = Trip::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count();
+
+        return view('admin.users.index', compact('users', 'totalActiveUsers', 'tripsThisMonth'));
     }
 
     public function show(User $user)
