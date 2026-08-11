@@ -23,8 +23,14 @@
     @media (max-width: 560px) { .moments-overview-map-el { height: 400px; } }
     .timeline-entry .timeline-card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
     .timeline-entry:hover .timeline-card { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(45,27,20,.10); border-color: #934B19; }
-    .moments-share-trip-btn { transition: background .15s ease, border-color .15s ease; }
-    .moments-share-trip-btn:hover { background: var(--primary-light); border-color: var(--primary); }
+    {{-- Timeline rail: flat, minimal line + dot — no imagery, hierarchy
+         comes purely from size/color/spacing (bigger + darker on hover). --}}
+    .moments-rail-line { position: absolute; left: 8px; top: 4px; bottom: 4px; width: 2px; border-radius: 2px; background: #E8DDD2; }
+    .moments-rail-marker {
+        position: absolute; left: -25px; top: 20px; width: 12px; height: 12px; border-radius: 50%;
+        background: #C8874A; transition: transform .15s ease, background .15s ease;
+    }
+    .timeline-entry:hover .moments-rail-marker { transform: scale(1.3); background: #934B19; }
     .moments-float-chip {
         position: absolute; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.14); max-width: calc(100% - 32px);
@@ -62,6 +68,12 @@
             @click="$store.overviewMoments.view = 'timeline'">
         <i class="fa-solid fa-timeline"></i> Timeline View
     </button>
+    {{-- Not a view toggle like the two buttons above — this navigates away
+         to the standalone Reviews page, styled to match so it reads as part
+         of the same control instead of a random extra link. --}}
+    <a href="{{ route('reviews.index') }}" class="moments-segment" style="text-decoration:none;">
+        <i class="fa-regular fa-comment-dots"></i> Reviews
+    </a>
 </div>
 
 <div x-data>
@@ -122,24 +134,16 @@
             @else
             @foreach ($overviewTimelineGrouped as $destination => $destMoments)
             <div style="margin-bottom:28px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid var(--border-light);">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid var(--border-light);">
                     <div style="font-size:14px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.04em;">
                         <i class="fa-solid fa-plane"></i> {{ $destination }}
                     </div>
-                    {{-- Grouped by destination name, so if the same place was
-                         visited on two separate trips this shares whichever
-                         one the first moment in the group belongs to — same
-                         limitation the grouping itself already has. --}}
-                    <button type="button" wire:click="openSharePicker({{ $destMoments->first()['trip_id'] }})" class="moments-share-trip-btn"
-                            style="flex-shrink:0;display:inline-flex;align-items:center;gap:6px;background:var(--bg-white);color:var(--primary);border:1.5px solid var(--border-light);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">
-                        <i class="fa-solid fa-share-nodes"></i> Share
-                    </button>
                 </div>
                 <div style="position:relative;padding-left:28px;">
-                    <div style="position:absolute;left:9px;top:6px;bottom:6px;width:2px;background:#EDE0D6;"></div>
+                    <div class="moments-rail-line"></div>
                     @foreach ($destMoments as $moment)
-                    <div class="timeline-entry" style="position:relative;margin-bottom:14px;">
-                        <div style="position:absolute;left:-24px;top:18px;width:10px;height:10px;border-radius:50%;background:#C8874A;"></div>
+                    <div class="timeline-entry" style="position:relative;margin-bottom:20px;">
+                        <div class="moments-rail-marker"></div>
                         <div class="timeline-card" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;padding:16px;">
                             <div class="timeline-card-inner" style="display:flex;gap:12px;">
                                 @if (count($moment['photo_urls']))
@@ -160,6 +164,15 @@
                                     @endif
                                     <div style="font-size:11px;color:var(--muted);">
                                         <i class="fa-regular fa-clock" style="font-size:10px;"></i> Posted {{ $moment['posted_at'] }}
+                                    </div>
+                                    {{-- Bridges to the existing (separate) Reviews page rather
+                                         than rebuilding review display/submission here — same
+                                         data, one place it actually lives. --}}
+                                    <div style="display:flex;gap:12px;margin-top:6px;">
+                                        <a href="{{ route('reviews.index', ['destination' => $moment['place_name'], 'write' => 1]) }}"
+                                           style="font-size:11px;font-weight:600;color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+                                            <i class="fa-regular fa-pen-to-square" style="font-size:10px;"></i> Write a review
+                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -190,12 +203,35 @@
     $tripEnd   = $trip->end_date->copy()->startOfDay();
     $mc        = $this->mapCenter;
     $timelineGrouped = collect($this->timelineMoments)->groupBy('day_number');
+
+    // Show every day of the trip in order — Day 1 through the last day —
+    // not just the days a moment happens to exist for, so the timeline
+    // reads as the trip's full itinerary with gaps visible rather than
+    // silently skipping days nothing was logged for. Moments logged before
+    // day 1 (negative/zero day_number) or after the trip's last day still
+    // get their own group, just placed before/after the numbered range.
+    $totalDays    = (int) $tripStart->diffInDays($tripEnd) + 1;
+    $preTripDays  = $timelineGrouped->keys()->filter(fn ($d) => $d < 1)->sort();
+    $postTripDays = $timelineGrouped->keys()->filter(fn ($d) => $d > $totalDays)->sort();
+    $orderedDays  = $preTripDays->concat(range(1, $totalDays))->concat($postTripDays);
+    $timelineDisplay = $orderedDays->mapWithKeys(fn ($d) => [$d => $timelineGrouped->get($d, collect())]);
 @endphp
 
 <style>
     .timeline-entry .timeline-card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
     .timeline-entry:hover .timeline-card { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(45,27,20,.10); border-color: var(--primary); }
     .timeline-entry.is-highlighted .timeline-card { animation: timelinePulse 1.4s ease; border-color: var(--primary); }
+    {{-- Timeline rail: flat, minimal line + dot — no imagery, hierarchy
+         comes purely from size/color/spacing. Day waypoints get a bigger
+         dot than individual moments so "start of a new day" reads at a
+         glance without needing a label inside the marker itself. --}}
+    .moments-rail-line { position: absolute; left: 8px; top: 4px; bottom: 4px; width: 2px; border-radius: 2px; background: #E8DDD2; }
+    .moments-rail-marker {
+        position: absolute; left: -25px; top: 20px; width: 12px; height: 12px; border-radius: 50%;
+        background: #C8874A; transition: transform .15s ease, background .15s ease;
+    }
+    .timeline-entry:hover .moments-rail-marker { transform: scale(1.3); background: #934B19; }
+    .moments-rail-day-marker { position: absolute; left: -27px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); }
     @keyframes timelinePulse {
         0%   { box-shadow: 0 0 0 0 rgba(147,75,25,.45); }
         70%  { box-shadow: 0 0 0 12px rgba(147,75,25,0); }
@@ -235,6 +271,11 @@
             @click="$store.moments.view = 'timeline'">
         <i class="fa-solid fa-timeline"></i> Timeline View
     </button>
+    {{-- Navigates to the Reviews page pre-filtered to this trip's
+         destination, same reasoning as the overview toggle's Reviews link. --}}
+    <a href="{{ route('reviews.index', ['destination' => $trip->destination]) }}" class="moments-segment" style="text-decoration:none;">
+        <i class="fa-regular fa-comment-dots"></i> Reviews
+    </a>
 </div>
 
 <div x-data>
@@ -288,23 +329,36 @@
             @else
             <div style="position:relative;padding-left:28px;">
                 {{-- Connecting vertical line --}}
-                <div style="position:absolute;left:9px;top:6px;bottom:6px;width:2px;background:#EDE0D6;"></div>
+                <div class="moments-rail-line"></div>
 
-                @foreach ($timelineGrouped as $dayNumber => $dayMoments)
+                @foreach ($timelineDisplay as $dayNumber => $dayMoments)
+                @php
+                    // Days with no moments yet have nothing to read a date
+                    // from, so fall back to computing it straight from the
+                    // trip's start date instead of $dayMoments->first().
+                    $dayDate = $dayMoments->isNotEmpty()
+                        ? \Carbon\Carbon::parse($dayMoments->first()['visited_date'])
+                        : $tripStart->copy()->addDays($dayNumber - 1);
+                @endphp
                 <div style="margin-bottom:28px;">
                     <div style="position:relative;margin-bottom:14px;">
-                        <div style="position:absolute;left:-28px;top:2px;width:20px;height:20px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 0 0 2px var(--primary);"></div>
+                        <div class="moments-rail-day-marker"></div>
                         <div style="font-size:13px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.04em;">
                             {{ $dayNumber < 1 ? 'Pre-Trip' : 'Day ' . $dayNumber }}
-                            <span style="font-weight:500;color:var(--muted);text-transform:none;">— {{ \Carbon\Carbon::parse($dayMoments->first()['visited_date'])->format('l, M j') }}</span>
+                            <span style="font-weight:500;color:var(--muted);text-transform:none;">— {{ $dayDate->format('l, M j') }}</span>
                         </div>
                     </div>
 
+                    @if ($dayMoments->isEmpty())
+                    <div style="margin-left:2px;padding:10px 14px;border:1.5px dashed var(--border);border-radius:12px;font-size:12px;color:var(--muted);">
+                        No moments logged for this day.
+                    </div>
+                    @else
                     @foreach ($dayMoments as $moment)
                     <div id="moment-{{ $moment['id'] }}" class="timeline-entry" tabindex="0"
-                         style="position:relative;margin-bottom:14px;cursor:pointer;"
+                         style="position:relative;margin-bottom:20px;cursor:pointer;"
                          onclick="focusMapOnMoment({{ $moment['id'] }})">
-                        <div style="position:absolute;left:-24px;top:18px;width:10px;height:10px;border-radius:50%;background:#C8874A;"></div>
+                        <div class="moments-rail-marker"></div>
                         <div class="timeline-card" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;padding:16px;">
                             <div class="timeline-card-inner" style="display:flex;gap:12px;">
                                 @if (count($moment['photo_urls']))
@@ -323,11 +377,21 @@
                                     <div style="font-size:11px;color:var(--muted);">
                                         <i class="fa-regular fa-clock" style="font-size:10px;"></i> Posted {{ $moment['posted_at'] }}
                                     </div>
+                                    {{-- Bridges to the existing (separate) Reviews page rather
+                                         than rebuilding review display/submission here — same
+                                         data, one place it actually lives. --}}
+                                    <div style="display:flex;gap:12px;margin-top:6px;">
+                                        <a href="{{ route('reviews.index', ['destination' => $moment['place_name'], 'write' => 1]) }}"
+                                           style="font-size:11px;font-weight:600;color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+                                            <i class="fa-regular fa-pen-to-square" style="font-size:10px;"></i> Write a review
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     @endforeach
+                    @endif
                 </div>
                 @endforeach
             </div>
@@ -409,6 +473,12 @@
         {{-- Date visited --}}
         <div style="margin-bottom:10px;">
             <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;">Date Visited</label>
+            {{-- No min/max here on purpose — a Moment's visited_date is
+                 allowed to fall before/after the trip's own dates (backfilled
+                 pre-trip or post-trip memories; see the "Pre-Trip" grouping
+                 in the Timeline View and the day_number comments below).
+                 The calendar still opens on the right month via the default
+                 value ItineraryManager::openAddPinModal() sets. --}}
             <input type="date" wire:model="pinVisitedDate" class="moments-input"
                    style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:9px 14px;font-size:13px;font-weight:600;color:var(--dark);box-sizing:border-box;">
             @error('pinVisitedDate') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
@@ -520,64 +590,6 @@
 </div>
 @endif
 
-{{-- ── Share Photos picker ────────────────────────────────
-     Which photos are checked lives in local Alpine state, not a Livewire
-     property — Livewire only ever supplies the initial photo list for
-     whichever trip openSharePicker() was opened with; every click after
-     that is instant, no round-trip. --}}
-@if ($showSharePicker)
-<div class="moments-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="closeSharePicker">
-    <div class="moments-modal-card" x-data="{ selected: [], sharing: false }" style="background:#fff;border-radius:20px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(45,27,20,.18);padding:24px 24px 20px;">
-
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-            <div style="width:36px;height:36px;border-radius:10px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fa-solid fa-share-nodes" style="color:#934B19;font-size:15px;"></i>
-            </div>
-            <span style="font-size:17px;font-weight:800;color:#1c1c19;font-family:'Hanken Grotesk',sans-serif;">Choose Photos to Share</span>
-        </div>
-        <p style="margin:0 0 16px;font-size:12px;color:#9B8EA0;">Tap the ones you want, then share.</p>
-
-        @if (empty($this->sharePickerPhotos))
-        <div style="padding:32px 0;text-align:center;color:#9B8EA0;font-size:13px;">
-            <i class="fa-solid fa-camera" style="font-size:24px;color:#D8CFC5;display:block;margin-bottom:10px;"></i>
-            No photos logged for this trip yet.
-        </div>
-        @else
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;">
-            @foreach ($this->sharePickerPhotos as $i => $photo)
-            <button type="button"
-                    @click="selected.includes({{ $i }}) ? selected = selected.filter(x => x !== {{ $i }}) : selected.push({{ $i }})"
-                    :style="selected.includes({{ $i }}) ? 'border-color:#934B19;' : 'border-color:transparent;'"
-                    style="position:relative;padding:0;border:2px solid transparent;border-radius:10px;overflow:hidden;cursor:pointer;aspect-ratio:1;background:none;">
-                <img src="{{ $photo['url'] }}" alt="{{ $photo['place_name'] }}" style="width:100%;height:100%;object-fit:cover;display:block;">
-                <div x-show="selected.includes({{ $i }})" x-cloak
-                     style="position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:#934B19;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3);">
-                    <i class="fa-solid fa-check" style="font-size:10px;"></i>
-                </div>
-            </button>
-            @endforeach
-        </div>
-        @endif
-
-        <div style="display:flex;gap:10px;">
-            <button type="button" wire:click="closeSharePicker" class="moments-btn-outline"
-                    style="flex:1;background:transparent;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:12px;padding:12px 0;font-size:13px;font-weight:600;cursor:pointer;">
-                Cancel
-            </button>
-            <button type="button" class="moments-btn-primary"
-                    x-bind:disabled="selected.length === 0 || sharing"
-                    @click="sharing = true; shareSelectedPhotos(selected, {{ json_encode($this->sharePickerPhotos) }}).finally(() => sharing = false)"
-                    :style="(selected.length === 0 || sharing) ? 'opacity:.5;cursor:not-allowed;' : ''"
-                    style="flex:2;background:#934B19;color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;">
-                <span x-show="!sharing" x-text="'Share' + (selected.length ? ' (' + selected.length + ')' : '')"></span>
-                <span x-show="sharing" x-cloak><i class="fa-solid fa-spinner fa-spin"></i> Preparing…</span>
-            </button>
-        </div>
-
-    </div>
-</div>
-@endif
-
 <script>
     // Map/Timeline toggle state — global Alpine stores rather than a
     // Livewire property, so switching views is instant (no network
@@ -603,50 +615,6 @@
             document.addEventListener('alpine:init', initMomentsStores);
         }
     })();
-
-    // "Share" in the trip photo picker — fetches each selected photo, then
-    // hands them all to the browser's own native share sheet
-    // (navigator.share) so the traveler can post them to whichever app
-    // they actually have installed. No social platform API involved;
-    // Budgetra never talks to Instagram/Facebook/etc. directly. Returns a
-    // promise so the caller's Alpine "sharing" state resolves correctly
-    // whichever path is taken.
-    window.shareSelectedPhotos = function (selectedIndexes, allPhotos) {
-        if (!selectedIndexes.length) return Promise.resolve();
-
-        var urls = selectedIndexes.map(function (i) { return allPhotos[i].url; });
-
-        return Promise.all(urls.map(function (url, idx) {
-            return fetch(url)
-                .then(function (r) { return r.blob(); })
-                .then(function (blob) {
-                    var ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-                    return new File([blob], 'moment-' + (idx + 1) + '.' + ext, { type: blob.type });
-                });
-        })).then(function (files) {
-            if (navigator.canShare && navigator.canShare({ files: files })) {
-                return navigator.share({ files: files, title: 'My travel moments — made with Budgetra' });
-            }
-
-            // Can't share files on this browser — download them instead so
-            // the traveler still gets something out of the click.
-            files.forEach(function (f) {
-                var link = document.createElement('a');
-                link.href = URL.createObjectURL(f);
-                link.download = f.name;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                URL.revokeObjectURL(link.href);
-            });
-        }).catch(function (err) {
-            // AbortError just means the traveler closed the native share
-            // sheet without picking anything — not a real failure.
-            if (err && err.name !== 'AbortError') {
-                console.error('Share failed', err);
-            }
-        });
-    };
 
     // Timeline card clicked → jump to Map View, fly to that moment's pin,
     // open its popup, and give the marker a brief highlight pulse.

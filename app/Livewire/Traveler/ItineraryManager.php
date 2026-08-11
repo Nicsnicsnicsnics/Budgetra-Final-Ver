@@ -40,10 +40,6 @@ class ItineraryManager extends Component
     // because the target trip isn't Ongoing — see canPostMomentFor().
     public string  $momentBlockedMessage = '';
 
-    // ── Moments: share-to-social photo picker ────────────────
-    public bool $showSharePicker   = false;
-    public ?int $sharePickerTripId = null;
-
     // Destination name (lowercased) -> [lat, lng]. Used only for the Moments
     // map marker; not shared with SerpApiService's own coords table.
     private const DEST_COORDS = [
@@ -601,9 +597,10 @@ class ItineraryManager extends Component
     // ── Moments: travel pins ────────────────────────────────
     public function openAddPinModal(float $lat, float $lng): void
     {
-        if (!$this->selectedTrip) return;
+        $trip = $this->selectedTrip;
+        if (!$trip) return;
 
-        if (!$this->canPostMomentFor($this->selectedTrip)) {
+        if (!$this->canPostMomentFor($trip)) {
             $this->momentBlockedMessage = 'You can only post moments for ongoing trips.';
             return;
         }
@@ -615,7 +612,15 @@ class ItineraryManager extends Component
         $this->pinLng             = $lng;
         $this->pinPlaceName      = '';
         $this->pinDescription    = '';
-        $this->pinVisitedDate    = now()->toDateString();
+        // Default to today only if today actually falls within the trip's
+        // own dates — otherwise (e.g. a trip manually flagged Ongoing
+        // outside its real date range, or a Moment being backfilled) the
+        // calendar would open on today's month instead of the trip's,
+        // which reads as broken. Clamp to whichever bound is closer.
+        $today = now()->startOfDay();
+        $this->pinVisitedDate = $today->between($trip->start_date, $trip->end_date)
+            ? $today->toDateString()
+            : ($today->lt($trip->start_date) ? $trip->start_date->toDateString() : $trip->end_date->toDateString());
         $this->pinPhotos         = [];
         $this->pinExistingPhotos = [];
         $this->showPinModal       = true;
@@ -653,8 +658,18 @@ class ItineraryManager extends Component
 
     public function removeExistingPhoto(int $photoId): void
     {
-        if (!$this->editingPinId) return;
-        $photo = MomentPhoto::where('id', $photoId)->where('moment_id', $this->editingPinId)->first();
+        // editingPinId is a public property a client can set directly (same
+        // reasoning as selectedTripId elsewhere in this file) — re-verify
+        // the moment belongs to the current, ownership-checked trip before
+        // trusting it, so a tampered editingPinId can't
+        // be used to delete another traveler's photo.
+        $trip = $this->selectedTrip;
+        if (!$trip || !$this->editingPinId) return;
+
+        $moment = Moment::where('id', $this->editingPinId)->where('trip_id', $trip->id)->first();
+        if (!$moment) return;
+
+        $photo = MomentPhoto::where('id', $photoId)->where('moment_id', $moment->id)->first();
         if (!$photo) return;
 
         $this->momentService->deletePhoto($photo);
@@ -730,40 +745,6 @@ class ItineraryManager extends Component
         }
 
         $this->pinToDelete = null;
-    }
-
-    // ── Moments: share-to-social photo picker ────────────────
-    // Triggered with an explicit trip id (from the destination header, not
-    // from a "currently selected" trip — this can be opened straight from
-    // the overview page), so it re-verifies ownership itself the same way
-    // showTripOnMap()/selectTrip() do, rather than trusting selectedTrip.
-    public function openSharePicker(int $tripId): void
-    {
-        $trip = Trip::where('id', $tripId)->where('user_id', auth()->id())->first();
-        if (!$trip) return;
-
-        $this->sharePickerTripId = $tripId;
-        $this->showSharePicker   = true;
-    }
-
-    public function closeSharePicker(): void
-    {
-        $this->showSharePicker   = false;
-        $this->sharePickerTripId = null;
-    }
-
-    // sharePickerTripId is a public property a client can set directly
-    // (same reasoning as selectedTripId elsewhere in this file) — this
-    // re-verifies ownership on every access rather than trusting that
-    // openSharePicker() was the only way it was ever set, so a tampered id
-    // can't be used to pull another traveler's photos into this picker.
-    public function getSharePickerPhotosProperty(): array
-    {
-        if (!$this->sharePickerTripId) return [];
-        $trip = Trip::where('id', $this->sharePickerTripId)->where('user_id', auth()->id())->first();
-        if (!$trip) return [];
-
-        return $this->momentService->allPhotosForTrip($trip);
     }
 
     public function render()

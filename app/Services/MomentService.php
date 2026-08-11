@@ -87,22 +87,4 @@ class MomentService
             'url' => Storage::disk('public')->url($p->photo_path),
         ])->values()->toArray();
     }
-
-    // Every photo across every Moment on a trip, in visited-date order —
-    // the source list for the "choose what to share" picker, so a trip
-    // with several photo-heavy Moments still has one flat list to pick
-    // from instead of one share action per Moment.
-    public function allPhotosForTrip(Trip $trip): array
-    {
-        return $trip->moments()
-            ->with('photos')
-            ->orderBy('visited_date')
-            ->get()
-            ->flatMap(fn (Moment $m) => $m->photos->map(fn (MomentPhoto $p) => [
-                'url'        => Storage::disk('public')->url($p->photo_path),
-                'place_name' => $m->place_name,
-            ]))
-            ->values()
-            ->toArray();
-    }
 }

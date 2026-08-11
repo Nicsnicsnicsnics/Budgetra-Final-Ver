@@ -272,15 +272,63 @@ class Llm extends Component
             $suggestionSlot = $this->pendingPlaceSuggestionSlot;
             $this->pendingPlaceSuggestion = null;
             $this->pendingPlaceSuggestionSlot = null;
+            $trimmedReply = trim($userText);
 
-            if (preg_match('/^(?:yes|yeah|yep|yup|correct|right|sure|thats right|that\'s right)\b/i', trim($userText))) {
+            if (preg_match('/^(?:yes|yeah|yep|yup|correct|right|sure|thats right|that\'s right)\b/i', $trimmedReply)) {
                 if ($suggestionSlot === 'destination' && $this->aiTo === '') {
                     $this->aiTo = $suggestion;
                 } elseif ($suggestionSlot === 'origin' && $this->aiFrom === '') {
                     $this->aiFrom = $suggestion;
                 }
                 $this->aiPrompt = '';
+            } elseif (preg_match('/^(?:no|nope|nah|not|negative|wrong|incorrect)\b/i', $trimmedReply)) {
+                // An explicit decline that just restates or negates the
+                // suggested place ("not doha", "no", "nope") must never be
+                // allowed to fall through to normal processing — the
+                // word-window scan the rest of this file relies on has no
+                // concept of negation, so "not doha" would otherwise get
+                // read as NAMING Doha (a real, known place), silently
+                // confirming the exact opposite of what the traveler said.
+                // Re-ask cleanly instead of risking that misread.
+                $this->awaitingSlot = $suggestionSlot ?? $this->awaitingSlot;
+                $this->missCount    = 0;
+                $this->aiPrompt     = '';
+                $this->messages[]   = ['role' => 'assistant', 'text' => $this->questionFor($suggestionSlot ?? 'destination', 0)];
+                $this->dispatch('message-added');
+                return;
             }
+        }
+
+        // Final "ready to generate?" confirmation, set below once every
+        // slot is filled. Intercepted here, before normal parsing, so a
+        // "yes"/"no" reply here never gets mis-read as an attempt to
+        // answer some other slot (same reasoning as the pendingPlaceSuggestion
+        // block above).
+        if ($this->awaitingSlot === 'confirmation') {
+            $trimmedReply = trim($userText);
+
+            if (preg_match('/^(?:yes|yeah|yep|yup|correct|right|sure|proceed|go ahead|thats right|that\'s right)\b/i', $trimmedReply)) {
+                $this->awaitingSlot = '';
+                $this->aiPrompt     = '';
+                $this->messages[]   = ['role' => 'assistant', 'text' => "Great! Let me put together your trip to {$this->aiTo}…"];
+                $this->dispatch('message-added');
+                $this->aiGenCount = 0;
+                $this->aiStep = 'loading';
+                $this->dispatch('ai-process-trip');
+                return;
+            }
+
+            // Anything other than a clear "yes" must not be silently
+            // treated as approval — no plan gets generated until the
+            // traveler actually confirms. /reset (handled at the very top
+            // of this method) is already the existing way to change any
+            // collected detail, so it's pointed to here rather than
+            // building a second, parallel edit-a-slot flow.
+            $this->aiPrompt   = '';
+            $this->messages[] = ['role' => 'assistant', 'text' =>
+                "No worries, take your time. Let me know when you're ready to proceed, or type /reset to start over with different details."];
+            $this->dispatch('message-added');
+            return;
         }
 
         if ($this->isGreetingOnly($userText)) {
@@ -378,12 +426,9 @@ class Llm extends Component
                     }
 
                     $this->missCount    = 0;
-                    $this->awaitingSlot = '';
-                    $this->messages[] = ['role' => 'assistant', 'text' => $reply . " Let's put together your trip there!"];
+                    $this->messages[] = ['role' => 'assistant', 'text' => $reply . ' ' . $this->confirmationSummary()];
+                    $this->awaitingSlot = 'confirmation';
                     $this->dispatch('message-added');
-                    $this->aiGenCount = 0;
-                    $this->aiStep = 'loading';
-                    $this->dispatch('ai-process-trip');
                     return;
                 }
 
@@ -499,12 +544,9 @@ class Llm extends Component
         }
 
         $this->missCount    = 0;
-        $this->awaitingSlot = '';
-        $this->messages[] = ['role' => 'assistant', 'text' => "Got it! Let me put together your trip to {$this->aiTo}…"];
+        $this->messages[] = ['role' => 'assistant', 'text' => 'Got it! ' . $this->confirmationSummary()];
+        $this->awaitingSlot = 'confirmation';
         $this->dispatch('message-added');
-        $this->aiGenCount = 0;
-        $this->aiStep = 'loading';
-        $this->dispatch('ai-process-trip');
     }
 
     private function resetConversation(): void
@@ -893,6 +935,26 @@ PROMPT;
         if ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0) return 'budget';
         if ($this->aiDateFrom === '' || $this->aiDateTo === '') return 'dates';
         return '';
+    }
+
+    // Shown once every required slot is filled, right before generation —
+    // lets the traveler catch a wrong detail before the (slow) actual
+    // trip-building work runs, rather than after. Budget is displayed in
+    // the traveler's own chosen currency, same as everywhere else this
+    // file shows money (displayAmount()), not always pesos.
+    private function confirmationSummary(): string
+    {
+        $budget = $this->aiBudgetMin === $this->aiBudgetMax
+            ? $this->displayAmount($this->aiBudgetMax)
+            : $this->displayAmount($this->aiBudgetMin) . ' - ' . $this->displayAmount($this->aiBudgetMax);
+
+        return "Here's what I've got so far:\n"
+            . "- From: {$this->aiFrom}\n"
+            . "- Destination: {$this->aiTo}\n"
+            . "- Travel dates: {$this->aiDateFrom} to {$this->aiDateTo}\n"
+            . "- Travelers: {$this->aiTravelers}\n"
+            . "- Budget: {$budget}\n\n"
+            . "Would you like me to proceed with this plan?";
     }
 
     private function questionFor(string $slot, int $missCount): string

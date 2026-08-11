@@ -12,10 +12,32 @@ class ReviewController extends Controller
     public function index(Request $request)
     {
         $query  = Review::with('user')->where('status', 'active')->latest();
+
         if ($request->filled('destination')) {
-            $query->where('destination', $request->destination);
+            // Reviews are written against DestinationCost's fixed, curated
+            // names ("Boracay"), but this page is also linked to from
+            // Moments, where a traveler can type ANY free-text place name
+            // ("Boracay Beach Sunset Spot") when pinning a photo. An exact
+            // match would silently show nothing for every Moment whose
+            // wording doesn't happen to match a DestinationCost entry
+            // verbatim. Matching in both directions — does the review's
+            // destination appear inside what was searched, or vice versa —
+            // catches both "search is more specific than the review" and
+            // "review is more specific than the search" without needing
+            // the two features to agree on a shared vocabulary.
+            $term = strtolower(trim($request->destination));
+            $query->where(function ($q) use ($term) {
+                $q->whereRaw('LOWER(destination) LIKE ?', ["%{$term}%"])
+                  ->orWhereRaw("? LIKE ('%' || LOWER(destination) || '%')", [$term]);
+            });
         }
-        $reviews      = $query->paginate(15)->withQueryString();
+
+        // withQueryString() would carry "write=1" into every pagination
+        // link too — since that param only means "auto-open the write
+        // modal on arrival", not a real filter, keeping it would make the
+        // modal pop back open every time the traveler pages through
+        // results after closing it once.
+        $reviews      = $query->paginate(15)->appends($request->except('write'));
         $destinations = DestinationCost::orderBy('destination')->pluck('destination')->unique()->values();
         return view('traveler.reviews.index', compact('reviews', 'destinations'));
     }
