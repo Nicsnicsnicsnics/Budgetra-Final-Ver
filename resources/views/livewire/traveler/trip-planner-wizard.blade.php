@@ -1,10 +1,10 @@
-<div>
+<div style="width:100%;display:flex;flex-direction:column;flex:1;">
 
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 1a — Have a trip code? (Manual Planning only, skippable)
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($planningMode === 'manual' && $step === 1 && !$manualCodeGateDone)
-<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 120px);padding:20px;">
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;flex:1;padding:20px;box-sizing:border-box;">
     <div style="width:100%;max-width:520px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:26px;padding:48px 44px;text-align:center;">
         <div style="width:72px;height:72px;border-radius:20px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
             <i class="fa-solid fa-key" style="font-size:28px;color:var(--primary);"></i>
@@ -37,7 +37,7 @@
 @php
 $localCities = [
     ['name'=>'Manila','code'=>'MNL'],['name'=>'Cebu City','code'=>'CEB'],['name'=>'Davao City','code'=>'DVO'],
-    ['name'=>'Boracay','code'=>'KLO'],['name'=>'Puerto Princesa','code'=>'PPS'],['name'=>'Tagbilaran (Bohol)','code'=>'TAG'],
+    ['name'=>'Boracay','code'=>'KLO'],['name'=>'Puerto Princesa','code'=>'PPS'],['name'=>'Tagbilaran','code'=>'TAG'],
     ['name'=>'Siargao','code'=>'IAO'],['name'=>'Iloilo City','code'=>'ILO'],['name'=>'Bacolod','code'=>'BCD'],
     ['name'=>'Zamboanga','code'=>'ZAM'],['name'=>'Cagayan de Oro','code'=>'CGY'],['name'=>'General Santos','code'=>'GES'],
     ['name'=>'Tacloban','code'=>'TAC'],['name'=>'Dumaguete','code'=>'DGT'],['name'=>'El Nido','code'=>'ENI'],
@@ -94,13 +94,7 @@ $allCities = array_merge(
 .pyt-budget-input::placeholder{color:#C4B8AC;font-weight:400;}
 </style>
 
-<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 24px;">
-
-    {{-- Title --}}
-    <div style="text-align:center;margin-bottom:20px;">
-        <h1 style="font-size:clamp(28px,3.6vw,36px);font-weight:800;color:var(--dark);margin:0 0 12px;">Trip Details</h1>
-        <p style="font-size:15px;color:var(--muted);line-height:1.6;max-width:520px;margin:0 auto;">Design your upcoming trip with your desired options, from origin and destination to start and end date.</p>
-    </div>
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 24px;min-height:100%;box-sizing:border-box;">
 
     {{-- Card --}}
     {{-- wire:key forces Livewire to treat this as a fresh element every time
@@ -108,7 +102,7 @@ $allCities = array_merge(
          possibly morph-reusing a stale DOM node and skipping Alpine's
          x-init — which is what actually re-seeds fromLabel/toLabel/dates/
          budget from the still-intact server-side values. --}}
-    <div wire:key="pyt-manual-card-{{ $step }}" x-data="pytManual()" x-init="init()"
+    <div wire:key="pyt-manual-card-{{ $step1VisitToken }}" x-data="pytManual()" x-init="init()"
          style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:24px;width:100%;max-width:720px;box-shadow:0 8px 36px rgba(45,27,20,.08);">
 
         <div style="padding:36px 36px 0;">
@@ -544,7 +538,7 @@ window.pytManual = function() {
 @php
 $localCities2 = [
     ['name'=>'Manila','code'=>'MNL'],['name'=>'Cebu City','code'=>'CEB'],['name'=>'Davao City','code'=>'DVO'],
-    ['name'=>'Boracay','code'=>'KLO'],['name'=>'Puerto Princesa','code'=>'PPS'],['name'=>'Tagbilaran (Bohol)','code'=>'TAG'],
+    ['name'=>'Boracay','code'=>'KLO'],['name'=>'Puerto Princesa','code'=>'PPS'],['name'=>'Tagbilaran','code'=>'TAG'],
     ['name'=>'Siargao','code'=>'IAO'],['name'=>'Iloilo City','code'=>'ILO'],['name'=>'Bacolod','code'=>'BCD'],
     ['name'=>'Zamboanga','code'=>'ZAM'],['name'=>'Cagayan de Oro','code'=>'CGY'],['name'=>'General Santos','code'=>'GES'],
     ['name'=>'Tacloban','code'=>'TAC'],['name'=>'Dumaguete','code'=>'DGT'],['name'=>'El Nido','code'=>'ENI'],
@@ -947,7 +941,7 @@ $allCities2 = array_merge(
              onmouseenter="this.style.boxShadow='0 10px 30px rgba(45,27,20,0.10)';this.style.transform='translateY(-2px)';this.style.borderColor='#E7D4C4'"
              onmouseleave="this.style.boxShadow='none';this.style.transform='none';this.style.borderColor='var(--border)'">
             @if(!empty($flight['bags']))
-            <div style="padding:7px 20px;font-size:11px;font-weight:600;color:#7B5C3A;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);">
+            <div style="padding:7px 20px;font-size:11px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);">
                 <i class="fa-solid fa-suitcase" style="font-size:10px;"></i> {{ $flight['bags'] }}
             </div>
             @endif
@@ -1009,7 +1003,7 @@ $allCities2 = array_merge(
              onmouseleave="this.style.boxShadow='none';this.style.transform='none';this.style.borderColor='var(--border)'">
             {{-- Baggage strip --}}
             @if(!empty($flight['bags']))
-            <div style="padding:7px 20px;font-size:11px;font-weight:600;color:#7B5C3A;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);">
+            <div style="padding:7px 20px;font-size:11px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);">
                 <i class="fa-solid fa-suitcase" style="font-size:10px;"></i> {{ $flight['bags'] }}
             </div>
             @endif
@@ -1538,7 +1532,7 @@ window.sortVenues = function(dir) {
                      style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:200;min-width:180px;overflow:hidden;">
                     @foreach(['All Cuisines','Filipino','Asian','International','Seafood','BBQ','Fast Food','Cafe','Bakery'] as $cat)
                     <button type="button" wire:click="$set('venueCategory', '{{ $cat }}')" @click="catOpen=false"
-                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;cursor:pointer;{{ $venueCategory === $cat ? 'color:var(--primary);font-weight:700;background:var(--primary-light);' : 'color:var(--dark);' }}">
+                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;{{ $venueCategory === $cat ? 'color:var(--primary);font-weight:700;background:var(--primary-light);' : 'color:var(--dark);' }}">
                         {{ $cat }}
                     </button>
                     @endforeach
@@ -1623,7 +1617,9 @@ window.sortVenues = function(dir) {
     @else
     <div id="venue-list" style="display:flex;flex-direction:column;gap:12px;">
         @foreach($venueResults as $vi => $venue)
-        <div class="venue-card" data-price="{{ $venue['priceMin'] ?? 0 }}">
+        @php $venueSelected = isset($selectedVenues[$venue['name']]); @endphp
+        <div class="venue-card" data-price="{{ $venue['priceMin'] ?? 0 }}"
+             style="{{ $venueSelected ? 'border-color:var(--primary);box-shadow:0 0 0 1.5px var(--primary);' : '' }}">
             @if(!empty($venue['image']))
             <img src="{{ $venue['image'] }}" alt="{{ $venue['name'] }}" class="venue-img">
             @else
@@ -1650,15 +1646,30 @@ window.sortVenues = function(dir) {
                 </div>
             </div>
             <div class="venue-action">
-                <button wire:click="selectVenue({{ $vi }})" wire:loading.attr="disabled" wire:target="selectVenue({{ $vi }})"
-                        style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;"
-                        onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
-                    <span wire:loading.remove wire:target="selectVenue({{ $vi }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
-                    <span wire:loading wire:target="selectVenue({{ $vi }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                <button wire:click="toggleVenue({{ $vi }})" wire:loading.attr="disabled" wire:target="toggleVenue({{ $vi }})"
+                        style="background:{{ $venueSelected ? '#fff' : 'var(--primary)' }};color:{{ $venueSelected ? 'var(--primary)' : '#fff' }};border:1.5px solid var(--primary);border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;">
+                    <span wire:loading.remove wire:target="toggleVenue({{ $vi }})">
+                        @if($venueSelected)
+                            <i class="fa-solid fa-check"></i> Selected
+                        @else
+                            Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i>
+                        @endif
+                    </span>
+                    <span wire:loading wire:target="toggleVenue({{ $vi }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
                 </button>
             </div>
         </div>
         @endforeach
+    </div>
+    <div style="height:64px;"></div>
+    <div style="position:fixed;bottom:24px;right:32px;z-index:200;">
+        <button wire:click="continueFromVenues" wire:loading.attr="disabled" wire:target="continueFromVenues"
+                style="background:var(--primary);color:#fff;border:none;border-radius:30px;padding:14px 28px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);">
+            <span wire:loading.remove wire:target="continueFromVenues">
+                Continue{{ count($selectedVenues) ? ' (' . count($selectedVenues) . ' selected)' : '' }} <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>
+            </span>
+            <span wire:loading wire:target="continueFromVenues"><i class="fa-solid fa-spinner fa-spin"></i></span>
+        </button>
     </div>
     @endif
 
@@ -1681,7 +1692,8 @@ window.sortVenues = function(dir) {
     @else
     <div id="mc-venue-list" style="display:flex;flex-direction:column;gap:12px;">
         @foreach($mcVenueResults as $vi => $venue)
-        <div class="venue-card">
+        @php $mcVenueSelected = isset($selectedMcVenues[$venue['name']]); @endphp
+        <div class="venue-card" style="{{ $mcVenueSelected ? 'border-color:var(--primary);box-shadow:0 0 0 1.5px var(--primary);' : '' }}">
             @if(!empty($venue['image']))
             <img src="{{ $venue['image'] }}" alt="{{ $venue['name'] }}" class="venue-img">
             @else
@@ -1708,15 +1720,30 @@ window.sortVenues = function(dir) {
                 </div>
             </div>
             <div class="venue-action">
-                <button wire:click="selectVenue({{ $vi }})" wire:loading.attr="disabled" wire:target="selectVenue({{ $vi }})"
-                        style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;"
-                        onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
-                    <span wire:loading.remove wire:target="selectVenue({{ $vi }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
-                    <span wire:loading wire:target="selectVenue({{ $vi }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                <button wire:click="toggleVenue({{ $vi }})" wire:loading.attr="disabled" wire:target="toggleVenue({{ $vi }})"
+                        style="background:{{ $mcVenueSelected ? '#fff' : 'var(--primary)' }};color:{{ $mcVenueSelected ? 'var(--primary)' : '#fff' }};border:1.5px solid var(--primary);border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;">
+                    <span wire:loading.remove wire:target="toggleVenue({{ $vi }})">
+                        @if($mcVenueSelected)
+                            <i class="fa-solid fa-check"></i> Selected
+                        @else
+                            Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i>
+                        @endif
+                    </span>
+                    <span wire:loading wire:target="toggleVenue({{ $vi }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
                 </button>
             </div>
         </div>
         @endforeach
+    </div>
+    <div style="height:64px;"></div>
+    <div style="position:fixed;bottom:24px;right:32px;z-index:200;">
+        <button wire:click="continueFromVenues" wire:loading.attr="disabled" wire:target="continueFromVenues"
+                style="background:var(--primary);color:#fff;border:none;border-radius:30px;padding:14px 28px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);">
+            <span wire:loading.remove wire:target="continueFromVenues">
+                Continue{{ count($selectedMcVenues) ? ' (' . count($selectedMcVenues) . ' selected)' : '' }} <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>
+            </span>
+            <span wire:loading wire:target="continueFromVenues"><i class="fa-solid fa-spinner fa-spin"></i></span>
+        </button>
     </div>
     @endif
     @endif
@@ -1791,7 +1818,7 @@ window.sortVenues = function(dir) {
                      style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:200;min-width:180px;overflow:hidden;">
                     @foreach(['All Attractions','Religious','Historical','Nature','Theme Park','Beach','Museum','Shopping'] as $t)
                     <button type="button" wire:click="$set('attractionType', '{{ $t }}')" @click="typeOpen=false"
-                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;cursor:pointer;{{ $attractionType === $t ? 'color:var(--primary);font-weight:700;background:var(--primary-light);' : 'color:var(--dark);' }}">
+                            style="width:100%;text-align:left;padding:11px 16px;border:none;background:none;font-size:13px;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;{{ $attractionType === $t ? 'color:var(--primary);font-weight:700;background:var(--primary-light);' : 'color:var(--dark);' }}">
                         {{ $t }}
                     </button>
                     @endforeach
@@ -1870,10 +1897,15 @@ window.sortVenues = function(dir) {
         <p style="color:var(--muted);font-size:15px;margin:0;">{{ $attractionError ?: 'No attractions found. Try searching above.' }}</p>
     </div>
     @else
+    @php $activeSelectedAttractions = $mcAttractionStep ? $selectedMcAttractions : $selectedAttractions; @endphp
     <div style="display:flex;flex-direction:column;gap:12px;">
         @foreach($activeAttractions as $ai => $attr)
-        @php $attrPriceSort = (int) preg_replace('/[^\d]/', '', $attr['price'] ?? '0'); @endphp
-        <div class="attr-card" data-price="{{ $attrPriceSort }}">
+        @php
+            $attrPriceSort  = (int) preg_replace('/[^\d]/', '', $attr['price'] ?? '0');
+            $attrSelected   = isset($activeSelectedAttractions[$attr['name']]);
+        @endphp
+        <div class="attr-card" data-price="{{ $attrPriceSort }}"
+             style="{{ $attrSelected ? 'border-color:var(--primary);box-shadow:0 0 0 1.5px var(--primary);' : '' }}">
             @if(!empty($attr['image']))
             <img src="{{ $attr['image'] }}" alt="{{ $attr['name'] }}" class="attr-img">
             @else
@@ -1913,15 +1945,30 @@ window.sortVenues = function(dir) {
                 </div>
             </div>
             <div class="attr-action">
-                <button wire:click="selectAttraction({{ $ai }})" wire:loading.attr="disabled" wire:target="selectAttraction({{ $ai }})"
-                        style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;"
-                        onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
-                    <span wire:loading.remove wire:target="selectAttraction({{ $ai }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
-                    <span wire:loading wire:target="selectAttraction({{ $ai }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                <button wire:click="toggleAttraction({{ $ai }})" wire:loading.attr="disabled" wire:target="toggleAttraction({{ $ai }})"
+                        style="background:{{ $attrSelected ? '#fff' : 'var(--primary)' }};color:{{ $attrSelected ? 'var(--primary)' : '#fff' }};border:1.5px solid var(--primary);border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;">
+                    <span wire:loading.remove wire:target="toggleAttraction({{ $ai }})">
+                        @if($attrSelected)
+                            <i class="fa-solid fa-check"></i> Selected
+                        @else
+                            Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i>
+                        @endif
+                    </span>
+                    <span wire:loading wire:target="toggleAttraction({{ $ai }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
                 </button>
             </div>
         </div>
         @endforeach
+    </div>
+    <div style="height:64px;"></div>
+    <div style="position:fixed;bottom:24px;right:32px;z-index:200;">
+        <button wire:click="continueFromAttractions" wire:loading.attr="disabled" wire:target="continueFromAttractions"
+                style="background:var(--primary);color:#fff;border:none;border-radius:30px;padding:14px 28px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);">
+            <span wire:loading.remove wire:target="continueFromAttractions">
+                Continue{{ count($activeSelectedAttractions) ? ' (' . count($activeSelectedAttractions) . ' selected)' : '' }} <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>
+            </span>
+            <span wire:loading wire:target="continueFromAttractions"><i class="fa-solid fa-spinner fa-spin"></i></span>
+        </button>
     </div>
     @endif
 
@@ -2334,12 +2381,12 @@ window.sortAttractions = function(dir) {
 /* Top bar */
 .itin8-topbar{background:transparent;border:none;padding:0;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .itin8-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
-.itin8-tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:#4f4441;line-height:16px;}
+.itin8-tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:var(--muted);line-height:16px;}
 .itin8-tag i{font-size:9px;color:var(--muted);}
 .itin8-left{flex:1;min-width:0;}
 .itin8-right{flex-shrink:0;width:340px;}
 .itin8-cost-card{background:var(--bg-white);background-clip:padding-box;border:1px solid var(--border);border-radius:14px;overflow:hidden;padding:12px 16px;box-shadow:0 2px 8px rgba(45,27,20,0.08);text-align:right;width:100%;box-sizing:border-box;isolation:isolate;}
-.itin8-cost-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#4f4441;margin-bottom:6px;line-height:16px;}
+.itin8-cost-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px;line-height:16px;}
 .itin8-budget-status{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:16px;padding:2px 10px;border-radius:99px;margin-bottom:6px;}
 .itin8-budget-status.under{background:#FEF3C7;color:#b07e00;}
 .itin8-budget-status.over{background:#FEE2E2;color:#ba1a1a;}
@@ -2351,7 +2398,7 @@ window.sortAttractions = function(dir) {
 .itin8-btn-ghost:hover{background:var(--bg);border-color:#D9C4AE;}
 .itin8-btn-save{background:var(--primary);color:#ffffff;border:none;border-radius:9px;padding:8px 18px;font-size:12px;font-weight:700;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:16px;transition:background .18s;}
 .itin8-btn-save:hover{background:var(--primary-dark);}
-.itin8-desc{font-size:14px;font-weight:400;color:#4f4441;line-height:20px;margin:0;}
+.itin8-desc{font-size:14px;font-weight:400;color:var(--muted);line-height:20px;margin:0;}
 
 /* Day sections — stacked vertically, one below another */
 .itin8-days{display:flex;flex-direction:column;gap:18px;padding-bottom:20px;}
@@ -2372,11 +2419,11 @@ window.sortAttractions = function(dir) {
 .itin8-act-time{font-size:11px;font-weight:600;color:var(--muted);line-height:16px;}
 .itin8-act-body{margin-bottom:8px;}
 .itin8-act-title{font-size:14px;font-weight:700;color:var(--dark);line-height:19px;margin-bottom:3px;}
-.itin8-act-sub{font-size:12px;font-weight:400;color:#4f4441;line-height:17px;font-style:italic;}
+.itin8-act-sub{font-size:12px;font-weight:400;color:var(--muted);line-height:17px;font-style:italic;}
 .itin8-act-footer{border-top:1px solid #ece2d8;padding-top:8px;display:flex;align-items:center;justify-content:space-between;}
 .itin8-act-cost-label{font-size:11px;color:var(--muted);font-weight:500;}
 .itin8-act-cost-val{font-size:13px;font-weight:700;color:var(--primary);}
-.itin8-loading{display:flex;align-items:center;gap:10px;padding:32px 0;color:#4f4441;font-size:14px;}
+.itin8-loading{display:flex;align-items:center;gap:10px;padding:32px 0;color:var(--muted);font-size:14px;}
 .material-symbols-outlined{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;}
 </style>
 
@@ -2550,7 +2597,7 @@ window.sortAttractions = function(dir) {
         @endphp
         <div wire:click="selectItineraryOption({{ $optIdx }})"
              style="cursor:pointer;border-radius:18px;padding:22px 20px;display:flex;flex-direction:column;min-height:420px;overflow-y:auto;transition:box-shadow .2s,transform .2s;
-                    {{ $optActive ? 'background:#FDF3EB;border:1.5px solid var(--primary);' : 'background:var(--bg-white);border:1.5px solid var(--border);' }}"
+                    {{ $optActive ? 'background:var(--primary-light);border:1.5px solid var(--primary);' : 'background:var(--bg-white);border:1.5px solid var(--border);' }}"
              onmouseenter="if(!{{ $optActive ? 'true' : 'false' }}){this.style.boxShadow='0 10px 28px rgba(45,27,20,0.10)';this.style.transform='translateY(-2px)';}"
              onmouseleave="if(!{{ $optActive ? 'true' : 'false' }}){this.style.boxShadow='none';this.style.transform='none';}">
 
@@ -2569,7 +2616,7 @@ window.sortAttractions = function(dir) {
             <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Your Selections</div>
             <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
                 @foreach($selCardsWithPicks as $sc8)
-                <div style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#4f4441;line-height:1.4;">
+                <div style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--muted);line-height:1.4;">
                     <i class="fa-solid fa-check" style="color:#22C55E;font-size:10px;margin-top:3px;flex-shrink:0;"></i>
                     <span>{{ $sc8['title'] }}</span>
                 </div>
@@ -2586,7 +2633,7 @@ window.sortAttractions = function(dir) {
                     $dpNum   = $dpItem['day'] ?? ($loop->iteration);
                     $dpLabel = $dpItem['label'] ?? ('Day ' . $dpNum);
                 @endphp
-                <div style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#4f4441;line-height:1.4;">
+                <div style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--muted);line-height:1.4;">
                     <i class="fa-solid fa-sparkles" style="color:var(--primary);font-size:10px;margin-top:3px;flex-shrink:0;"></i>
                     <span><strong style="color:var(--dark);">Day {{ $dpNum }}:</strong> {{ $dpLabel }}</span>
                 </div>
@@ -2819,22 +2866,25 @@ window.sortAttractions = function(dir) {
     $s9picks = [];
     if ($selectedFlight)      $s9picks[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedFlight['airline']??'').' '.($selectedFlight['number']??''),  'cost'=>$s9flightBase1, 'editStep'=>2, 'color'=>'#3B82F6'];
     if ($selectedHotel)       $s9picks[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedHotel['name']??'Hotel',                                      'cost'=>$s9hotelBase1,  'editStep'=>3, 'color'=>'#0D9488'];
-    foreach ($selectedVenues as $sv9) {
-        $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>$sv9['name']??'Restaurant', 'cost'=>(float)($sv9['priceMax']??$sv9['priceMin']??0), 'editStep'=>4, 'color'=>'#EF4444'];
+    // Multi-select: several venues/attractions can be chosen for one leg —
+    // combined into a single Selection Summary row (comma-joined names,
+    // summed price) instead of one duplicated row per pick.
+    if (!empty($selectedVenues)) {
+        $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>implode(', ', array_map(fn($v) => $v['name'] ?? 'Restaurant', $selectedVenues)), 'cost'=>$s9venueBase1, 'editStep'=>4, 'color'=>'#EF4444'];
     }
-    foreach ($selectedAttractions as $sa9) {
-        $s9picks[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>$sa9['name']??'Attraction', 'cost'=>($sa9['isFree']??false)?0:(int)preg_replace('/[^\d]/','',$sa9['price']??'0'), 'editStep'=>5, 'color'=>'#10B981'];
+    if (!empty($selectedAttractions)) {
+        $s9picks[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>implode(', ', array_map(fn($a) => $a['name'] ?? 'Attraction', $selectedAttractions)), 'cost'=>$s9attrBase1, 'editStep'=>5, 'color'=>'#10B981'];
     }
 
     $s9picksLeg2 = [];
     if ($s9isMultiCity) {
         if ($selectedMcFlight)     $s9picksLeg2[] = ['icon'=>'fa-plane',    'label'=>'Flight',         'val'=>($selectedMcFlight['airline']??'').' '.($selectedMcFlight['number']??''), 'cost'=>$s9flightBase2, 'editStep'=>2, 'color'=>'#3B82F6'];
         if ($selectedMcHotel)      $s9picksLeg2[] = ['icon'=>'fa-bed',      'label'=>'Accommodation',  'val'=>$selectedMcHotel['name']??'Hotel',                                         'cost'=>$s9hotelBase2,  'editStep'=>3, 'color'=>'#0D9488'];
-        foreach ($selectedMcVenues as $sv9b) {
-            $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>$sv9b['name']??'Restaurant', 'cost'=>(float)($sv9b['priceMax']??$sv9b['priceMin']??0), 'editStep'=>4, 'color'=>'#EF4444'];
+        if (!empty($selectedMcVenues)) {
+            $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>implode(', ', array_map(fn($v) => $v['name'] ?? 'Restaurant', $selectedMcVenues)), 'cost'=>$s9venueBase2, 'editStep'=>4, 'color'=>'#EF4444'];
         }
-        foreach ($selectedMcAttractions as $sa9b) {
-            $s9picksLeg2[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>$sa9b['name']??'Attraction', 'cost'=>($sa9b['isFree']??false)?0:(int)preg_replace('/[^\d]/','',$sa9b['price']??'0'), 'editStep'=>5, 'color'=>'#10B981'];
+        if (!empty($selectedMcAttractions)) {
+            $s9picksLeg2[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>implode(', ', array_map(fn($a) => $a['name'] ?? 'Attraction', $selectedMcAttractions)), 'cost'=>$s9attrBase2, 'editStep'=>5, 'color'=>'#10B981'];
         }
     }
 
@@ -3127,12 +3177,12 @@ window.sortAttractions = function(dir) {
      EMPTY STATE — no trips yet
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($showEmpty && !auth()->user()?->userProfile)
-<div class="empty-state-center" style="min-height:80vh;">
+<div class="empty-state-center" style="width:100%;min-height:calc(100vh - 120px);">
     <div style="width:64px;height:64px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
         <i class="fa-solid fa-map-location-dot" style="font-size:28px;color:#fff;"></i>
     </div>
     <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">Set up your profile first</h2>
-    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile so we can tailor budget suggestions before you plan your first trip.</p>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile before planning your trip and view estimations for your trips.</p>
     <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
         <i class="fa-solid fa-user"></i> Set Up Your Profile First
     </a>
@@ -3159,14 +3209,9 @@ window.sortAttractions = function(dir) {
 .mode-cta{font-size:13px;font-weight:800;letter-spacing:0.4px;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--primary);border-radius:12px;padding:13px 22px;width:100%;box-sizing:border-box;transition:background .2s,gap .2s;}
 .mode-card:hover .mode-cta{background:var(--primary-dark);gap:11px;}
 </style>
-<div style="display:flex;flex-direction:column;align-items:center;padding:16px 32px 20px;height:100%;box-sizing:border-box;position:relative;">
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 32px 20px;height:100%;box-sizing:border-box;position:relative;">
 
-    <h1 style="font-size:clamp(22px,2.6vw,28px);font-weight:800;color:var(--dark);margin:0 0 6px;text-align:center;flex-shrink:0;">Start Your Next Journey</h1>
-    <p style="font-size:13px;color:var(--muted);text-align:center;max-width:480px;line-height:1.4;margin:0 0 18px;flex-shrink:0;">
-        Choose your preferred method to plan your next travel with Budgetra's planning tools.
-    </p>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:32px;width:100%;max-width:1100px;flex:1;min-height:0;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:32px;width:100%;max-width:1100px;">
 
         {{-- Manual Planning --}}
         <div wire:click="selectPlanningMode('manual')" class="mode-card">

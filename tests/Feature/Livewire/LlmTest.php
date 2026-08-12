@@ -182,4 +182,69 @@ class LlmTest extends TestCase
             ->set('viewingHistoryId', $entry->id)
             ->assertDontSee("Owner's private trip idea");
     }
+
+    private function withAllSlotsFilled(\Livewire\Features\SupportTesting\Testable $component): \Livewire\Features\SupportTesting\Testable
+    {
+        return $component
+            ->set('aiFrom', 'Manila')
+            ->set('aiTo', 'Boracay')
+            ->set('aiTravelers', 2)
+            ->set('aiBudgetMin', 30000)
+            ->set('aiBudgetMax', 30000)
+            ->set('aiDateFrom', 'Aug 3')
+            ->set('aiDateTo', 'Aug 10, 2026');
+    }
+
+    // The core of this feature: once every slot is filled, the very next
+    // message must show a summary + confirmation question instead of
+    // immediately kicking off generation.
+    public function test_confirmation_summary_shown_once_all_slots_are_filled(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->assertSet('awaitingSlot', 'confirmation');
+        $component->assertSet('aiStep', ''); // NOT 'loading' — generation must not have started
+        $lastMessage = collect($component->get('messages'))->last();
+        $this->assertSame('assistant', $lastMessage['role']);
+        $this->assertStringContainsString('Manila', $lastMessage['text']); // origin, not just the destination
+        $this->assertStringContainsString('Boracay', $lastMessage['text']);
+        $this->assertStringContainsString('Would you like me to proceed with this plan?', $lastMessage['text']);
+    }
+
+    public function test_confirming_the_plan_starts_generation(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'yes')->call('automateTrip');
+
+        $component->assertSet('awaitingSlot', '');
+        $component->assertSet('aiStep', 'loading');
+    }
+
+    // Declining (or anything that isn't a clear "yes") must never be
+    // silently treated as approval — no plan should be generated, and the
+    // conversation should still be waiting for an actual confirmation.
+    public function test_declining_the_plan_does_not_start_generation(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'no')->call('automateTrip');
+
+        $component->assertSet('awaitingSlot', 'confirmation');
+        $component->assertSet('aiStep', '');
+        $lastMessage = collect($component->get('messages'))->last();
+        $this->assertStringContainsString('/reset', $lastMessage['text']);
+    }
 }

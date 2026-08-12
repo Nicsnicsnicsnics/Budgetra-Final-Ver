@@ -26,6 +26,7 @@ class UserController extends Controller
 
     public function index(Request $request)
     {
+<<<<<<< HEAD
         $active = 'users';
         $users = $this->filteredQuery($request)->latest()->paginate(25)->withQueryString();
 
@@ -62,6 +63,22 @@ class UserController extends Controller
             }
             fclose($out);
         }, $filename, $headers);
+=======
+        $query = User::withCount('trips');
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(fn($q) => $q->where('full_name', 'like', "%$s%")->orWhere('email', 'like', "%$s%"));
+        }
+        if ($request->filled('role')) {
+            $query->where('role', $request->role);
+        }
+        $users = $query->latest()->paginate(25)->withQueryString();
+
+        $totalActiveUsers = User::where('role', '!=', 'banned')->count();
+        $tripsThisMonth   = Trip::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count();
+
+        return view('admin.users.index', compact('users', 'totalActiveUsers', 'tripsThisMonth'));
+>>>>>>> 537609b8368acc8725e027fe8e60d1600528fadc
     }
 
     public function show(User $user)

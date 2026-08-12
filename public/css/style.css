@@ -900,7 +900,7 @@ body.dashboard-body {
   justify-content: center;
 }
 .sidebar-collapsed .sidebar-link i { font-size: 17px; }
-.sidebar-collapsed .sidebar-brand { display: none; }
+.sidebar-collapsed .sidebar-brand { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; margin-top: 26px; }
 .sidebar-collapsed .sidebar-link {
   justify-content: center; padding: 11px 0; margin-bottom: 0; gap: 0;
 }

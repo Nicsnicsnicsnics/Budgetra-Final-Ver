@@ -75,7 +75,7 @@
     @if (!auth()->user()?->userProfile)
     <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;">Set up your profile first</h2>
     <p class="text-muted" style="margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile before planning a trip and logging expenses.</p>
-    <a href="{{ route('profile.setup') }}" class="btn btn-primary btn-lg">
+    <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
         <i class="fa-solid fa-user"></i> Set Up Your Profile First
     </a>
     @else
@@ -197,9 +197,9 @@
     </div></div>
 
     {{-- Transactions --}}
-    <div class="card" style="overflow:hidden;">
+    <div class="card" style="overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;{{ (!$selectedTrip || $expenses->isEmpty()) ? 'min-height:calc(100vh - 260px);' : '' }}">
         @if (!$selectedTrip || $expenses->isEmpty())
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:64px 24px;text-align:center;">
+        <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;">
             <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
                 <i class="fa-solid fa-receipt" style="font-size:24px;color:var(--primary);"></i>
             </div>

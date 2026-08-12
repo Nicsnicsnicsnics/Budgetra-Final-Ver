@@ -2,12 +2,47 @@
 @section('title', 'Dashboard')
 @section('content')
 
+@if ($trips->isEmpty() && !auth()->user()?->userProfile)
+{{-- Empty state: brand-new user with no profile set up yet — matches the
+     other empty-state icon blocks' style/spacing exactly, no card wrapper. --}}
+<div class="empty-state-center" style="min-height:80vh;">
+    <div style="width:64px;height:64px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+        <i class="fa-solid fa-house" style="font-size:28px;color:#fff;"></i>
+    </div>
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">Set up your profile first</h2>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile before planning a trip and view trip statistics.</p>
+    <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+        <i class="fa-solid fa-user"></i> Set Up Your Profile First
+    </a>
+</div>
+@else
+
+@if ($trips->isEmpty())
+{{-- Empty state: profile is set up, but no trips yet — no header, no stat
+     cards, just the standard empty-state block used across the app. --}}
+<div class="empty-state-center" style="min-height:80vh;">
+    <div style="width:64px;height:64px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+        <i class="fa-solid fa-house" style="font-size:28px;color:#fff;"></i>
+    </div>
+    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">No trips yet</h2>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Plan a trip first to see your trip statistics.</p>
+    <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
+        <i class="fa-solid fa-plane"></i> Plan Your First Trip
+    </a>
+</div>
+@else
+
 {{-- Header --}}
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
     <div>
         <h1>Dashboard</h1>
         <p class="text-muted">Welcome back, {{ auth()->user()?->full_name ?? '' }}!</p>
     </div>
+    <a href="{{ route('dashboard.report') }}"
+       style="display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;border-radius:10px;padding:11px 20px;font-size:13px;font-weight:700;text-decoration:none;transition:background .18s;"
+       onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
+        <i class="fa-solid fa-file-arrow-down"></i> Download Report
+    </a>
 </div>
 
 {{-- Aggregate stat cards --}}
@@ -31,28 +66,6 @@
         <div class="stat-sub">Across all trips</div>
     </div>
 </div>
-
-@if ($trips->isEmpty())
-{{-- Empty state for brand-new users with no trips yet --}}
-<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:50vh;">
-    <div style="width:64px;height:64px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
-        <i class="fa-solid fa-plane" style="font-size:28px;color:#fff;"></i>
-    </div>
-    @if (!auth()->user()?->userProfile)
-    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">Let's get you set up</h2>
-    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Complete your travel profile so we can tailor budget suggestions before you plan your first trip.</p>
-    <a href="{{ route('profile.setup') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
-        <i class="fa-solid fa-user"></i> Set Up Your Profile First
-    </a>
-    @else
-    <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">No trips yet</h2>
-    <p style="color:var(--muted);margin-bottom:28px;font-size:14px;max-width:320px;line-height:1.6;">Your profile is all set! Plan your first trip to start tracking your budget and itinerary.</p>
-    <a href="{{ route('trips.plan') }}" style="display:inline-flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;">
-        <i class="fa-solid fa-plane"></i> Plan Your First Trip
-    </a>
-    @endif
-</div>
-@else
 
 {{-- Charts row --}}
 <div style="display:grid;grid-template-columns:minmax(280px,1fr) minmax(340px,1.6fr);gap:16px;margin-bottom:14px;align-items:stretch;">
@@ -151,6 +164,8 @@
         @endforeach
     </div>
 </div>
+@endif
+
 @endif
 
 @endif

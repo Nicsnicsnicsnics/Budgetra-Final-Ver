@@ -56,6 +56,27 @@ class Llm extends Component
     // $ambiguityNotice above.
     private ?string $unsupportedCurrencyNotice = null;
 
+    // Set inside matchKnownPlace() when the traveler's text is CLOSE to
+    // (but not exactly) a known place — a likely typo/spacing slip ("pa la
+    // wan" for "Palawan") rather than something to just guess at silently.
+    // Never auto-accepted; automateTrip() turns this into a "did you mean
+    // X?" question the traveler has to actually confirm — on their NEXT
+    // message, which is a separate HTTP request/Livewire lifecycle, not
+    // just a later line in the same method call. MUST be public (unlike
+    // $placeVerificationFailed and the other same-request-only notices):
+    // a private property doesn't survive to the next request at all, so a
+    // "yes" reply would find this back at null and silently fail to
+    // confirm anything — confirmed live, not just a theoretical risk.
+    public ?string $pendingPlaceSuggestion = null;
+
+    // Which slot ($pendingPlaceSuggestion above) the suggestion is actually
+    // for — 'destination'|'origin'|null. Prevents a stale suggestion
+    // generated for one slot from being misattributed to a different
+    // slot's question if that first slot gets independently resolved by a
+    // different path later in the same turn. Public for the same
+    // cross-request reason as $pendingPlaceSuggestion above.
+    public ?string $pendingPlaceSuggestionSlot = null;
+
     private array $aiPlaceCache = [];
 
     // Set inside aiPlaceFallback() specifically when every AI provider
@@ -65,6 +86,18 @@ class Llm extends Component
     // without loosening the actual accept/reject gate itself. Reset at the
     // top of every turn in automateTrip().
     private bool $placeVerificationFailed = false;
+
+    // Which slot the above flag actually applies to — a message can
+    // trigger MULTIPLE resolution attempts for the same slot within one
+    // turn (regex pass, then extractWithAi()'s own AI-based pass), and an
+    // EARLIER attempt hitting a provider outage must not still show "having
+    // trouble verifying" if a LATER attempt in that same turn went on to
+    // resolve the slot successfully anyway — confirmed live: "Palawan"
+    // resolved correctly but the stale failure flag from an earlier
+    // sub-attempt still showed the outage message. Checked against
+    // whatever's still actually missing, same pattern as
+    // $pendingPlaceSuggestionSlot.
+    private ?string $placeVerificationFailedSlot = null;
 
     public bool $aiBudgetIsDaily = false;
 
@@ -213,6 +246,7 @@ class Llm extends Component
 
         $previouslyAwaiting = $this->awaitingSlot;
         $this->placeVerificationFailed = false;
+        $this->placeVerificationFailedSlot = null;
 
         $this->messages[] = ['role' => 'user', 'text' => $userText];
 
@@ -225,6 +259,76 @@ class Llm extends Component
             }
 
             $this->aiDestinationChoices = [];
+        }
+
+        // Confirming (or declining) a "did you mean X?" suggestion from
+        // last turn — applied to whichever slot was awaiting an answer
+        // then (destination or origin), the same slot the suggestion was
+        // generated for. A "no" or anything else just drops the
+        // suggestion and lets the message fall through to normal
+        // processing, same as answering the original question fresh.
+        if ($this->pendingPlaceSuggestion !== null) {
+            $suggestion = $this->pendingPlaceSuggestion;
+            $suggestionSlot = $this->pendingPlaceSuggestionSlot;
+            $this->pendingPlaceSuggestion = null;
+            $this->pendingPlaceSuggestionSlot = null;
+            $trimmedReply = trim($userText);
+
+            if (preg_match('/^(?:yes|yeah|yep|yup|correct|right|sure|thats right|that\'s right)\b/i', $trimmedReply)) {
+                if ($suggestionSlot === 'destination' && $this->aiTo === '') {
+                    $this->aiTo = $suggestion;
+                } elseif ($suggestionSlot === 'origin' && $this->aiFrom === '') {
+                    $this->aiFrom = $suggestion;
+                }
+                $this->aiPrompt = '';
+            } elseif (preg_match('/^(?:no|nope|nah|not|negative|wrong|incorrect)\b/i', $trimmedReply)) {
+                // An explicit decline that just restates or negates the
+                // suggested place ("not doha", "no", "nope") must never be
+                // allowed to fall through to normal processing — the
+                // word-window scan the rest of this file relies on has no
+                // concept of negation, so "not doha" would otherwise get
+                // read as NAMING Doha (a real, known place), silently
+                // confirming the exact opposite of what the traveler said.
+                // Re-ask cleanly instead of risking that misread.
+                $this->awaitingSlot = $suggestionSlot ?? $this->awaitingSlot;
+                $this->missCount    = 0;
+                $this->aiPrompt     = '';
+                $this->messages[]   = ['role' => 'assistant', 'text' => $this->questionFor($suggestionSlot ?? 'destination', 0)];
+                $this->dispatch('message-added');
+                return;
+            }
+        }
+
+        // Final "ready to generate?" confirmation, set below once every
+        // slot is filled. Intercepted here, before normal parsing, so a
+        // "yes"/"no" reply here never gets mis-read as an attempt to
+        // answer some other slot (same reasoning as the pendingPlaceSuggestion
+        // block above).
+        if ($this->awaitingSlot === 'confirmation') {
+            $trimmedReply = trim($userText);
+
+            if (preg_match('/^(?:yes|yeah|yep|yup|correct|right|sure|proceed|go ahead|thats right|that\'s right)\b/i', $trimmedReply)) {
+                $this->awaitingSlot = '';
+                $this->aiPrompt     = '';
+                $this->messages[]   = ['role' => 'assistant', 'text' => "Great! Let me put together your trip to {$this->aiTo}…"];
+                $this->dispatch('message-added');
+                $this->aiGenCount = 0;
+                $this->aiStep = 'loading';
+                $this->dispatch('ai-process-trip');
+                return;
+            }
+
+            // Anything other than a clear "yes" must not be silently
+            // treated as approval — no plan gets generated until the
+            // traveler actually confirms. /reset (handled at the very top
+            // of this method) is already the existing way to change any
+            // collected detail, so it's pointed to here rather than
+            // building a second, parallel edit-a-slot flow.
+            $this->aiPrompt   = '';
+            $this->messages[] = ['role' => 'assistant', 'text' =>
+                "No worries, take your time. Let me know when you're ready to proceed, or type /reset to start over with different details."];
+            $this->dispatch('message-added');
+            return;
         }
 
         if ($this->isGreetingOnly($userText)) {
@@ -296,7 +400,7 @@ class Llm extends Component
 
         if ($this->aiTo === '' && $this->isRecommendationRequest($userText)) {
 
-            $namedPlace = $this->knownPlaceName($this->cleanCityName($userText));
+            $namedPlace = $this->knownPlaceName($this->cleanCityName($userText), 'destination');
             if ($namedPlace !== '' && $this->aiFrom !== '' && strtolower($namedPlace) === strtolower($this->aiFrom)) {
                 $namedPlace = '';
             }
@@ -322,12 +426,9 @@ class Llm extends Component
                     }
 
                     $this->missCount    = 0;
-                    $this->awaitingSlot = '';
-                    $this->messages[] = ['role' => 'assistant', 'text' => $reply . " Let's put together your trip there!"];
+                    $this->messages[] = ['role' => 'assistant', 'text' => $reply . ' ' . $this->confirmationSummary()];
+                    $this->awaitingSlot = 'confirmation';
                     $this->dispatch('message-added');
-                    $this->aiGenCount = 0;
-                    $this->aiStep = 'loading';
-                    $this->dispatch('ai-process-trip');
                     return;
                 }
 
@@ -392,14 +493,28 @@ class Llm extends Component
             };
             $this->awaitingSlot = $stillMissing;
 
-            // A place-verification service outage means we genuinely never
-            // found out whether what the traveler typed is real — telling
-            // them "I didn't catch that" would wrongly imply THEY got it
-            // wrong, when it's on us. Only overrides destination/origin,
-            // the only slots aiPlaceFallback() is ever involved in.
-            $reply = ($this->placeVerificationFailed && in_array($stillMissing, ['destination', 'origin'], true))
-                ? "I'm having trouble verifying that place right now — could you try again in a moment, or double-check the spelling?"
-                : $this->questionFor($stillMissing, $this->missCount);
+            // A close-but-not-exact match against a known place ("pa la
+            // wan" for "Palawan") gets asked about directly, ahead of
+            // everything else below — it's a much more specific, useful
+            // question than either the generic retry prompt or a plain
+            // "didn't catch that". A place-verification service outage
+            // means we genuinely never found out whether what the
+            // traveler typed is real — telling them "I didn't catch that"
+            // would wrongly imply THEY got it wrong, when it's on us.
+            // Both only ever apply to destination/origin, the only slots
+            // the place-verification pipeline is involved in.
+            // The suggestion must match the SLOT that's actually still
+            // missing, not just any destination/origin slot — otherwise a
+            // suggestion generated for one slot could get shown against a
+            // completely different one that went missing later (see
+            // $pendingPlaceSuggestionSlot's own doc comment).
+            $reply = match (true) {
+                $this->pendingPlaceSuggestion !== null && $this->pendingPlaceSuggestionSlot === $stillMissing
+                    => "Did you mean \"{$this->pendingPlaceSuggestion}\"?",
+                $this->placeVerificationFailed && $this->placeVerificationFailedSlot === $stillMissing
+                    => "I'm having trouble verifying that place right now — could you try again in a moment, or double-check the spelling?",
+                default => $this->questionFor($stillMissing, $this->missCount),
+            };
 
             $this->messages[] = ['role' => 'assistant', 'text' => $reply];
             $this->dispatch('message-added');
@@ -429,12 +544,9 @@ class Llm extends Component
         }
 
         $this->missCount    = 0;
-        $this->awaitingSlot = '';
-        $this->messages[] = ['role' => 'assistant', 'text' => "Got it! Let me put together your trip to {$this->aiTo}…"];
+        $this->messages[] = ['role' => 'assistant', 'text' => 'Got it! ' . $this->confirmationSummary()];
+        $this->awaitingSlot = 'confirmation';
         $this->dispatch('message-added');
-        $this->aiGenCount = 0;
-        $this->aiStep = 'loading';
-        $this->dispatch('ai-process-trip');
     }
 
     private function resetConversation(): void
@@ -456,6 +568,8 @@ class Llm extends Component
         $this->aiGenCount      = 0;
         $this->aiBudgetIsDaily = false;
         $this->aiDestinationChoices = [];
+        $this->pendingPlaceSuggestion = null;
+        $this->pendingPlaceSuggestionSlot = null;
         $this->awaitingSlot    = '';
         $this->missCount       = 0;
         $this->messages        = [['role' => 'assistant', 'text' => "Conversation reset — let's start fresh! Where would you like to go?"]];
@@ -535,9 +649,14 @@ class Llm extends Component
         PROMPT;
 
         try {
-            $raw = (new GeminiService())->generate($prompt);
-            if (!$raw) { $raw = (new GroqService())->generate($prompt); }
+            // Gemini's key is currently invalid (401) and tends to eat a
+            // full timeout before falling through — Mistral/OpenRouter are
+            // the reliable ones, so they go first; Gemini stays as a last
+            // resort in case the key gets fixed later.
+            $raw = (new MistralService())->generate($prompt);
             if (!$raw) { $raw = (new OpenRouterService())->generate($prompt); }
+            if (!$raw) { $raw = (new GroqService())->generate($prompt); }
+            if (!$raw) { $raw = (new GeminiService())->generate($prompt); }
             if (!$raw) return '';
 
             $raw = trim(preg_replace('/```json\s*|```\s*/i', '', $raw));
@@ -589,9 +708,14 @@ class Llm extends Component
         PROMPT;
 
         try {
-            $raw = (new GeminiService())->generate($prompt);
-            if (!$raw) { $raw = (new GroqService())->generate($prompt); }
+            // Gemini's key is currently invalid (401) and tends to eat a
+            // full timeout before falling through — Mistral/OpenRouter are
+            // the reliable ones, so they go first; Gemini stays as a last
+            // resort in case the key gets fixed later.
+            $raw = (new MistralService())->generate($prompt);
             if (!$raw) { $raw = (new OpenRouterService())->generate($prompt); }
+            if (!$raw) { $raw = (new GroqService())->generate($prompt); }
+            if (!$raw) { $raw = (new GeminiService())->generate($prompt); }
             if (!$raw) return [];
 
             $raw  = trim(preg_replace('/```json\s*|```\s*/i', '', $raw));
@@ -642,12 +766,12 @@ class Llm extends Component
 
         if ($this->awaitingSlot === 'destination' && $this->aiTo === '') {
 
-            $resolved = $this->knownPlaceName($this->cleanCityName($userText));
+            $resolved = $this->knownPlaceName($this->cleanCityName($userText), 'destination');
             if ($resolved !== '') {
                 $this->aiTo = $resolved;
             }
         } elseif ($this->awaitingSlot === 'origin' && $this->aiFrom === '') {
-            $resolved = $this->knownPlaceName($this->cleanCityName($userText));
+            $resolved = $this->knownPlaceName($this->cleanCityName($userText), 'origin');
             if ($resolved !== '') {
                 $this->aiFrom = $resolved;
             }
@@ -733,12 +857,15 @@ Rules:
 PROMPT;
 
         try {
-            $raw = (new GeminiService())->generate($prompt);
+            $raw = (new MistralService())->generate($prompt);
+            if (!$raw) {
+                $raw = (new OpenRouterService())->generate($prompt);
+            }
             if (!$raw) {
                 $raw = (new GroqService())->generate($prompt);
             }
             if (!$raw) {
-                $raw = (new OpenRouterService())->generate($prompt);
+                $raw = (new GeminiService())->generate($prompt);
             }
             if (!$raw) return '';
 
@@ -754,13 +881,13 @@ PROMPT;
         if (!empty($data['is_inappropriate'])) return 'inappropriate';
 
         if ($this->aiFrom === '' && !empty($data['origin'])) {
-            $resolved = $this->knownPlaceName($this->cleanCityName($data['origin']));
+            $resolved = $this->knownPlaceName($this->cleanCityName($data['origin']), 'origin');
             if ($resolved !== '') {
                 $this->aiFrom = $resolved;
             }
         }
         if ($this->aiTo === '' && !empty($data['destination'])) {
-            $resolved = $this->knownPlaceName($this->cleanCityName($data['destination']));
+            $resolved = $this->knownPlaceName($this->cleanCityName($data['destination']), 'destination');
             if ($resolved !== '') {
                 $this->aiTo = $resolved;
             }
@@ -808,6 +935,26 @@ PROMPT;
         if ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0) return 'budget';
         if ($this->aiDateFrom === '' || $this->aiDateTo === '') return 'dates';
         return '';
+    }
+
+    // Shown once every required slot is filled, right before generation —
+    // lets the traveler catch a wrong detail before the (slow) actual
+    // trip-building work runs, rather than after. Budget is displayed in
+    // the traveler's own chosen currency, same as everywhere else this
+    // file shows money (displayAmount()), not always pesos.
+    private function confirmationSummary(): string
+    {
+        $budget = $this->aiBudgetMin === $this->aiBudgetMax
+            ? $this->displayAmount($this->aiBudgetMax)
+            : $this->displayAmount($this->aiBudgetMin) . ' - ' . $this->displayAmount($this->aiBudgetMax);
+
+        return "Here's what I've got so far:\n"
+            . "- From: {$this->aiFrom}\n"
+            . "- Destination: {$this->aiTo}\n"
+            . "- Travel dates: {$this->aiDateFrom} to {$this->aiDateTo}\n"
+            . "- Travelers: {$this->aiTravelers}\n"
+            . "- Budget: {$budget}\n\n"
+            . "Would you like me to proceed with this plan?";
     }
 
     private function questionFor(string $slot, int $missCount): string
@@ -913,8 +1060,11 @@ PROMPT;
 
         $summary = $this->conversationSummary();
         $package = null;
+        // OpenRouter/Groq go first — Gemini's project currently has zero
+        // free-tier quota (429 RESOURCE_EXHAUSTED on every call), so trying
+        // it first just wastes a request+timeout before falling through.
         try {
-            $package = (new GeminiService())->planTrip($summary);
+            $package = (new OpenRouterService())->planTrip($summary);
         } catch (\Throwable) {
 
         }
@@ -929,7 +1079,7 @@ PROMPT;
 
         if (!$package || empty($package['to'])) {
             try {
-                $package = (new OpenRouterService())->planTrip($summary);
+                $package = (new GeminiService())->planTrip($summary);
             } catch (\Throwable) {
                 $package = null;
             }
@@ -1138,12 +1288,12 @@ PROMPT;
         ];
 
         try {
-            $enriched = (new GeminiService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
+            $enriched = (new OpenRouterService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
             if (!$enriched) {
                 $enriched = (new GroqService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
             }
             if (!$enriched) {
-                $enriched = (new OpenRouterService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
+                $enriched = (new GeminiService())->enrichPackage($rawPackage, $this->aiTo, $days, $budget);
             }
             if ($enriched && is_array($enriched)) {
 
@@ -1179,7 +1329,7 @@ PROMPT;
         ]);
     }
 
-    private function matchKnownPlace(string $city): ?array
+    private function matchKnownPlace(string $city, ?string $slotContext = null): ?array
     {
         $map = [
 
@@ -1327,14 +1477,59 @@ PROMPT;
         for ($len = $count - 1; $len >= 1; $len--) {
             for ($start = 0; $start + $len <= $count; $start++) {
                 $candidate = implode(' ', array_slice($words, $start, $len));
-                if (isset($map[$candidate])) return ['name' => $candidate, 'code' => $map[$candidate]];
+                if (!isset($map[$candidate])) continue;
+
+                // A very short (<=3 char) single-word match sitting INSIDE a
+                // longer phrase is too easy to hit by accident — "la" (short
+                // for Los Angeles) coincidentally matching the middle
+                // fragment of a badly-spaced typo like "pa la wan" is a real
+                // case this caught, silently resolving to the wrong city
+                // entirely before the fuzzy-match/AI checks below ever got a
+                // chance to consider the phrase as a whole. Only trusted
+                // instantly when that short code IS the whole candidate
+                // (nothing else left over to explain), not just one piece
+                // of a bigger phrase — a lone "LA" still resolves fine.
+                if ($len === 1 && $count > 1 && mb_strlen($candidate) <= 3) continue;
+
+                return ['name' => $candidate, 'code' => $map[$candidate]];
             }
         }
 
-        return $this->aiPlaceFallback($key);
+        // Close-but-not-exact match against the same static list — typos
+        // or extra/missing spaces ("pa la wan" for "palawan"). Skipped for
+        // anything already gibberish-shaped (aiPlaceFallback() would just
+        // reject it anyway, no point suggesting a "did you mean" for
+        // random symbols/digits). Never auto-accepted — fuzzy matching CAN
+        // be wrong — just offered as a question the traveler must confirm.
+        if ($key !== '' && mb_strlen($key) <= 40 && !$this->looksLikeGibberish($key)) {
+            $bestName = null;
+            $bestPct  = 0.0;
+            foreach (array_keys($map) as $candidateName) {
+                similar_text($key, $candidateName, $pct);
+                if ($pct > $bestPct) {
+                    $bestPct  = $pct;
+                    $bestName = $candidateName;
+                }
+            }
+            // High bar on purpose: this is a suggestion shown to the
+            // traveler, not a silent accept, but it should only fire for
+            // genuinely close near-misses, not any vaguely similar word.
+            // Never overwrites an already-tagged suggestion from earlier
+            // THIS SAME turn (e.g. parseAiPrompt()'s regex pass finding one
+            // before extractWithAi() gets a chance to run its own,
+            // possibly-untagged attempt afterward) — first valid one wins.
+            if ($bestName !== null && $bestPct >= 75.0
+                && !($this->pendingPlaceSuggestion !== null && $this->pendingPlaceSuggestionSlot !== null)) {
+                $this->pendingPlaceSuggestion = ucwords($bestName);
+                $this->pendingPlaceSuggestionSlot = $slotContext;
+                return null;
+            }
+        }
+
+        return $this->aiPlaceFallback($key, $slotContext);
     }
 
-    private function aiPlaceFallback(string $key): ?array
+    private function aiPlaceFallback(string $key, ?string $slotContext = null): ?array
     {
 
         if ($key === '' || mb_strlen($key) > 40) return null;
@@ -1362,18 +1557,19 @@ PROMPT;
 
         Be skeptical. Only answer yes if you are genuinely confident this is a real place you have real knowledge of — not just because the name sounds plausible or place-like. If you don't specifically recognize it, or aren't sure, answer no. This is NOT a made-up place, NOT a generic word or phrase, and NOT a whole country by itself.
 
-        If yes, return its most common English city/town/island name and the IATA code of the real airport travelers would realistically fly into to reach it (the nearest major one, if it has none of its own).
+        If yes, return its most common English city/town/island name, and its IATA code is REQUIRED — never leave it null when is_real_place is true. If the place has no airport of its own, you MUST still give the IATA code of the real nearest major airport travelers would actually fly into to reach it (e.g. a small town near a bigger city uses that city's airport code).
         If no, return false and null for both fields.
 
         Return JSON only, no markdown:
         {"is_real_place": true or false, "name": "city name or null", "iata_code": "CODE or null"}
         PROMPT;
 
-        $providers = [GeminiService::class, GroqService::class, OpenRouterService::class];
+        $providers = [GroqService::class, OpenRouterService::class, MistralService::class, GeminiService::class];
 
         $first = $this->askPlaceVerifier($prompt, $providers);
         if ($first === null) {
             $this->placeVerificationFailed = true;
+            $this->placeVerificationFailedSlot = $slotContext;
             return $this->aiPlaceCache[$key] = null;
         }
 
@@ -1385,6 +1581,7 @@ PROMPT;
         $second = $this->askPlaceVerifier($prompt, array_values(array_diff($providers, [$first['provider']])));
         if ($second === null) {
             $this->placeVerificationFailed = true;
+            $this->placeVerificationFailedSlot = $slotContext;
             return $this->aiPlaceCache[$key] = null;
         }
 
@@ -1395,7 +1592,16 @@ PROMPT;
             return $this->aiPlaceCache[$key] = null;
         }
 
-        $code = strtoupper(trim((string) $first['data']['iata_code']));
+        // Both providers can independently confirm a place is real while
+        // one of them still leaves iata_code null (a model just not
+        // bothering to resolve the nearest major airport for a small town,
+        // despite the prompt asking for it) — that used to reject an
+        // otherwise-confirmed-real destination outright. Accept either
+        // provider's code, not only the first one's.
+        $code = strtoupper(trim((string) ($first['data']['iata_code'] ?? '')));
+        if (!preg_match('/^[A-Z]{3}$/', $code)) {
+            $code = strtoupper(trim((string) ($second['data']['iata_code'] ?? '')));
+        }
         if (!preg_match('/^[A-Z]{3}$/', $code)) {
             return $this->aiPlaceCache[$key] = null;
         }
@@ -1468,9 +1674,17 @@ PROMPT;
         return $this->matchKnownPlace($city)['code'] ?? '';
     }
 
-    private function knownPlaceName(string $text): string
+    // $slotContext ('destination'|'origin'|null) tags which slot a fuzzy
+    // "did you mean X?" suggestion (see matchKnownPlace()) is actually
+    // for — without it, a suggestion generated while resolving one slot
+    // could go stale and get misattributed to a completely different
+    // slot's question later in the same turn (see [[the "did you mean"
+    // slot mixup]] this was built to prevent). Only worth passing at call
+    // sites where offering that suggestion actually makes sense; other
+    // callers can safely omit it.
+    private function knownPlaceName(string $text, ?string $slotContext = null): string
     {
-        $match = $this->matchKnownPlace($text);
+        $match = $this->matchKnownPlace($text, $slotContext);
         return $match !== null ? ucwords($match['name']) : '';
     }
 
@@ -1912,7 +2126,17 @@ PROMPT;
         }
 
         $months = 'january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec';
-        $city   = '(?!(?:' . $months . ')\b)[A-Z][a-z]+(?: [A-Z][a-z]+){0,2}';
+        // A sentence with more than one trigger word ("I want TO go TO pa
+        // la wan") used to let the FIRST "to" greedily swallow the words in
+        // between ("go", "to") as if they were part of the place name,
+        // truncating a multi-word destination down to a meaningless
+        // fragment ("pa" instead of "pa la wan") once the {0,2} word cap
+        // was used up on filler instead of the real name. Excluding these
+        // words from EVERY captured slot (not just the first) means the
+        // match only succeeds starting from the trigger word actually
+        // closest to the real place name.
+        $notTrigger = '(?:to|in|at|from|go(?:ing)?|travel(?:l?ing)?|visit(?:ing)?|fly(?:ing)?|stay(?:ing)?|heading)';
+        $city   = '(?!(?:' . $months . ')\b)(?!(?i:' . $notTrigger . ')\b)[A-Z][a-z]+(?:\s+(?!(?i:' . $notTrigger . ')\b)[A-Z][a-z]+){0,2}';
 
         $ambiguousTo = preg_match(
             '/\b(?:travel(?:l?ing)?\s+(?:to|in)|go(?:ing)?\s+(?:to|in)|visit(?:ing)?|fly(?:ing)?\s+to|heading\s+to|stay(?:ing)?\s+(?:in|at)|to|in|at)\s+(' . $city . ')\s+or\s+(' . $city . ')\b/u',
@@ -1939,22 +2163,22 @@ PROMPT;
         // untouched — missingSlotKey() then re-asks normally, same as any
         // other unresolved destination.
         if ($hasFrom && $hasTo) {
-            $resolvedFrom = $this->knownPlaceName($this->cleanCityName(trim($mf[1])));
-            $resolvedTo   = $this->knownPlaceName($this->cleanCityName(trim($mt[1])));
+            $resolvedFrom = $this->knownPlaceName($this->cleanCityName(trim($mf[1])), 'origin');
+            $resolvedTo   = $this->knownPlaceName($this->cleanCityName(trim($mt[1])), 'destination');
             if ($resolvedFrom !== '') $this->aiFrom = $resolvedFrom;
             if ($resolvedTo !== '')   $this->aiTo   = $resolvedTo;
         } elseif ($hasTwoCities) {
-            $resolvedFrom = $this->knownPlaceName($this->cleanCityName(trim($m2[1])));
-            $resolvedTo   = $this->knownPlaceName($this->cleanCityName(trim($m2[2])));
+            $resolvedFrom = $this->knownPlaceName($this->cleanCityName(trim($m2[1])), 'origin');
+            $resolvedTo   = $this->knownPlaceName($this->cleanCityName(trim($m2[2])), 'destination');
             if ($resolvedFrom !== '' && $resolvedTo !== '' && strtolower($resolvedFrom) !== strtolower($resolvedTo)) {
                 $this->aiFrom = $resolvedFrom;
                 $this->aiTo   = $resolvedTo;
             }
         } elseif ($hasFrom) {
-            $resolved = $this->knownPlaceName($this->cleanCityName(trim($mf[1])));
+            $resolved = $this->knownPlaceName($this->cleanCityName(trim($mf[1])), 'origin');
             if ($resolved !== '') $this->aiFrom = $resolved;
         } elseif ($hasTo) {
-            $resolved = $this->knownPlaceName($this->cleanCityName(trim($mt[1])));
+            $resolved = $this->knownPlaceName($this->cleanCityName(trim($mt[1])), 'destination');
             if ($resolved !== '') $this->aiTo = $resolved;
         }
 
@@ -1962,12 +2186,14 @@ PROMPT;
             $this->ambiguityNotice = "Looks like you named more than one option there — could you tell me just the one you'd like to go with?";
         }
 
-        $anyCase = '[A-Za-z]+(?: [A-Za-z]+){0,2}';
+        // Same trigger-word exclusion as $city above, for the lowercase
+        // fallback pattern.
+        $anyCase = '(?!' . $notTrigger . '\b)[A-Za-z]+(?:\s+(?!' . $notTrigger . '\b)[A-Za-z]+){0,2}';
 
         if ($this->aiFrom === '' && $this->aiTo === '' && !$ambiguousFrom && !$ambiguousTo
             && preg_match('/\b(' . $anyCase . ')\s+to\s+(' . $anyCase . ')\b/iu', $withoutDate, $m2l)) {
-            $fromCandidate = $this->knownPlaceName($this->cleanCityName($m2l[1]));
-            $toCandidate   = $this->knownPlaceName($this->cleanCityName($m2l[2]));
+            $fromCandidate = $this->knownPlaceName($this->cleanCityName($m2l[1]), 'origin');
+            $toCandidate   = $this->knownPlaceName($this->cleanCityName($m2l[2]), 'destination');
             if ($fromCandidate !== '' && $toCandidate !== '' && strtolower($fromCandidate) !== strtolower($toCandidate)) {
                 $this->aiFrom = $fromCandidate;
                 $this->aiTo   = $toCandidate;
@@ -1977,14 +2203,14 @@ PROMPT;
         if ($this->aiTo === '' && !$ambiguousTo
             && preg_match('/\b(?:travel(?:l?ing)?\s+(?:to|in)|go(?:ing)?\s+(?:to|in)|visit(?:ing)?|fly(?:ing)?\s+to|heading\s+to|stay(?:ing)?\s+(?:in|at)|to|in|at)\s+(' . $anyCase . ')\b/iu', $withoutDate, $mtl)) {
 
-            $resolved = $this->knownPlaceName($this->cleanCityName($mtl[1]));
+            $resolved = $this->knownPlaceName($this->cleanCityName($mtl[1]), 'destination');
             if ($resolved !== '') {
                 $this->aiTo = $resolved;
             }
         }
         if ($this->aiFrom === '' && !$ambiguousFrom
             && preg_match('/\bfrom\s+(' . $anyCase . ')\b/iu', $withoutDate, $mfl)) {
-            $resolved = $this->knownPlaceName($this->cleanCityName($mfl[1]));
+            $resolved = $this->knownPlaceName($this->cleanCityName($mfl[1]), 'origin');
             if ($resolved !== '') {
                 $this->aiFrom = $resolved;
             }

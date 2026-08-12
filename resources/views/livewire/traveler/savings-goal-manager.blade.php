@@ -130,20 +130,27 @@
                 <span style="font-size:18px;font-weight:700;color:var(--dark);">Add Savings</span>
             </div>
 
+            @php $depositRemaining = max(0, $targetCost - $goal->current_savings); @endphp
             <div style="margin-bottom:6px;">
                 <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Amount to Save</div>
                 <div x-data="{
                         display: '',
+                        max: {{ $depositRemaining }},
                         update(e) {
                             let raw = e.target.value.replace(/[^0-9.]/g, '');
                             let parts = raw.split('.');
+                            let val = parseFloat(parts[0] + (parts[1] !== undefined ? '.' + parts[1] : '')) || 0;
+                            if (val > this.max) {
+                                raw = String(this.max);
+                                parts = raw.split('.');
+                            }
                             parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
                             this.display = parts.join('.');
                             $wire.set('depositAmount', parseFloat(raw) || 0);
                         }
                     }"
-                     style="display:flex;align-items:center;gap:10px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;transition:border-color .18s,background .18s,box-shadow .18s;"
-                     onfocusin="this.style.borderColor='var(--primary)';this.style.background='#fff';this.style.boxShadow='0 0 0 4px rgba(147,75,25,0.08)'" onfocusout="this.style.borderColor='var(--border)';this.style.background='var(--bg-white)';this.style.boxShadow='none'">
+                     style="display:flex;align-items:center;gap:10px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;transition:border-color .18s,box-shadow .18s;"
+                     onfocusin="this.style.borderColor='var(--primary)';this.style.boxShadow='0 0 0 4px rgba(147,75,25,0.08)'" onfocusout="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
                     <span style="font-size:14px;font-weight:600;color:var(--muted);flex-shrink:0;">{{ currency_code() }}</span>
                     <input type="text" inputmode="decimal"
                            x-model="display" @input="update($event)"
@@ -157,10 +164,11 @@
                 This will be added to your '{{ $dest }}' goal.
             </div>
 
-            <button wire:click="submitDeposit"
-                    style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:14px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;margin-bottom:12px;transition:background .18s;"
-                    onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
-                Confirm Savings
+            <button wire:click="submitDeposit" x-data
+                    :disabled="!$wire.depositAmount || $wire.depositAmount <= 0"
+                    :style="'width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:14px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:\'Hanken Grotesk\',sans-serif;margin-bottom:12px;transition:background .18s;' + ((!$wire.depositAmount || $wire.depositAmount <= 0) ? 'opacity:.5;cursor:not-allowed;' : 'cursor:pointer;')"
+                    onmouseenter="if(!this.disabled)this.style.background='var(--primary-dark)'" onmouseleave="if(!this.disabled)this.style.background='var(--primary)'">
+                Add Savings
             </button>
 
             <button wire:click="closeDeposit"

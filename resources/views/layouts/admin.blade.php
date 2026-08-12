@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     @livewireStyles
 </head>
+<<<<<<< HEAD
 <body class="admin-body">
     <div class="admin-shell">
         <x-admin-sidebar :active="$active ?? ''" />
@@ -27,6 +28,13 @@
                 </div>
             </div>
             <div class="admin-content">
+=======
+<body class="dashboard-body" data-theme="{{ auth()->user()->theme ?? 'daylight' }}">
+    <div class="dashboard-wrapper" id="dashWrapper">
+        <x-admin-sidebar :active="$active ?? ''" />
+        <div class="dash-main">
+            <div class="dash-content">
+>>>>>>> 537609b8368acc8725e027fe8e60d1600528fadc
                 @yield('content')
             </div>
         </div>

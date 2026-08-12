@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Account — Budgetra</title>
-    <link rel="icon" type="image/png" href="{{ asset('systemicons/budgetra-favicon.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('systemicons/budgetra-new-icon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -20,7 +20,7 @@
         <div style="position:absolute;inset:0;background-image:url('{{ asset('stockimages/registersidebar.jpg') }}');background-size:cover;background-position:center;filter:blur(3px);transform:scale(1.05);"></div>
         <div style="position:absolute;inset:0;background:rgba(0,0,0,.25);"></div>
         <div style="position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:center;">
-            <img src="{{ asset('systemicons/budgetra-main.png') }}" alt="Budgetra" style="max-width:200px;width:60%;">
+            <img src="{{ asset('systemicons/budgetra-new-icon.png') }}" alt="Budgetra" style="max-width:200px;width:60%;">
         </div>
     </div>
 

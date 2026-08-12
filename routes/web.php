@@ -27,6 +27,7 @@ Route::post('/logout', [Auth\LoginController::class, 'logout'])
 // Authenticated traveler routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [Traveler\DashboardController::class, '__invoke'])->name('dashboard');
+    Route::get('/dashboard/report', [Traveler\DashboardController::class, 'downloadReport'])->name('dashboard.report');
 
     Route::get('/profile',         [Traveler\ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile',         [Traveler\ProfileController::class, 'update'])->name('profile.update');
@@ -125,4 +126,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/backup',            [Admin\BackupController::class, 'index'])->name('backup.index');
     Route::post('/backup/download',  [Admin\BackupController::class, 'download'])->name('backup.download');
     Route::post('/backup/restore',   [Admin\BackupController::class, 'restore'])->name('backup.restore');
+
+    Route::get('/settings',          [Admin\SettingsController::class, 'edit'])->name('settings.index');
 });

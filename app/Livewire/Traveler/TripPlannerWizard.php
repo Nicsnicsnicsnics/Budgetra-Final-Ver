@@ -82,6 +82,13 @@ class TripPlannerWizard extends Component
     }
 
     // ── Step 1: trip details form (new) ───────────────────
+    // Bumped every time we land back on step 1 from a later step, so the
+    // Alpine card's wire:key always changes and Livewire is forced to fully
+    // remount it — otherwise morphdom can end up reusing the previous DOM
+    // node and Alpine's x-init never re-runs, leaving From/To/dates blank
+    // even though the underlying manualFrom/manualTo/startDate/endDate
+    // properties on the server were never actually cleared.
+    public int $step1VisitToken    = 0;
     public string $manualFrom      = '';
     public string $manualTo        = '';
     public string $manualBudgetMin = '';
@@ -1126,8 +1133,6 @@ class TripPlannerWizard extends Component
         $this->venueError          = '';
         $this->mcVenueStep         = false;
         $this->mcVenueResults      = [];
-        $this->selectedVenues      = [];
-        $this->selectedMcVenues    = [];
         $this->mcAttractionStep    = false;
         $this->mcAttractionResults = [];
         $dest = $this->manualTo ?: $this->mcTo ?: '';
@@ -1173,21 +1178,43 @@ class TripPlannerWizard extends Component
         $this->searchAttractionsList();
     }
 
-    public function selectVenue(int $index): void
+    // Toggles a venue in/out of the current leg's selection — lets the
+    // traveler pick more than one restaurant/venue instead of the old
+    // "click one, auto-advance" flow. continueFromVenues() is what
+    // actually moves the wizard forward once they're done picking.
+    public function toggleVenue(int $index): void
+    {
+        $source = $this->mcVenueStep ? $this->mcVenueResults : $this->venueResults;
+        $item   = $source[$index] ?? null;
+        if ($item === null) {
+            $this->venueError = 'That venue is no longer available. Please pick another.';
+            return;
+        }
+
+        if (!$this->mcVenueStep) {
+            if (isset($this->selectedVenues[$item['name']])) {
+                unset($this->selectedVenues[$item['name']]);
+            } else {
+                $this->selectedVenues[$item['name']] = $item;
+            }
+        } else {
+            if (isset($this->selectedMcVenues[$item['name']])) {
+                unset($this->selectedMcVenues[$item['name']]);
+            } else {
+                $this->selectedMcVenues[$item['name']] = $item;
+            }
+        }
+    }
+
+    public function continueFromVenues(): void
     {
         if (!$this->mcVenueStep) {
-            $item = $this->venueResults[$index] ?? null;
-            if ($item === null) {
-                $this->venueError = 'That venue is no longer available. Please pick another.';
-                return;
-            }
-            $this->selectedVenues = [$item['name'] => $item];
-
-            $days = max(1, $this->days);
+            $days  = max(1, $this->days);
+            $names = array_map(fn ($v) => $v['name'] ?? 'Restaurant', array_values($this->selectedVenues));
             if ($this->maybeReturnToAiEdit('food', [
-                'name'   => $item['name'] ?? 'Restaurant',
+                'name'   => $names ? implode(', ', $names) : 'Restaurant',
                 'detail' => $days . ' Days · Breakfast, Lunch, & Dinner · ' . $this->manualTo,
-                'cost'   => (int) ($item['priceMax'] ?? $item['priceMin'] ?? 0) * $days,
+                'cost'   => $this->selectedVenuesCost() * $days,
             ])) {
                 return;
             }
@@ -1203,12 +1230,6 @@ class TripPlannerWizard extends Component
                 $this->searchAttractionsList();
             }
         } else {
-            $item = $this->mcVenueResults[$index] ?? null;
-            if ($item === null) {
-                $this->venueError = 'That venue is no longer available. Please pick another.';
-                return;
-            }
-            $this->selectedMcVenues = [$item['name'] => $item];
             $this->step = 5;
             $this->searchAttractionsList();
         }
@@ -1278,8 +1299,6 @@ class TripPlannerWizard extends Component
         $this->attractionLoading      = true;
         $this->attractionResults      = [];
         $this->mcAttractionResults    = [];
-        $this->selectedAttractions    = [];
-        $this->selectedMcAttractions  = [];
         $dest = $this->manualTo ?: $this->mcTo ?: '';
         if (!$dest) { $this->attractionLoading = false; return; }
         try {
@@ -1321,20 +1340,42 @@ class TripPlannerWizard extends Component
         $this->step = 6;
     }
 
-    public function selectAttraction(int $index): void
+    // Same toggle pattern as toggleVenue() — lets the traveler pick more
+    // than one attraction. continueFromAttractions() advances the wizard.
+    public function toggleAttraction(int $index): void
+    {
+        $source = $this->mcAttractionStep ? $this->mcAttractionResults : $this->attractionResults;
+        $item   = $source[$index] ?? null;
+        if ($item === null) {
+            $this->attractionError = 'That attraction is no longer available. Please pick another.';
+            return;
+        }
+
+        if (!$this->mcAttractionStep) {
+            if (isset($this->selectedAttractions[$item['name']])) {
+                unset($this->selectedAttractions[$item['name']]);
+            } else {
+                $this->selectedAttractions[$item['name']] = $item;
+            }
+        } else {
+            if (isset($this->selectedMcAttractions[$item['name']])) {
+                unset($this->selectedMcAttractions[$item['name']]);
+            } else {
+                $this->selectedMcAttractions[$item['name']] = $item;
+            }
+        }
+    }
+
+    public function continueFromAttractions(): void
     {
         if (!$this->mcAttractionStep) {
-            $item = $this->attractionResults[$index] ?? null;
-            if ($item === null) {
-                $this->attractionError = 'That attraction is no longer available. Please pick another.';
-                return;
-            }
-            $this->selectedAttractions = [$item['name'] => $item];
-
-            $attrCost = ($item['isFree'] ?? false) ? 0 : (int) preg_replace('/[^\d]/', '', $item['price'] ?? '0');
+            $items = array_map(
+                fn ($a) => [$a['name'] ?? 'Attraction', ($a['isFree'] ?? false) ? 'Free' : (currency_symbol() . number_format((int) preg_replace('/[^\d]/', '', $a['price'] ?? '0')))],
+                array_values($this->selectedAttractions)
+            );
             if ($this->maybeReturnToAiEdit('attractions', [
-                'items' => [[$item['name'] ?? 'Attraction', ($item['isFree'] ?? false) ? 'Free' : (currency_symbol() . number_format($attrCost))]],
-                'cost'  => $attrCost,
+                'items' => $items,
+                'cost'  => $this->selectedAttractionsCost(),
             ])) {
                 return;
             }
@@ -1349,12 +1390,6 @@ class TripPlannerWizard extends Component
                 $this->step = 6;
             }
         } else {
-            $item = $this->mcAttractionResults[$index] ?? null;
-            if ($item === null) {
-                $this->attractionError = 'That attraction is no longer available. Please pick another.';
-                return;
-            }
-            $this->selectedMcAttractions = [$item['name'] => $item];
             $this->step = 6;
         }
     }
@@ -1405,6 +1440,9 @@ class TripPlannerWizard extends Component
             return $this->redirect(route('trips.plan.ai'), navigate: true);
         }
 
+        if ($normalStep === 1) {
+            $this->step1VisitToken++;
+        }
         $this->step = $normalStep;
         return null;
     }
@@ -1531,7 +1569,12 @@ class TripPlannerWizard extends Component
         // Neither leg of the trip has a hotel picked — ask the AI to
         // suggest one instead of leaving the itinerary with no lodging.
         $needsAccommodation = !$this->selectedHotel && !$this->selectedMcHotel;
-        foreach ([\App\Services\GeminiService::class, \App\Services\GroqService::class, \App\Services\CerebrasService::class, \App\Services\MistralService::class, \App\Services\OpenRouterService::class] as $serviceClass) {
+        // Mistral/OpenRouter/Groq tried first — Gemini's project currently
+        // has zero free-tier quota (429 on every call) and Cerebras's key
+        // has no billing (402), so both are pushed to the end instead of
+        // wasting a request+timeout on them before falling through to a
+        // provider that actually works.
+        foreach ([\App\Services\MistralService::class, \App\Services\OpenRouterService::class, \App\Services\GroqService::class, \App\Services\GeminiService::class, \App\Services\CerebrasService::class] as $serviceClass) {
             $remaining = $deadline - microtime(true);
             if ($remaining < 5) break;
 

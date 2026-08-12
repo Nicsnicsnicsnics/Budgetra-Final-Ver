@@ -76,7 +76,21 @@ class ExpenseController extends Controller
         unset($validated['receipt']);
 
         $validated['user_id'] = auth()->id();
-        $expense = Expense::create($validated);
+
+        // The file above is already on disk by this point — if creating the
+        // actual expense record fails for any reason, that file would
+        // otherwise orphan with nothing left to ever reference or clean it
+        // up, the same leak just fixed in the OCR scan step. Clean it up
+        // before letting the failure propagate normally.
+        try {
+            $expense = Expense::create($validated);
+        } catch (\Throwable $e) {
+            if (!empty($validated['receipt_path'])) {
+                Storage::disk('public')->delete($validated['receipt_path']);
+            }
+            throw $e;
+        }
+
         \App\Observers\ExpenseObserver::syncBudgetForExpense($expense);
 
         return redirect()->route('expenses.index')->with('success', 'Expense recorded.');
@@ -100,6 +114,7 @@ class ExpenseController extends Controller
             'category'     => 'required|in:' . implode(',', self::CATEGORIES),
             'description'  => 'nullable|string|max:500',
             'expense_date' => 'required|date',
+            'receipt'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
         ]);
 
         // exists:trips,id above only checks the trip is real, not that it's
@@ -110,7 +125,31 @@ class ExpenseController extends Controller
             403
         );
 
-        $expense->update($validated);
+        $oldReceiptPath = $expense->receipt_path;
+        $replacingReceipt = $request->hasFile('receipt');
+
+        if ($replacingReceipt) {
+            // Store the new file first, but don't delete the old one yet —
+            // if update() below fails, the old file needs to stay intact
+            // (nothing changed), and only the just-stored NEW file should
+            // be cleaned up, not both.
+            $validated['receipt_path'] = $request->file('receipt')->store('receipts', 'public');
+        }
+        unset($validated['receipt']);
+
+        try {
+            $expense->update($validated);
+        } catch (\Throwable $e) {
+            if ($replacingReceipt) {
+                Storage::disk('public')->delete($validated['receipt_path']);
+            }
+            throw $e;
+        }
+
+        // Only remove the old receipt once the swap has actually succeeded.
+        if ($replacingReceipt && $oldReceiptPath) {
+            Storage::disk('public')->delete($oldReceiptPath);
+        }
 
         return redirect()->route('expenses.index')->with('success', 'Expense updated.');
     }
