@@ -44,7 +44,7 @@
 <div class="admin-card">
     <table class="admin-table">
         <thead>
-            <tr><th>User</th><th>Trip Count</th><th>Status</th><th>Actions</th></tr>
+            <tr><th>User</th><th>Trip Count</th><th>Total Travel Cost</th><th>Average Travel Cost</th><th>Status</th><th>Actions</th></tr>
         </thead>
         <tbody>
         @forelse($users as $user)
@@ -59,6 +59,9 @@
                     </div>
                 </td>
                 <td>{{ $user->trips_count }} {{ Str::plural('Trip', $user->trips_count) }}</td>
+                @php $totalTravelCost = $user->expenses_sum_amount ?? 0; @endphp
+                <td>₱{{ number_format($totalTravelCost, 2) }}</td>
+                <td>{{ $user->trips_count > 0 ? '₱' . number_format($totalTravelCost / $user->trips_count, 2) : '—' }}</td>
                 <td>
                     @if($user->role === 'banned')
                         <span class="admin-badge admin-badge-danger">BANNED</span>
@@ -82,7 +85,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="4" class="admin-table-empty">No users found.</td></tr>
+            <tr><td colspan="6" class="admin-table-empty">No users found.</td></tr>
         @endforelse
         </tbody>
     </table>

@@ -11,7 +11,7 @@ class UserController extends Controller
 {
     private function filteredQuery(Request $request)
     {
-        $query = User::withCount('trips');
+        $query = User::withCount('trips')->withSum('expenses', 'amount');
         if ($request->filled('search')) {
             $s = '%' . strtolower($request->search) . '%';
             $query->where(fn($q) => $q->whereRaw('LOWER(full_name) LIKE ?', [$s])->orWhereRaw('LOWER(email) LIKE ?', [$s]));

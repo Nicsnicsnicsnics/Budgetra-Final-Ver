@@ -33,6 +33,15 @@ class LlmTest extends TestCase
         ], $overrides);
 
         Http::fake([
+            // OpenRouter/Groq are tried before Gemini in the real fallback
+            // chain (see Llm::processAiTrip()) — without these, a real API
+            // key present in .env makes this test hit the live internet
+            // instead of the fake data below, since Http::fake() only
+            // intercepts the specific URL patterns it's given. Empty 200s
+            // here make both return null so the chain actually reaches
+            // the Gemini fake this test is meant to exercise.
+            'openrouter.ai/*'                     => Http::response([], 200),
+            'api.groq.com/*'                      => Http::response([], 200),
             'generativelanguage.googleapis.com/*' => Http::response([
                 'candidates' => [['content' => ['parts' => [['text' => json_encode($package)]]]]],
             ], 200),
@@ -246,5 +255,263 @@ class LlmTest extends TestCase
         $component->assertSet('aiStep', '');
         $lastMessage = collect($component->get('messages'))->last();
         $this->assertStringContainsString('/reset', $lastMessage['text']);
+    }
+
+    public function test_editing_destination_during_confirmation_updates_just_that_slot(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'can you change my destination to bohol')->call('automateTrip');
+
+        $component->assertSet('aiTo', 'Bohol');
+        $component->assertSet('aiFrom', 'Manila');       // untouched
+        $component->assertSet('aiBudgetMax', 30000);      // untouched
+        $component->assertSet('awaitingSlot', 'confirmation'); // still reviewing, not generating
+        $component->assertSet('aiStep', '');
+        $lastMessage = collect($component->get('messages'))->last();
+        $this->assertStringContainsString('Bohol', $lastMessage['text']);
+    }
+
+    public function test_editing_budget_during_confirmation_updates_just_that_slot(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change my budget to 50000')->call('automateTrip');
+
+        $component->assertSet('aiBudgetMin', 50000);
+        $component->assertSet('aiBudgetMax', 50000);
+        $component->assertSet('aiTo', 'Boracay'); // untouched
+        $component->assertSet('awaitingSlot', 'confirmation');
+    }
+
+    public function test_editing_travelers_during_confirmation_updates_just_that_slot(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change my travelers to 4')->call('automateTrip');
+
+        $component->assertSet('aiTravelers', 4);
+        $component->assertSet('awaitingSlot', 'confirmation');
+    }
+
+    // A reply that doesn't name any of the editable slots (and isn't a
+    // "yes") must fall through to the plain decline message, not silently
+    // do nothing or crash.
+    public function test_unrecognized_reply_during_confirmation_falls_back_to_decline_message(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'hmm let me think about it')->call('automateTrip');
+
+        $component->assertSet('aiTo', 'Boracay');      // untouched
+        $component->assertSet('awaitingSlot', 'confirmation');
+        $lastMessage = collect($component->get('messages'))->last();
+        $this->assertStringContainsString('/reset', $lastMessage['text']);
+    }
+
+    // The exact bug reported live: naming a slot without a value ("also
+    // the budget") was falling through to the generic decline message
+    // instead of asking what the new value should be.
+    public function test_naming_a_slot_without_a_value_asks_for_the_value_instead_of_declining(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'also the budget')->call('automateTrip');
+
+        $component->assertSet('pendingEditSlot', 'budget');
+        $component->assertSet('aiBudgetMax', 30000); // untouched so far
+        $component->assertSet('awaitingSlot', 'confirmation');
+        $lastMessage = collect($component->get('messages'))->last();
+        $this->assertStringNotContainsString('/reset', $lastMessage['text']); // not the generic decline
+    }
+
+    public function test_answering_a_pending_edit_slot_applies_the_value(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'also the budget')->call('automateTrip');
+        $component->set('aiPrompt', '50000')->call('automateTrip');
+
+        $component->assertSet('aiBudgetMin', 50000);
+        $component->assertSet('aiBudgetMax', 50000);
+        $component->assertSet('pendingEditSlot', '');
+        $component->assertSet('awaitingSlot', 'confirmation');
+    }
+
+    public function test_cancelling_a_pending_edit_leaves_the_original_value_untouched(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'also the budget')->call('automateTrip');
+        $component->set('aiPrompt', 'same budget')->call('automateTrip');
+
+        $component->assertSet('aiBudgetMax', 30000); // unchanged
+        $component->assertSet('pendingEditSlot', '');
+        $component->assertSet('awaitingSlot', 'confirmation');
+        $lastMessage = collect($component->get('messages'))->last();
+        $this->assertStringContainsString('No changes made', $lastMessage['text']);
+    }
+
+    // An unparseable reply while a value is pending must re-ask, not
+    // silently drop the edit or crash.
+    public function test_unparseable_reply_while_pending_edit_asks_again(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'also the budget')->call('automateTrip');
+        $component->set('aiPrompt', 'banana')->call('automateTrip');
+
+        $component->assertSet('aiBudgetMax', 30000); // unchanged
+        $component->assertSet('pendingEditSlot', 'budget'); // still waiting
+        $component->assertSet('awaitingSlot', 'confirmation');
+    }
+
+    // The exact bug reported live: editing the destination to the same
+    // place as the (untouched) origin must be rejected the same way the
+    // normal first-time flow already rejects it — not silently accepted
+    // just because it came through the edit path instead.
+    public function test_editing_destination_to_match_existing_origin_is_rejected(): void
+    {
+        $user = User::factory()->create();
+
+        // withAllSlotsFilled() sets aiFrom = 'Manila'.
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change my destination to manila')->call('automateTrip');
+
+        $component->assertSet('aiTo', 'Boracay'); // unchanged — edit rejected
+        $component->assertSet('aiFrom', 'Manila');
+        $component->assertSet('pendingEditSlot', 'destination'); // asked to try again
+        $component->assertSet('awaitingSlot', 'confirmation');
+    }
+
+    public function test_editing_origin_to_match_existing_destination_is_rejected(): void
+    {
+        $user = User::factory()->create();
+
+        // withAllSlotsFilled() sets aiTo = 'Boracay'.
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change my origin to boracay')->call('automateTrip');
+
+        $component->assertSet('aiFrom', 'Manila'); // unchanged — edit rejected
+        $component->assertSet('aiTo', 'Boracay');
+        $component->assertSet('pendingEditSlot', 'origin');
+    }
+
+    // The other bug reported live: the retry question repeated the exact
+    // same first-time phrasing forever instead of escalating, like every
+    // other slot in this app already does after a second miss.
+    public function test_retry_message_escalates_after_repeated_invalid_destination_edits(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        // "xxxxxxxx" is caught by the deterministic gibberish check (no AI
+        // call needed), so this stays fast and fully offline.
+        $component->set('aiPrompt', 'change my destination to xxxxxxxx')->call('automateTrip');
+        $firstReply = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('Sure! Where would you like to go?', $firstReply);
+
+        $component->set('aiPrompt', 'xxxxxxxx')->call('automateTrip');
+        $secondReply = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString("didn't quite catch", $secondReply);
+        $this->assertNotSame($firstReply, $secondReply);
+
+        $component->assertSet('pendingEditSlot', 'destination'); // still waiting
+    }
+
+    // The exact bug reported live: right after /reset, TARA's own message
+    // directly asks for a destination, but awaitingSlot stayed blank —
+    // so a bad first answer (e.g. "dota") fell through to the generic
+    // off-topic classifier instead of the destination-specific retry.
+    // Uses gibberish ("xxxxxxxx") rather than "dota" itself so the place
+    // check is rejected by the deterministic gibberish filter with no AI
+    // call — "dota" would additionally trigger a live place-verification
+    // call this test isn't faking. Mistral (tried first in
+    // extractWithAi()'s chain) is faked to return a definite "not
+    // off-topic" so the classification step is deterministic too.
+    public function test_reset_marks_awaiting_destination_so_a_bad_first_reply_gets_the_destination_retry(): void
+    {
+        Http::fake([
+            'api.mistral.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => json_encode([
+                    'off_topic' => false, 'is_greeting' => false, 'is_inappropriate' => false,
+                    'origin' => null, 'destination' => null, 'travelers' => null,
+                    'budget_min' => null, 'budget_max' => null, 'date_from' => null, 'date_to' => null,
+                ])]]],
+            ], 200),
+        ]);
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', '/reset')->call('automateTrip');
+
+        $component->assertSet('awaitingSlot', 'destination');
+
+        $component->set('aiPrompt', 'xxxxxxxx')->call('automateTrip');
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringNotContainsString("Travel Assistant", $lastMessage); // not the off-topic message
+        $component->assertSet('aiTo', ''); // still correctly not accepted as a place
+    }
+
+    // The exact bug reported live: "I want to change my destination in
+    // Bohol" has an unrelated "to" in "want to", and the real value comes
+    // after "in", not "to". The old code only ever looked for "to", so it
+    // grabbed the whole garbled tail ("change my destination in Bohol")
+    // as the value instead of just "Bohol".
+    public function test_editing_a_slot_using_in_as_the_connector_word(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'I want to change my destination in bohol')->call('automateTrip');
+
+        $component->assertSet('aiTo', 'Bohol');
+        $component->assertSet('aiFrom', 'Manila'); // untouched
+        $component->assertSet('awaitingSlot', 'confirmation');
     }
 }

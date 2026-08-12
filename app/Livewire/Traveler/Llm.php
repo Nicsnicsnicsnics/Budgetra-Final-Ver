@@ -77,6 +77,15 @@ class Llm extends Component
     // cross-request reason as $pendingPlaceSuggestion above.
     public ?string $pendingPlaceSuggestionSlot = null;
 
+    // Set during the final confirmation step when the traveler names a
+    // slot to change but doesn't give a usable value yet ("also the
+    // budget") — the traveler's VERY NEXT message is then treated as
+    // answering just that ("50000"), instead of being read as a fresh
+    // "change X to Y" sentence or a plain decline. Cleared as soon as
+    // it's used. Public for the same cross-request reason as
+    // $pendingPlaceSuggestion above.
+    public string $pendingEditSlot = '';
+
     private array $aiPlaceCache = [];
 
     // Set inside aiPlaceFallback() specifically when every AI provider
@@ -307,6 +316,42 @@ class Llm extends Component
         if ($this->awaitingSlot === 'confirmation') {
             $trimmedReply = trim($userText);
 
+            // Waiting on a specific value ("also the budget" got asked
+            // "what would you like it to be?" last turn) — this reply IS
+            // that value, handled before anything else so "50000" isn't
+            // misread as a decline or a fresh "change X to Y" sentence.
+            if ($this->pendingEditSlot !== '') {
+                $slot = $this->pendingEditSlot;
+
+                if (preg_match('/^(?:same|no change|never\s*mind|nevermind|keep it|cancel|skip)\b/i', $trimmedReply)) {
+                    $this->pendingEditSlot = '';
+                    $this->missCount       = 0;
+                    $this->aiPrompt        = '';
+                    $this->messages[]      = ['role' => 'assistant', 'text' => 'No changes made. ' . $this->confirmationSummary()];
+                    $this->dispatch('message-added');
+                    return;
+                }
+
+                if ($this->applyValueToSlot($slot, $trimmedReply)) {
+                    $this->pendingEditSlot = '';
+                    $this->missCount       = 0;
+                    $this->aiPrompt        = '';
+                    $this->messages[]      = ['role' => 'assistant', 'text' => 'Got it, updated! ' . $this->confirmationSummary()];
+                    $this->dispatch('message-added');
+                    return;
+                }
+
+                // Still didn't understand — escalate the hint each time
+                // (same "getting more specific after each miss" behavior
+                // a normal first-time answer to this slot already has),
+                // instead of repeating the exact same question forever.
+                $this->missCount++;
+                $this->aiPrompt   = '';
+                $this->messages[] = ['role' => 'assistant', 'text' => $this->questionFor($slot, $this->missCount)];
+                $this->dispatch('message-added');
+                return;
+            }
+
             if (preg_match('/^(?:yes|yeah|yep|yup|correct|right|sure|proceed|go ahead|thats right|that\'s right)\b/i', $trimmedReply)) {
                 $this->awaitingSlot = '';
                 $this->aiPrompt     = '';
@@ -318,12 +363,32 @@ class Llm extends Component
                 return;
             }
 
-            // Anything other than a clear "yes" must not be silently
-            // treated as approval — no plan gets generated until the
-            // traveler actually confirms. /reset (handled at the very top
-            // of this method) is already the existing way to change any
-            // collected detail, so it's pointed to here rather than
-            // building a second, parallel edit-a-slot flow.
+            // Not a "yes" — but before treating it as a plain decline, see
+            // if it's actually a request to fix ONE detail ("change my
+            // destination to Bohol"). If so, apply just that change and
+            // show the updated summary instead of making them /reset
+            // everything over one wrong field.
+            $editedSlot = $this->applySlotEdit($trimmedReply);
+            if ($editedSlot !== null) {
+                $this->aiPrompt   = '';
+                $this->messages[] = ['role' => 'assistant', 'text' => 'Got it, updated! ' . $this->confirmationSummary()];
+                $this->dispatch('message-added');
+                return;
+            }
+
+            // applySlotEdit() named a slot but had no usable value ("also
+            // the budget") — it set $pendingEditSlot as a side effect, so
+            // ask directly for the value instead of the generic decline.
+            if ($this->pendingEditSlot !== '') {
+                $this->aiPrompt   = '';
+                $this->messages[] = ['role' => 'assistant', 'text' => $this->questionFor($this->pendingEditSlot, $this->missCount)];
+                $this->dispatch('message-added');
+                return;
+            }
+
+            // Anything other than a clear "yes" (or a recognized edit)
+            // must not be silently treated as approval — no plan gets
+            // generated until the traveler actually confirms.
             $this->aiPrompt   = '';
             $this->messages[] = ['role' => 'assistant', 'text' =>
                 "No worries, take your time. Let me know when you're ready to proceed, or type /reset to start over with different details."];
@@ -570,7 +635,12 @@ class Llm extends Component
         $this->aiDestinationChoices = [];
         $this->pendingPlaceSuggestion = null;
         $this->pendingPlaceSuggestionSlot = null;
-        $this->awaitingSlot    = '';
+        $this->pendingEditSlot = '';
+        // The message below directly asks for a destination — awaitingSlot
+        // must say so too, or a bad first answer ("dota") falls through to
+        // the generic off-topic classifier instead of being treated as a
+        // (failed) destination attempt and getting the right retry message.
+        $this->awaitingSlot    = 'destination';
         $this->missCount       = 0;
         $this->messages        = [['role' => 'assistant', 'text' => "Conversation reset — let's start fresh! Where would you like to go?"]];
 
@@ -955,6 +1025,114 @@ PROMPT;
             . "- Travelers: {$this->aiTravelers}\n"
             . "- Budget: {$budget}\n\n"
             . "Would you like me to proceed with this plan?";
+    }
+
+    // Which slot (if any) a message during confirmation is talking about —
+    // just the keyword check, no value involved. Shared by applySlotEdit()
+    // below and the "named a slot but gave no value" fallback in
+    // automateTrip(), so both agree on the same set of editable slots.
+    // Dates aren't covered here (parsing a free-text date range needs more
+    // than a one-line rule) — /reset still covers that case.
+    private function detectEditSlot(string $text): ?string
+    {
+        return match (true) {
+            (bool) preg_match('/\bdestination\b/i', $text) => 'destination',
+            (bool) preg_match('/\borigin\b|\bleaving from\b|\bdeparting from\b/i', $text) => 'origin',
+            (bool) preg_match('/\bbudget\b/i', $text) => 'budget',
+            (bool) preg_match('/\btravelers?\b|\bpeople\b|\bpax\b/i', $text) => 'travelers',
+            default => null,
+        };
+    }
+
+    // Tries to apply $value to $slot — same per-slot parsing/validation
+    // used for a normal first-time answer to that slot (knownPlaceName()'s
+    // fake-place rejection for destination/origin, the same money-token
+    // parser for budget). Shared by applySlotEdit() (value came from
+    // "...to X") and the pendingEditSlot follow-up (the whole next message
+    // IS the value), so both go through identical checks. Returns whether
+    // it actually applied.
+    private function applyValueToSlot(string $slot, string $value): bool
+    {
+        if ($slot === 'destination') {
+            $resolved = $this->knownPlaceName($this->cleanCityName($value), 'destination');
+            if ($resolved === '') return false;
+            // Same check the normal first-time flow already runs once both
+            // sides are filled — edit must not be a backdoor around it.
+            if ($this->samePlace($resolved, $this->aiFrom)) return false;
+            $this->aiTo = $resolved;
+            return true;
+        }
+
+        if ($slot === 'origin') {
+            $resolved = $this->knownPlaceName($this->cleanCityName($value), 'origin');
+            if ($resolved === '') return false;
+            if ($this->samePlace($resolved, $this->aiTo)) return false;
+            $this->aiFrom = $resolved;
+            return true;
+        }
+
+        if ($slot === 'budget') {
+            $v = $this->parseMoneyToken($value);
+            if ($v <= 0) return false;
+            $this->aiBudgetMin = $this->aiBudgetMax = $v;
+            return true;
+        }
+
+        if ($slot === 'travelers') {
+            $v = (int) $value;
+            if ($v <= 0) return false;
+            $this->aiTravelers = $v;
+            return true;
+        }
+
+        return false;
+    }
+
+    // Lets the traveler fix ONE wrong detail while reviewing the summary
+    // ("change my destination to Bohol") instead of being forced to
+    // /reset the whole conversation over a single field. Handles exactly
+    // one slot per message on purpose — keeps the matching simple and
+    // predictable rather than trying to parse several edits out of one
+    // sentence. Returns the slot name that changed, or null if nothing
+    // was actually applied — which includes both "not an edit at all" and
+    // "named a slot but gave no usable value" (that second case sets
+    // $pendingEditSlot as a side effect, so the caller can ask directly
+    // for the value instead of falling through to a generic decline).
+    private function applySlotEdit(string $text): ?string
+    {
+        $slot = $this->detectEditSlot($text);
+        if ($slot === null) return null;
+
+        // Whatever follows the LAST connector word ("to" or "in") is
+        // treated as the new value — checking both matters, since "change
+        // my destination IN Bohol" is just as natural as "...TO Bohol".
+        // Taking the LAST occurrence (not the first) matters too: "I want
+        // TO change my destination IN Bohol" has an unrelated "to"
+        // earlier in the sentence, and only the connector right before
+        // the actual value should count.
+        $bestPos = null;
+        $bestConnectorLen = 0;
+        foreach ([' to ', ' in '] as $connector) {
+            $pos = strripos($text, $connector);
+            if ($pos !== false && ($bestPos === null || $pos > $bestPos)) {
+                $bestPos = $pos;
+                $bestConnectorLen = strlen($connector);
+            }
+        }
+        $value = $bestPos !== null ? trim(substr($text, $bestPos + $bestConnectorLen)) : '';
+
+        if ($value !== '' && $this->applyValueToSlot($slot, $value)) {
+            return $slot;
+        }
+
+        // Fresh edit request that didn't give a usable value ("also the
+        // budget") or gave an invalid one ("destination to Minecraft") —
+        // either way this is attempt #1 at answering it, so missCount
+        // starts at 0 here rather than carrying over whatever it was
+        // doing before confirmation.
+        $this->pendingEditSlot = $slot;
+        $this->missCount       = 0;
+        return null;
     }
 
     private function questionFor(string $slot, int $missCount): string
@@ -1697,10 +1875,21 @@ PROMPT;
     private function sameOriginAndDestination(): bool
     {
         if ($this->aiFrom === '' || $this->aiTo === '') return false;
-        if (strtolower($this->aiFrom) === strtolower($this->aiTo)) return true;
+        return $this->samePlace($this->aiFrom, $this->aiTo);
+    }
 
-        $fromCode = $this->iataCode($this->aiFrom);
-        return $fromCode !== '' && $fromCode === $this->iataCode($this->aiTo);
+    // Same place either by exact name or by sharing an airport code (e.g.
+    // "Kalibo" and "Boracay" both resolve to the same airport) — pulled
+    // out of sameOriginAndDestination() so applyValueToSlot() below can
+    // run the identical check when EDITING one side during confirmation,
+    // not just when both were filled in for the first time.
+    private function samePlace(string $a, string $b): bool
+    {
+        if ($a === '' || $b === '') return false;
+        if (strtolower($a) === strtolower($b)) return true;
+
+        $codeA = $this->iataCode($a);
+        return $codeA !== '' && $codeA === $this->iataCode($b);
     }
 
     private function budgetFloor(): int

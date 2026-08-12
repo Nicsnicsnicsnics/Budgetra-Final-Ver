@@ -26,7 +26,7 @@ class OcrService
                 'status'        => 'failed',
                 'error_message' => 'OCR API key not configured.',
             ]);
-            return ['amount' => null, 'date' => null, 'description' => null, 'confidence' => 0];
+            return ['amount' => null, 'date' => null, 'description' => null, 'category' => null, 'confidence' => 0];
         }
 
         $imageContent = file_get_contents($file->getRealPath());
@@ -63,7 +63,7 @@ class OcrService
                 'status'        => 'failed',
                 'error_message' => 'OCR request failed: ' . $e->getMessage(),
             ]);
-            return ['amount' => null, 'date' => null, 'description' => null, 'confidence' => 0];
+            return ['amount' => null, 'date' => null, 'description' => null, 'category' => null, 'confidence' => 0];
         }
 
         if (!$response->successful() || ($response->json('OCRExitCode') ?? 0) < 1) {
@@ -73,7 +73,7 @@ class OcrService
                 'status'        => 'failed',
                 'error_message' => 'OCR API error: ' . $response->status(),
             ]);
-            return ['amount' => null, 'date' => null, 'description' => null, 'confidence' => 0];
+            return ['amount' => null, 'date' => null, 'description' => null, 'category' => null, 'confidence' => 0];
         }
 
         $text       = $response->json('ParsedResults.0.ParsedText', '');
