@@ -3,24 +3,33 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attraction;
+use App\Services\PlaceImageService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
 
 class AttractionController extends Controller
 {
     public function index(Request $request)
     {
+        $active = 'attractions';
+        $missingImageCount = Attraction::whereNull('image')->count();
         $query = Attraction::query();
         if ($request->filled('destination')) {
             $query->where('destination', $request->destination);
         }
-        $attractions = $query->orderBy('destination')->orderBy('name')->paginate(25)->withQueryString();
-        return view('admin.attractions.index', compact('attractions'));
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+        $attractions = $query->orderBy('destination')->orderBy('name')->paginate(24)->withQueryString();
+        $categories  = Attraction::whereNotNull('category')->distinct()->orderBy('category')->pluck('category');
+        return view('admin.attractions.index', compact('attractions', 'active', 'categories', 'missingImageCount'));
     }
 
     public function create()
     {
-        return view('admin.attractions.create');
+        $active = 'attractions';
+        return view('admin.attractions.create', compact('active'));
     }
 
     public function store(Request $request)
@@ -55,7 +64,8 @@ class AttractionController extends Controller
 
     public function edit(Attraction $attraction)
     {
-        return view('admin.attractions.edit', compact('attraction'));
+        $active = 'attractions';
+        return view('admin.attractions.edit', compact('attraction', 'active'));
     }
 
     public function update(Request $request, Attraction $attraction)
@@ -91,5 +101,22 @@ class AttractionController extends Controller
     {
         $attraction->delete();
         return redirect()->route('admin.attractions.index')->with('success', 'Attraction deleted.');
+    }
+
+    public function fetchImage(Attraction $attraction, PlaceImageService $images)
+    {
+        if (!$images->fetchForAttraction($attraction)) {
+            return back()->with('error', 'Could not find or download a photo for this attraction right now.');
+        }
+        return redirect()->route('admin.attractions.index')->with('success', 'Photo fetched for ' . $attraction->name . '.');
+    }
+
+    // Runs the same batching + daily-quota-reserve logic as the scheduled
+    // `app:fill-attraction-images` command, just triggered on demand.
+    public function fillMissingImages()
+    {
+        set_time_limit(120);
+        Artisan::call('app:fill-attraction-images', ['--limit' => 15]);
+        return redirect()->route('admin.attractions.index')->with('success', trim(Artisan::output()));
     }
 }

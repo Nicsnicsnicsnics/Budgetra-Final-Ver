@@ -19,5 +19,16 @@ class AdminUserSeeder extends Seeder
                 'currency_symbol' => '₱',
             ]
         );
+
+        User::updateOrCreate(
+            ['email' => 'admin@gmail.com'],
+            [
+                'full_name'     => 'Super Admin',
+                'password'      => Hash::make('testadmin123'),
+                'role'          => 'admin',
+                'currency_code' => 'PHP',
+                'currency_symbol' => '₱',
+            ]
+        );
     }
 }

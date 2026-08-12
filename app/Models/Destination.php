@@ -6,4 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 class Destination extends Model
 {
     protected $fillable = ['name', 'country', 'description', 'image'];
+
+    public function attractions()
+    {
+        return $this->hasMany(Attraction::class, 'destination', 'name');
+    }
 }

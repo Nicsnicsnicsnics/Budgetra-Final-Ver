@@ -16,6 +16,7 @@ class SerpApiService
         'google_flights' => 6,
         'google_hotels'  => 12,
         'google_maps'    => 24,
+        'google_images'  => 24,
         'default'        => 12,
     ];
 
@@ -888,5 +889,28 @@ class SerpApiService
             $items[] = [$title, 'Free'];
         }
         return $items ?: null;
+    }
+
+    // ── Place photo — google_images. Shared by destinations (context =
+    // country) and attractions (context = destination city); $hint biases
+    // the search toward the right kind of photo for each. ────────────────
+    public function searchPlaceImage(string $name, ?string $context = null, string $hint = 'travel destination'): ?string
+    {
+        $params = [
+            'engine'  => 'google_images',
+            'q'       => trim($name . ' ' . $context . ' ' . $hint),
+            'hl'      => 'en',
+            'api_key' => $this->key,
+        ];
+
+        $data = $this->cachedRequest($params);
+        if (!$data) return null;
+
+        $results = $data['images_results'] ?? [];
+        foreach ($results as $r) {
+            $url = $r['original'] ?? $r['thumbnail'] ?? null;
+            if ($url) return $url;
+        }
+        return null;
     }
 }

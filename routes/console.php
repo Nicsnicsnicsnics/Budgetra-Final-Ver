@@ -10,3 +10,5 @@ Artisan::command('inspire', function () {
 
 Schedule::command('app:send-trip-reminders')->daily();
 Schedule::command('app:send-itinerary-reminders')->hourly();
+Schedule::command('app:fill-destination-images')->daily();
+Schedule::command('app:fill-attraction-images')->daily();

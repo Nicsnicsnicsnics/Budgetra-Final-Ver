@@ -66,6 +66,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/attractions',              [Traveler\AttractionController::class, 'index'])->name('attractions.index');
     Route::get('/attractions/{attraction}',[Traveler\AttractionController::class, 'show'])->name('attractions.show');
+    Route::get('/destinations',              [Traveler\DestinationController::class, 'index'])->name('destinations.index');
+    Route::get('/destinations/{destination}',[Traveler\DestinationController::class, 'show'])->name('destinations.show');
     Route::get('/compare',                   [Traveler\ComparisonController::class, 'index'])->name('compare.index');
 
     Route::get('/itinerary',             [Traveler\ItineraryController::class, 'index'])->name('itinerary.index');
@@ -89,7 +91,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/savings/{goal}/edit',   [Traveler\SavingsGoalController::class, 'edit'])->name('savings.edit');
     Route::put('/savings/{goal}',        [Traveler\SavingsGoalController::class, 'update'])->name('savings.update');
     Route::delete('/savings/{goal}',     [Traveler\SavingsGoalController::class, 'destroy'])->name('savings.destroy');
-    Route::patch('/savings/{goal}/deposit', [Traveler\SavingsGoalController::class, 'deposit'])->name('savings.deposit');
 });
 
 // Admin routes
@@ -98,12 +99,18 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/dashboard', [Admin\DashboardController::class, '__invoke'])->name('dashboard');
 
     Route::get('/users',             [Admin\UserController::class, 'index'])->name('users.index');
+    Route::get('/users/export',      [Admin\UserController::class, 'export'])->name('users.export');
     Route::get('/users/{user}',      [Admin\UserController::class, 'show'])->name('users.show');
     Route::patch('/users/{user}/ban',[Admin\UserController::class, 'ban'])->name('users.ban');
     Route::delete('/users/{user}',   [Admin\UserController::class, 'destroy'])->name('users.destroy');
 
-    Route::resource('destinations',  Admin\DestinationController::class)->except(['show']);
+    Route::resource('destinations',  Admin\DestinationController::class)->only(['index', 'update', 'destroy']);
+    Route::post('/destinations/fill-missing-images', [Admin\DestinationController::class, 'fillMissingImages'])->name('destinations.fill-missing-images');
+    Route::post('/destinations/{destination}/fetch-image', [Admin\DestinationController::class, 'fetchImage'])->name('destinations.fetch-image');
+    Route::resource('travel-costs',  Admin\TravelCostController::class)->except(['show']);
     Route::resource('attractions',   Admin\AttractionController::class)->except(['show']);
+    Route::post('/attractions/fill-missing-images', [Admin\AttractionController::class, 'fillMissingImages'])->name('attractions.fill-missing-images');
+    Route::post('/attractions/{attraction}/fetch-image', [Admin\AttractionController::class, 'fetchImage'])->name('attractions.fetch-image');
 
     Route::get('/reviews',                   [Admin\ReviewModerationController::class, 'index'])->name('reviews.index');
     Route::patch('/reviews/{review}/hide',   [Admin\ReviewModerationController::class, 'hide'])->name('reviews.hide');

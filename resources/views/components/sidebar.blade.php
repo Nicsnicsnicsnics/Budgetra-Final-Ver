@@ -3,6 +3,8 @@
     $links = [
         ['href' => url('/dashboard'),  'icon' => 'fa-solid fa-house',            'label' => 'Dashboard',    'key' => 'dashboard',   'segment' => 'dashboard'],
         ['href' => url('/trips'),      'icon' => 'fa-solid fa-map-location-dot', 'label' => 'Planner',      'key' => 'trips',       'segment' => 'trips'],
+        ['href' => route('destinations.index'), 'icon' => 'fa-solid fa-compass', 'label' => 'Destinations', 'key' => 'destinations', 'segment' => 'destinations'],
+        ['href' => route('attractions.index'), 'icon' => 'fa-solid fa-mountain-sun', 'label' => 'Attractions', 'key' => 'attractions', 'segment' => 'attractions'],
         ['href' => route('saved-trips'), 'icon' => 'fa-solid fa-suitcase-rolling', 'label' => 'Saved Trips', 'key' => 'saved-trips', 'segment' => 'saved-trips'],
         ['href' => url('/savings'),    'icon' => 'fa-solid fa-piggy-bank',       'label' => 'Saving Goals', 'key' => 'savings',     'segment' => 'savings'],
         ['href' => url('/itinerary'),  'icon' => 'fa-regular fa-calendar-days',  'label' => 'Itinerary',    'key' => 'itinerary',   'segment' => 'itinerary'],

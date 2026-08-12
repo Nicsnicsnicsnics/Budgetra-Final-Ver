@@ -96,12 +96,4 @@ class SavingsGoalController extends Controller
         $goal->delete();
         return redirect()->route('savings.index')->with('success', 'Goal deleted.');
     }
-
-    public function deposit(Request $request, SavingsGoal $goal)
-    {
-        abort_if($goal->user_id !== auth()->id(), 403);
-        $request->validate(['amount' => 'required|numeric|min:0.01']);
-        $goal->increment('current_savings', $request->amount);
-        return back()->with('success', 'Deposit added!');
-    }
 }

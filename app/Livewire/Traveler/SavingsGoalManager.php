@@ -57,6 +57,22 @@ class SavingsGoalManager extends Component
                     . number_format($this->goal->current_savings, 2) . ' saved!',
                 'is_read' => false,
             ]);
+        } elseif (!$wasCompleted) {
+            // Goal-reached already gets its own celebratory notification
+            // above — this covers every other deposit, the same way
+            // ExpenseObserver notifies on every logged expense.
+            $pct = $this->goal->target_amount > 0
+                ? min(100, round($this->goal->current_savings / $this->goal->target_amount * 100))
+                : 0;
+            Notification::create([
+                'user_id' => $this->goal->user_id,
+                'trip_id' => $this->goal->trip_id,
+                'type'    => 'savings_goal_deposit',
+                'message' => '💰 You added ' . currency_symbol() . number_format($this->depositAmount, 2)
+                    . " to \"{$this->goal->goal_name}\" — now " . currency_symbol() . number_format($this->goal->current_savings, 2)
+                    . ' of ' . currency_symbol() . number_format($this->goal->target_amount, 2) . " saved ({$pct}%).",
+                'is_read' => false,
+            ]);
         }
 
         $this->depositAmount = 0;

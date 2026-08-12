@@ -1,61 +1,58 @@
 @props(['active' => ''])
-<aside class="sidebar" id="appSidebar">
-    <button class="sidebar-toggle-btn" id="sidebarToggle" title="Toggle sidebar">
-        <i class="fa-solid fa-bars" id="sidebarToggleIcon"></i>
-    </button>
-    <div class="sidebar-brand">
-        <div class="sidebar-trip-badge"><span>Admin Panel</span></div>
-        <div class="sidebar-trip-name"><span>Budgetra</span></div>
-        <div class="sidebar-trip-status"><span>Management Dashboard</span></div>
+<aside class="admin-sidebar" id="adminSidebar">
+    <div class="admin-sidebar-brand">
+        <div class="admin-sidebar-logo"><i class="fa-solid fa-compass"></i></div>
+        <div>
+            <div class="admin-sidebar-name">Budgetra</div>
+            <div class="admin-sidebar-tagline">Travel Admin</div>
+        </div>
     </div>
-    <nav class="sidebar-nav" style="overflow-y:auto;max-height:calc(100vh - 220px);">
+
+    <nav class="admin-sidebar-nav">
         @php
-        $links = [
-            ['href' => url('/admin'),              'icon' => 'fa-solid fa-gauge-high',       'label' => 'Overview',      'key' => 'dashboard'],
-            ['href' => url('/admin/users'),         'icon' => 'fa-solid fa-users',            'label' => 'Users',         'key' => 'users'],
-            ['href' => url('/admin/destinations'),  'icon' => 'fa-solid fa-map-pin',          'label' => 'Destinations',  'key' => 'destinations'],
-            ['href' => url('/admin/attractions'),   'icon' => 'fa-solid fa-mountain-sun',     'label' => 'Attractions',   'key' => 'attractions'],
-            ['href' => url('/admin/integrations'),  'icon' => 'fa-solid fa-plug-circle-bolt', 'label' => 'Integrations',  'key' => 'integrations'],
-            ['href' => url('/admin/reports'),       'icon' => 'fa-solid fa-chart-column',     'label' => 'Reports',       'key' => 'reports'],
-            ['href' => url('/admin/reviews'),       'icon' => 'fa-solid fa-star-half-stroke', 'label' => 'Reviews',       'key' => 'reviews'],
+        $primaryLinks = [
+            ['href' => route('admin.dashboard'),          'icon' => 'fa-solid fa-table-cells-large', 'label' => 'Dashboard',      'key' => 'dashboard'],
+            ['href' => route('admin.users.index'),         'icon' => 'fa-solid fa-users',              'label' => 'User Accounts',  'key' => 'users'],
+            ['href' => route('admin.destinations.index'),  'icon' => 'fa-solid fa-compass',            'label' => 'Destinations',   'key' => 'destinations'],
+            ['href' => route('admin.attractions.index'),   'icon' => 'fa-solid fa-map-location-dot',   'label' => 'Attractions',    'key' => 'attractions'],
+            ['href' => route('admin.travel-costs.index'),  'icon' => 'fa-solid fa-sack-dollar',        'label' => 'Travel Costs',   'key' => 'travel-costs'],
+            ['href' => route('admin.reviews.index'),       'icon' => 'fa-regular fa-flag',             'label' => 'User Reviews',   'key' => 'reviews'],
+        ];
+        $moreLinks = [
+            ['href' => route('admin.reports.index'),      'icon' => 'fa-solid fa-chart-column',     'label' => 'Reports',      'key' => 'reports'],
+            ['href' => route('admin.config.index'),       'icon' => 'fa-solid fa-sliders',          'label' => 'Config',       'key' => 'config'],
+            ['href' => route('admin.ocr.index'),          'icon' => 'fa-solid fa-receipt',          'label' => 'OCR Logs',     'key' => 'ocr'],
+            ['href' => route('admin.backup.index'),       'icon' => 'fa-solid fa-database',         'label' => 'Backup',       'key' => 'backup'],
         ];
         @endphp
-        @foreach ($links as $link)
-        <a href="{{ $link['href'] }}"
-           class="sidebar-link {{ $active === $link['key'] ? 'active' : '' }}"
-           title="{{ $link['label'] }}">
+        @foreach ($primaryLinks as $link)
+        <a href="{{ $link['href'] }}" class="admin-sidebar-link {{ $active === $link['key'] ? 'active' : '' }}">
             <i class="{{ $link['icon'] }}"></i>
-            <span class="sidebar-link-label">{{ $link['label'] }}</span>
+            <span>{{ $link['label'] }}</span>
+        </a>
+        @endforeach
+
+        <div class="admin-sidebar-divider"></div>
+
+        @foreach ($moreLinks as $link)
+        <a href="{{ $link['href'] }}" class="admin-sidebar-link admin-sidebar-link-sub {{ $active === $link['key'] ? 'active' : '' }}">
+            <i class="{{ $link['icon'] }}"></i>
+            <span>{{ $link['label'] }}</span>
         </a>
         @endforeach
     </nav>
-    <div class="sidebar-avatar-wrap">
-        <div class="sidebar-avatar">A</div>
-        <div class="sidebar-user-details">
-            <div class="sidebar-user-name">Admin</div>
-            <div class="sidebar-user-email">Administrator</div>
-        </div>
+
+    <div class="admin-sidebar-foot">
+        <a href="{{ route('dashboard') }}" class="admin-sidebar-link">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Back to App</span>
+        </a>
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit" class="admin-sidebar-link admin-sidebar-logout">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Logout</span>
+            </button>
+        </form>
     </div>
 </aside>
-<style>
-.sidebar-nav { scrollbar-width: none; }
-.sidebar-nav::-webkit-scrollbar { display: none; }
-</style>
-<script>
-(function () {
-    var wrap = document.querySelector('.dashboard-wrapper');
-    var btn  = document.getElementById('sidebarToggle');
-    var icon = document.getElementById('sidebarToggleIcon');
-    if (!wrap || !btn) return;
-    function applyState(c) {
-        wrap.classList.toggle('sidebar-collapsed', c);
-        icon.className = c ? 'fa-solid fa-chevron-right' : 'fa-solid fa-bars';
-    }
-    applyState(localStorage.getItem('sidebarCollapsed') === '1');
-    btn.addEventListener('click', function () {
-        var c = !wrap.classList.contains('sidebar-collapsed');
-        localStorage.setItem('sidebarCollapsed', c ? '1' : '0');
-        applyState(c);
-    });
-})();
-</script>

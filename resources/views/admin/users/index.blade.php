@@ -1,44 +1,91 @@
-@extends('layouts.app')
-@section('title', 'Manage Users')
+@extends('layouts.admin')
 @section('content')
-<h1>Manage Users</h1>
-<form method="GET" style="display:flex;gap:8px;margin-bottom:1rem;">
-    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or email..." class="form-control" style="width:250px;">
-    <select name="role" class="form-control" style="width:auto;">
-        <option value="">All roles</option>
-        <option value="traveler" {{ request('role') === 'traveler' ? 'selected' : '' }}>Traveler</option>
-        <option value="admin"    {{ request('role') === 'admin'    ? 'selected' : '' }}>Admin</option>
-        <option value="banned"   {{ request('role') === 'banned'   ? 'selected' : '' }}>Banned</option>
-    </select>
-    <button class="btn btn-secondary">Filter</button>
+<div class="admin-page-head">
+    <div>
+        <h1>User Management</h1>
+        <p>Manage, monitor, and moderate user accounts across the Budgetra platform.</p>
+    </div>
+    <div class="admin-page-head-actions">
+        <form method="GET" class="admin-inline-filter">
+            @if(request('search'))<input type="hidden" name="search" value="{{ request('search') }}">@endif
+            <select name="status" class="admin-input" onchange="this.form.submit()">
+                <option value="">All Users</option>
+                <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
+                <option value="banned" {{ request('status') === 'banned' ? 'selected' : '' }}>Banned</option>
+            </select>
+            <button type="submit" class="admin-btn admin-btn-outline"><i class="fa-solid fa-filter"></i> Filter</button>
+        </form>
+        <a href="{{ route('admin.users.export', request()->query()) }}" class="admin-btn admin-btn-outline"><i class="fa-solid fa-download"></i> Export</a>
+    </div>
+</div>
+@if(session('success'))<div class="admin-alert-success">{{ session('success') }}</div>@endif
+
+<div class="admin-stat-row">
+    <div class="admin-stat-card">
+        <span class="admin-stat-label">Total Active Users</span>
+        <strong class="admin-stat-value">{{ $activeUsers }}</strong>
+    </div>
+    <div class="admin-stat-card">
+        <span class="admin-stat-label">Trips Planned (Month)</span>
+        <strong class="admin-stat-value">{{ $tripsThisMonth }}</strong>
+    </div>
+    <div class="admin-stat-card">
+        <span class="admin-stat-label">Banned Users</span>
+        <strong class="admin-stat-value">{{ $bannedUsers }}</strong>
+    </div>
+</div>
+
+<form method="GET" class="admin-search-form" style="margin-bottom:16px;">
+    @if(request('status'))<input type="hidden" name="status" value="{{ request('status') }}">@endif
+    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or email..." class="admin-input">
+    <button type="submit" class="admin-btn admin-btn-outline">Search</button>
 </form>
-@if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
-<table class="table">
-    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Registered</th><th>Actions</th></tr></thead>
-    <tbody>
-    @foreach($users as $user)
-        <tr>
-            <td><a href="{{ route('admin.users.show', $user) }}">{{ $user->full_name }}</a></td>
-            <td>{{ $user->email }}</td>
-            <td><span>{{ $user->role }}</span></td>
-            <td>{{ $user->created_at->format('M j, Y') }}</td>
-            <td style="display:flex;gap:4px;">
-                @if($user->id !== auth()->id())
-                    <form method="POST" action="{{ route('admin.users.ban', $user) }}">
-                        @csrf @method('PATCH')
-                        <button class="btn btn-sm {{ $user->role === 'banned' ? 'btn-success' : 'btn-warning' }}">
-                            {{ $user->role === 'banned' ? 'Unban' : 'Ban' }}
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('Delete this user?')">
-                        @csrf @method('DELETE')
-                        <button class="btn btn-sm btn-danger">Delete</button>
-                    </form>
-                @endif
-            </td>
-        </tr>
-    @endforeach
-    </tbody>
-</table>
-{{ $users->links() }}
+
+<div class="admin-card">
+    <table class="admin-table">
+        <thead>
+            <tr><th>User</th><th>Trip Count</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        @forelse($users as $user)
+            <tr>
+                <td>
+                    <div class="admin-user-cell">
+                        <div class="admin-user-avatar">{{ strtoupper(substr($user->full_name ?: $user->email, 0, 1)) }}</div>
+                        <div>
+                            <div class="admin-user-name">{{ $user->full_name ?: '—' }}</div>
+                            <div class="admin-user-email">{{ $user->email }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>{{ $user->trips_count }} {{ Str::plural('Trip', $user->trips_count) }}</td>
+                <td>
+                    @if($user->role === 'banned')
+                        <span class="admin-badge admin-badge-danger">BANNED</span>
+                    @else
+                        <span class="admin-badge admin-badge-success">ACTIVE</span>
+                    @endif
+                </td>
+                <td class="admin-table-actions">
+                    @if($user->id !== auth()->id())
+                        <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('Delete this user? This cannot be undone.')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="admin-icon-btn admin-icon-btn-danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                        </form>
+                        <form method="POST" action="{{ route('admin.users.ban', $user) }}">
+                            @csrf @method('PATCH')
+                            <button type="submit" class="admin-icon-btn {{ $user->role === 'banned' ? 'admin-icon-btn-active' : '' }}" title="{{ $user->role === 'banned' ? 'Unban' : 'Ban' }}">
+                                <i class="fa-solid fa-ban"></i>
+                            </button>
+                        </form>
+                    @endif
+                </td>
+            </tr>
+        @empty
+            <tr><td colspan="4" class="admin-table-empty">No users found.</td></tr>
+        @endforelse
+        </tbody>
+    </table>
+</div>
+<div class="admin-pagination">{{ $users->links() }}</div>
 @endsection
