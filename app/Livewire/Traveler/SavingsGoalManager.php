@@ -67,7 +67,7 @@ class SavingsGoalManager extends Component
                 'user_id' => $this->goal->user_id,
                 'trip_id' => $this->goal->trip_id,
                 'type'    => 'savings_goal_reached',
-                'message' => "Congratulations! You've reached your savings goal \"{$this->goal->goal_name}\" — " . currency_symbol()
+                'message' => "🎉 Congratulations! You've reached your savings goal \"{$this->goal->goal_name}\" — " . currency_symbol()
                     . number_format($this->goal->current_savings, 2) . ' saved!',
                 'is_read' => false,
             ]);
