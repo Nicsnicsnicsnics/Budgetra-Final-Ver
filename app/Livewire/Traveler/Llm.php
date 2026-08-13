@@ -3,6 +3,7 @@ namespace App\Livewire\Traveler;
 
 use App\Models\AiConversationDraft;
 use App\Models\AiConversationHistory;
+use App\Models\Trip;
 use App\Services\CerebrasService;
 use App\Services\GeminiService;
 use App\Services\GroqService;
@@ -37,6 +38,12 @@ class Llm extends Component
     public string $aiCurrency    = '';
     public array  $aiPackage     = [];
     public int    $aiGenCount    = 0;
+
+    // Tracks the Trip row created by autosaveDraft() so a traveler who
+    // navigates away (sidebar/tab) after the AI suggests a plan still finds
+    // it under "Draft Trips" instead of losing it — repeated autosaves
+    // update the same row rather than creating a new draft each time.
+    public ?int $draftTripId = null;
 
     public array $aiDestinationChoices = [];
 
@@ -221,6 +228,8 @@ class Llm extends Component
 
         if (empty($this->messages)) return;
 
+        $this->autosaveDraft();
+
         AiConversationDraft::updateOrCreate(
             ['user_id' => auth()->id()],
             [
@@ -241,6 +250,43 @@ class Llm extends Component
                 'ai_gen_count'  => $this->aiGenCount,
             ]
         );
+    }
+
+    // Runs on every dehydrate once the AI has suggested a plan (aiStep ===
+    // 'results'), so a traveler who clicks away to another sidebar link/tab
+    // right after seeing the suggestion still finds it under "Draft Trips"
+    // instead of it only living in the (invisible) conversation draft.
+    private function autosaveDraft(): void
+    {
+        if ($this->aiStep !== 'results') return;
+        if (trim($this->aiTo) === '' || $this->aiDateFrom === '') return;
+
+        $endDate = $this->aiDateTo !== ''
+            ? $this->aiDateTo
+            : date('Y-m-d', strtotime($this->aiDateFrom) + max(1, $this->aiDays - 1) * 86400);
+
+        $data = [
+            'user_id'          => auth()->id(),
+            'destination'      => $this->aiTo,
+            'origin'           => trim($this->aiFrom),
+            'start_date'       => $this->aiDateFrom,
+            'end_date'         => $endDate,
+            'budget_limit'     => $this->aiBudgetMax ?: $this->aiBudgetMin,
+            'travel_type'      => 'Solo',
+            'num_travelers'    => max(1, $this->aiTravelers),
+            'status'           => 'draft',
+        ];
+
+        $existing = $this->draftTripId ? Trip::where('id', $this->draftTripId)
+            ->where('user_id', auth()->id())
+            ->where('status', 'draft')
+            ->first() : null;
+
+        if ($existing) {
+            $existing->update($data);
+        } else {
+            $this->draftTripId = Trip::create($data)->id;
+        }
     }
 
     public function automateTrip(): void
@@ -617,6 +663,14 @@ class Llm extends Component
     private function resetConversation(): void
     {
         AiConversationDraft::where('user_id', auth()->id())->delete();
+
+        if ($this->draftTripId) {
+            Trip::where('id', $this->draftTripId)
+                ->where('user_id', auth()->id())
+                ->where('status', 'draft')
+                ->delete();
+            $this->draftTripId = null;
+        }
 
         $this->aiPrompt        = '';
         $this->aiStep          = '';
@@ -2095,16 +2149,17 @@ PROMPT;
         ] : null;
 
         session(['wizard_ai_handoff' => [
-            'from'       => $this->aiFrom,
-            'to'         => $this->aiTo,
-            'budget_min' => $this->aiBudgetMin,
-            'budget_max' => $this->aiBudgetMax,
-            'start'      => $start,
-            'end'        => $end,
-            'flight'     => $selectedFlight,
-            'hotel'      => $selectedHotel,
-            'venue'      => $selectedVenue,
-            'attraction' => $selectedAttraction,
+            'from'          => $this->aiFrom,
+            'to'            => $this->aiTo,
+            'budget_min'    => $this->aiBudgetMin,
+            'budget_max'    => $this->aiBudgetMax,
+            'start'         => $start,
+            'end'           => $end,
+            'flight'        => $selectedFlight,
+            'hotel'         => $selectedHotel,
+            'venue'         => $selectedVenue,
+            'attraction'    => $selectedAttraction,
+            'draft_trip_id' => $this->draftTripId,
         ]]);
 
         AiConversationHistory::create([

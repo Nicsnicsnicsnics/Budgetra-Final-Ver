@@ -39,9 +39,13 @@
         <p class="text-muted">Welcome back, {{ auth()->user()?->full_name ?? '' }}!</p>
     </div>
     <a href="{{ route('dashboard.report') }}"
-       style="display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;border-radius:10px;padding:11px 20px;font-size:13px;font-weight:700;text-decoration:none;transition:background .18s;"
-       onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">
-        <i class="fa-solid fa-file-arrow-down"></i> Download Report
+       x-data="{ loading: false, hover: false }"
+       @click="loading = true; setTimeout(() => loading = false, 3000)"
+       @mouseenter="hover = true" @mouseleave="hover = false"
+       :style="'display:inline-flex;align-items:center;gap:8px;color:#fff;border-radius:10px;padding:11px 20px;font-size:13px;font-weight:700;text-decoration:none;transition:background .18s;background:' + (loading ? 'var(--primary)' : (hover ? 'var(--primary-dark)' : 'var(--primary)')) + ';' + (loading ? 'pointer-events:none;opacity:.75;' : '')">
+        <i class="fa-solid fa-spinner fa-spin" x-show="loading" x-cloak></i>
+        <i class="fa-solid fa-file-arrow-down" x-show="!loading"></i>
+        <span x-text="loading ? 'Preparing…' : 'Download Report'"></span>
     </a>
 </div>
 

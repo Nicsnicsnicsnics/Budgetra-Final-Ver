@@ -374,6 +374,10 @@ class TripPlannerWizard extends Component
             $this->manualBudgetMax = (string) ($handoff['budget_max'] ?? $handoff['budget_min'] ?? '');
             $this->startDate       = (string) ($handoff['start'] ?? '');
             $this->endDate         = (string) ($handoff['end'] ?? '');
+            // Reuse the draft Trip the AI Planner already autosaved (see
+            // Llm::autosaveDraft()) so this handoff updates it instead of
+            // leaving it behind as an orphaned duplicate draft.
+            $this->draftTripId     = $handoff['draft_trip_id'] ?? null;
 
             $this->selectedFlight     = $handoff['flight']     ?? null;
             $this->selectedHotel      = $handoff['hotel']      ?? null;
