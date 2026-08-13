@@ -9,7 +9,12 @@ class ProfileController extends Controller
 {
     public function edit()
     {
-        return view('traveler.profile.edit', ['user' => auth()->user()]);
+        $user = auth()->user();
+
+        return view('traveler.profile.edit', [
+            'user'    => $user,
+            'profile' => $user->userProfile,
+        ]);
     }
 
     public function update(Request $request)
@@ -18,16 +23,14 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'first_name'     => 'required|string|max:100',
-            'middle_name'    => 'nullable|string|max:100',
             'last_name'      => 'required|string|max:100',
-            'contact_number' => 'nullable|string|max:30',
             'profile_photo'  => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
-        // build full_name from parts
+        // build full_name from parts, preserving any existing middle name
         $validated['full_name'] = trim(
             $validated['first_name'] . ' ' .
-            ($validated['middle_name'] ? $validated['middle_name'] . ' ' : '') .
+            ($user->middle_name ? $user->middle_name . ' ' : '') .
             $validated['last_name']
         );
 

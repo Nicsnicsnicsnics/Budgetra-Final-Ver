@@ -66,7 +66,7 @@
                 @php $stCount = $stGroup['items']->count(); @endphp
                 <span style="font-size:11px;font-weight:800;{{ $stCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:#B3A69A;background:#F3EEE8;' }}border-radius:99px;min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $stCount }}</span>
             </div>
-            <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
+            <i class="fa-solid fa-chevron-down" :style="'font-size:12px;color:var(--muted);transition:.2s;' + (open?'transform:rotate(180deg)':'')"></i>
         </button>
         <div x-show="open" x-transition style="padding:16px 18px 20px;border-top:1px solid var(--border);">
             @if ($stGroup['items']->isEmpty())
@@ -104,9 +104,7 @@
             $spendColor = $trip->spend_pct >= 80 ? '#DC2626' : ($trip->spend_pct >= 50 ? '#D97706' : 'var(--dark)');
             $isDraft = $trip->status === 'draft';
         @endphp
-        <div wire:key="trip-{{ $trip->id }}" style="position:relative;background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;width:420px;flex-shrink:0;transition:border-color .2s;"
-             onmouseenter="this.style.borderColor='var(--primary)'"
-             onmouseleave="this.style.borderColor='var(--border)'">
+        <div wire:key="trip-{{ $trip->id }}" style="position:relative;background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;width:420px;flex-shrink:0;">
             <div @if($isDraft) style="filter:blur(6px);pointer-events:none;user-select:none;" @endif>
             {{-- Cover image --}}
             <div style="position:relative;height:200px;background:linear-gradient(135deg,var(--primary),#C8874A);overflow:hidden;">
@@ -220,8 +218,8 @@
                     <i class="fa-regular fa-pen-to-square" style="font-size:12px;"></i> Continue Editing
                 </a>
                 <button wire:click="confirmDelete({{ $trip->id }})"
-                        style="width:100%;max-width:220px;background:var(--bg-white);color:var(--primary);border:1.5px solid var(--primary);border-radius:10px;padding:12px 6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:5px;transition:background .18s;"
-                        onmouseenter="this.style.background='var(--primary-light)'" onmouseleave="this.style.background='var(--bg-white)'">
+                        style="width:100%;max-width:220px;background:var(--bg-white);color:#E23A4E;border:1.5px solid #E23A4E;border-radius:10px;padding:12px 6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:5px;transition:background .18s;"
+                        onmouseenter="this.style.background='rgba(226,58,78,0.10)'" onmouseleave="this.style.background='var(--bg-white)'">
                     <i class="fa-regular fa-trash-can" style="font-size:11px;"></i>Delete Trip
                 </button>
             </div>

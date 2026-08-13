@@ -60,7 +60,7 @@
             @php $sgCount = $sgGroup['items']->count(); @endphp
             <span style="font-size:11px;font-weight:800;{{ $sgCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:#B3A69A;background:#F3EEE8;' }}border-radius:99px;min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $sgCount }}</span>
         </div>
-        <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
+        <i class="fa-solid fa-chevron-down" :style="'font-size:12px;color:var(--muted);transition:.2s;' + (open?'transform:rotate(180deg)':'')"></i>
     </button>
     <div x-show="open" x-transition style="padding:16px 18px 20px;border-top:1px solid var(--border);">
         @if ($sgGroup['items']->isEmpty())

@@ -74,7 +74,7 @@
                         @if($selectedTripId == $t->id){{ $tripLabel($t) }}@endif
                     @endforeach
                 </span>
-                <i class="fa-solid fa-chevron-down" style="font-size:11px;color:var(--muted);transition:transform .2s;flex-shrink:0;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+                <i class="fa-solid fa-chevron-down" :style="'font-size:11px;color:var(--muted);transition:transform .2s;flex-shrink:0;' + (open ? 'transform:rotate(180deg)' : '')"></i>
             </button>
             {{-- Options --}}
             <div x-show="open" x-transition
@@ -309,17 +309,17 @@
                     </button>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;">
-                    @foreach(['Mo','Tu','We','Th','Fr','Sa','Su'] as $wd)
+                    @foreach(['Su','Mo','Tu','We','Th','Fr','Sa'] as $wd)
                     <div style="text-align:center;font-size:9px;font-weight:700;color:var(--muted);padding:2px 0;">{{ $wd }}</div>
                     @endforeach
                 </div>
                 @foreach($months as $mIdx => $month)
                 @php
-                    $firstDowMon = ($month->copy()->startOfMonth()->dayOfWeek + 6) % 7; // Monday-first offset
+                    $firstDowSun = $month->copy()->startOfMonth()->dayOfWeek; // Sunday-first offset
                     $daysInMonth = $month->daysInMonth;
                 @endphp
                 <div x-show="mi === {{ $mIdx }}" class="itin-cal-grid">
-                    @for($i = 0; $i < $firstDowMon; $i++)<div></div>@endfor
+                    @for($i = 0; $i < $firstDowSun; $i++)<div></div>@endfor
                     @for($d = 1; $d <= $daysInMonth; $d++)
                     @php
                         $dateStr = $month->format('Y-m') . '-' . str_pad($d, 2, '0', STR_PAD_LEFT);
@@ -402,17 +402,17 @@
             {{-- MONTH VIEW --}}
             <div x-show="view==='month'">
                 <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px;">
-                    @foreach(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as $wd)
+                    @foreach(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $wd)
                     <div style="text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px 0;">{{ $wd }}</div>
                     @endforeach
                 </div>
                 @foreach($months as $mIdx => $month)
                 @php
-                    $firstDowMon = ($month->copy()->startOfMonth()->dayOfWeek + 6) % 7;
+                    $firstDowSun = $month->copy()->startOfMonth()->dayOfWeek;
                     $daysInMonth = $month->daysInMonth;
                 @endphp
                 <div x-show="mi === {{ $mIdx }}" class="itin-cal-grid">
-                    @for($i = 0; $i < $firstDowMon; $i++)<div style="min-height:88px;min-width:0;"></div>@endfor
+                    @for($i = 0; $i < $firstDowSun; $i++)<div style="min-height:88px;min-width:0;"></div>@endfor
                     @for($d = 1; $d <= $daysInMonth; $d++)
                     @php
                         $dateStr = $month->format('Y-m') . '-' . str_pad($d, 2, '0', STR_PAD_LEFT);
@@ -452,10 +452,10 @@
             <div x-show="view==='week'">
                 @foreach($months as $mIdx => $month)
                 @php
-                    $firstDowMon = ($month->copy()->startOfMonth()->dayOfWeek + 6) % 7;
+                    $firstDowSun = $month->copy()->startOfMonth()->dayOfWeek;
                     $daysInMonth = $month->daysInMonth;
                     $weeks = [];
-                    $week  = array_fill(0, $firstDowMon, null);
+                    $week  = array_fill(0, $firstDowSun, null);
                     for ($d = 1; $d <= $daysInMonth; $d++) {
                         $week[] = $month->format('Y-m') . '-' . str_pad($d, 2, '0', STR_PAD_LEFT);
                         if (count($week) === 7) { $weeks[] = $week; $week = []; }

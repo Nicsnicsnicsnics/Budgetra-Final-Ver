@@ -76,7 +76,7 @@
 
 
 {{-- Notifications card --}}
-<div x-data="{ tab: 'all' }" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;box-sizing:border-box;position:relative;{{ $unreadCount === 0 ? 'min-height:calc(100vh - 56px);' : '' }}display:flex;flex-direction:column;">
+<div x-data="{ tab: 'all' }" style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:10px;">
             <span style="font-size:14px;font-weight:700;color:var(--dark);">Notifications</span>
@@ -101,7 +101,7 @@
     </div>
 
     @if ($unreadCount === 0)
-    <div x-show="tab === 'unread'" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;box-sizing:border-box;text-align:center;padding:0 20px;">
+    <div x-show="tab === 'unread'" style="box-sizing:border-box;text-align:center;padding:56px 20px;">
         <div style="width:48px;height:48px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
             <i class="fa-solid fa-bell-slash" style="font-size:18px;color:var(--muted);"></i>
         </div>

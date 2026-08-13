@@ -867,7 +867,7 @@ $allCities2 = array_merge(
                     style="display:inline-flex;align-items:center;gap:10px;background:var(--bg-white);color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:border-color .15s;"
                     onmouseenter="this.style.borderColor='#D9C4AE'" onmouseleave="this.style.borderColor='var(--border)'">
                 <span x-text="priceDir==='asc'?'Price: Low to High':'Price: High to Low'"></span>
-                <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);transition:transform .15s;" :style="priceOpen?'transform:rotate(180deg)':''"></i>
+                <i class="fa-solid fa-chevron-down" :style="'font-size:10px;color:var(--muted);transition:transform .15s;' + (priceOpen?'transform:rotate(180deg)':'')"></i>
             </button>
             <div x-show="priceOpen" @click.outside="priceOpen=false" x-cloak
                  style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
@@ -1341,7 +1341,7 @@ window.sortVenues = function(dir) {
             <button @click="accPriceOpen=!accPriceOpen"
                     style="display:inline-flex;align-items:center;gap:10px;background:var(--bg-white);color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
                 <span x-text="accPriceDir==='asc'?'Price: Low to High':'Price: High to Low'"></span>
-                <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);transition:transform .15s;" :style="accPriceOpen?'transform:rotate(180deg)':''"></i>
+                <i class="fa-solid fa-chevron-down" :style="'font-size:10px;color:var(--muted);transition:transform .15s;' + (accPriceOpen?'transform:rotate(180deg)':'')"></i>
             </button>
             <div x-show="accPriceOpen" @click.outside="accPriceOpen=false" x-cloak
                  style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
@@ -1572,7 +1572,7 @@ window.sortVenues = function(dir) {
             <button @click="vPriceOpen=!vPriceOpen"
                     style="display:inline-flex;align-items:center;gap:10px;background:var(--bg-white);color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
                 <span x-text="vPriceDir==='asc'?'Price: Low to High':'Price: High to Low'"></span>
-                <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);transition:transform .15s;" :style="vPriceOpen?'transform:rotate(180deg)':''"></i>
+                <i class="fa-solid fa-chevron-down" :style="'font-size:10px;color:var(--muted);transition:transform .15s;' + (vPriceOpen?'transform:rotate(180deg)':'')"></i>
             </button>
             <div x-show="vPriceOpen" @click.outside="vPriceOpen=false" x-cloak
                  style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
@@ -1855,7 +1855,7 @@ window.sortVenues = function(dir) {
             <button @click="aPriceOpen=!aPriceOpen"
                     style="display:inline-flex;align-items:center;gap:10px;background:var(--bg-white);color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
                 <span x-text="aPriceDir==='asc'?'Price: Low to High':'Price: High to Low'"></span>
-                <i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--muted);transition:transform .15s;" :style="aPriceOpen?'transform:rotate(180deg)':''"></i>
+                <i class="fa-solid fa-chevron-down" :style="'font-size:10px;color:var(--muted);transition:transform .15s;' + (aPriceOpen?'transform:rotate(180deg)':'')"></i>
             </button>
             <div x-show="aPriceOpen" @click.outside="aPriceOpen=false" x-cloak
                  style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:180px;overflow:hidden;">
@@ -2991,7 +2991,7 @@ window.sortAttractions = function(dir) {
                         <i class="fa-regular fa-calendar-check" style="color:var(--muted);font-size:14px;"></i>
                         <span style="font-size:15px;font-weight:700;color:var(--dark);">Itinerary</span>
                     </div>
-                    <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
+                    <i class="fa-solid fa-chevron-down" :style="'font-size:12px;color:var(--muted);transition:.2s;' + (open?'transform:rotate(180deg)':'')"></i>
                 </button>
                 <div x-show="open" x-transition style="border-top:1px solid var(--border);padding:18px 22px;">
                     @if($s9isMultiCity)
@@ -3064,7 +3064,7 @@ window.sortAttractions = function(dir) {
                         <i class="fa-regular fa-bookmark" style="color:var(--muted);font-size:14px;"></i>
                         <span style="font-size:15px;font-weight:700;color:var(--dark);">Selection Summary</span>
                     </div>
-                    <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
+                    <i class="fa-solid fa-chevron-down" :style="'font-size:12px;color:var(--muted);transition:.2s;' + (open?'transform:rotate(180deg)':'')"></i>
                 </button>
                 <div x-show="open" x-transition style="border-top:1px solid var(--border);padding:18px 22px;">
                     @if($s9isMultiCity)

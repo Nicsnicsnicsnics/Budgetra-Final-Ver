@@ -779,12 +779,12 @@ body.dashboard-body {
   width: 240px; height: 100%; flex-shrink: 0;
   background: var(--sidebar-bg); color: #fff;
   display: flex; flex-direction: column;
-  padding: 24px 0 16px; overflow-y: auto; overflow-x: hidden;
+  padding: 12px 0 12px; overflow-y: hidden; overflow-x: hidden;
   transition: width 0.25s ease, min-width 0.25s ease;
 }
 .sidebar-brand {
-  padding: 0 20px 24px;
-  margin-bottom: 16px;
+  padding: 0 20px 10px;
+  margin-bottom: 6px;
 }
 .sidebar-trip-badge {
   display: inline-block;
@@ -795,20 +795,35 @@ body.dashboard-body {
 .sidebar-trip-name { font-size: 15px; font-weight: 700; color: #fff; }
 .sidebar-trip-status { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 2px; }
 
-.sidebar-nav { flex: 1; padding: 0 12px; display: flex; flex-direction: column; }
+.sidebar-nav { flex: 1; padding: 0 12px; display: flex; flex-direction: column; justify-content: space-between; }
 .sidebar-nav-label {
   font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
   color: rgba(255,255,255,0.4); padding: 0 10px 8px; margin-top: 12px;
 }
 .sidebar-link {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; border-radius: 8px; font-size: 14px; font-weight: 500;
+  padding: 7px 12px; border-radius: 8px; font-size: 14px; font-weight: 500;
   color: rgba(255,255,255,0.65); text-decoration: none; transition: all 0.15s;
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 .sidebar-link:hover { background: rgba(255,255,255,0.08); color: #fff; }
 .sidebar-link.active { background: rgba(255,255,255,0.15); color: #fff; }
 .sidebar-link i { width: 18px; text-align: center; font-size: 15px; }
+.sidebar-profile-avatar {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  object-fit: cover; display: flex; align-items: center; justify-content: center;
+}
+.sidebar-profile-avatar-initials {
+  background: var(--primary); color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0;
+}
+.sidebar-logout-link,
+[data-theme="terracotta"] .sidebar-logout-link,
+[data-theme="daylight"] .sidebar-logout-link,
+[data-theme="sakura-bloom"] .sidebar-logout-link { color: #E23A4E; }
+.sidebar-logout-link:hover,
+[data-theme="terracotta"] .sidebar-logout-link:hover,
+[data-theme="daylight"] .sidebar-logout-link:hover,
+[data-theme="sakura-bloom"] .sidebar-logout-link:hover { background: rgba(226,58,78,0.12); color: #E23A4E; }
 .sidebar-avatar-wrap {
   padding: 16px 20px 0; margin-top: auto;
   border-top: 1px solid rgba(255,255,255,0.08);
@@ -863,6 +878,15 @@ body.dashboard-body {
 .sidebar-toggle-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
 
 .sidebar-divider { height: 1px; background: rgba(255,255,255,.08); margin: 6px 12px; }
+.sidebar-divider-brand { margin-left: 24px; margin-right: 24px; }
+.sidebar-collapsed .sidebar-divider-brand { margin-left: 12px; margin-right: 12px; }
+/* At 8% opacity the divider is essentially invisible against the dark rail
+   in collapsed mode, where it's the only visual grouping cue left once the
+   text labels are hidden — bump it up so it actually reads as a line. */
+.sidebar-collapsed .sidebar-divider { background: rgba(255,255,255,.10); }
+[data-theme="terracotta"] .sidebar-collapsed .sidebar-divider,
+[data-theme="daylight"] .sidebar-collapsed .sidebar-divider,
+[data-theme="sakura-bloom"] .sidebar-collapsed .sidebar-divider { background: rgba(26,35,51,.12); }
 [data-theme="terracotta"] .sidebar-divider,
 [data-theme="daylight"] .sidebar-divider,
 [data-theme="sakura-bloom"] .sidebar-divider { background: rgba(26,35,51,.10); }
@@ -891,18 +915,21 @@ body.dashboard-body {
 .sidebar-collapsed .fixed-bottom-bar { left: 58px; }
 
 /* ── Collapsed sidebar ─────────────────────────── */
-.sidebar-collapsed .sidebar { width: 58px; min-width: 58px; overflow-y: hidden; }
+/* Every row is compacted (padding/margins trimmed below) so the full icon
+   rail — brand through Logout — fits within the viewport with no scrolling,
+   instead of just relying on overflow to reveal the tail end. */
+.sidebar-collapsed .sidebar { width: 58px; min-width: 58px; padding: 12px 0 12px; overflow-y: hidden; }
 
 .sidebar-collapsed .sidebar-header {
-  justify-content: center; padding: 10px 0 0;
+  justify-content: center; padding: 0 0 4px;
 }
 .sidebar-collapsed .sidebar-toggle-btn {
   justify-content: center;
 }
-.sidebar-collapsed .sidebar-link i { font-size: 17px; }
-.sidebar-collapsed .sidebar-brand { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; margin-top: 26px; }
+.sidebar-collapsed .sidebar-link i { font-size: 16px; }
+.sidebar-collapsed .sidebar-brand { justify-content: center !important; padding: 8px 0 10px !important; margin-top: 0; margin-bottom: 6px; }
 .sidebar-collapsed .sidebar-link {
-  justify-content: center; padding: 11px 0; margin-bottom: 0; gap: 0;
+  justify-content: center; padding: 7px 0; margin-bottom: 0; gap: 0;
 }
 .sidebar-collapsed .sidebar-link-label { display: none; }
 .sidebar-collapsed .sidebar-new-trip {
@@ -915,10 +942,10 @@ body.dashboard-body {
   padding-bottom: 8px;
 }
 .sidebar-collapsed .sidebar-bottom-links {
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; gap: 8px;
 }
 .sidebar-collapsed .sidebar-bottom-links .sidebar-link {
-  justify-content: center; padding: 11px 0;
+  justify-content: center; padding: 7px 0;
 }
 .sidebar-collapsed .sidebar-avatar-wrap {
   padding: 16px 0 20px;

@@ -45,7 +45,7 @@
             <input id="deadline" type="date" name="deadline"
                    value="{{ old('deadline') }}"
                    class="form-control {{ $errors->has('deadline') ? 'is-invalid' : '' }}"
-                   min="{{ date('Y-m-d', strtotime('+1 day')) }}" required>
+                   min="{{ date('Y-m-d', strtotime('+1 day')) }}" max="2099-12-31" required>
             @error('deadline')<div class="error">{{ $message }}</div>@enderror
         </div>
 

@@ -133,7 +133,7 @@
                     <div class="form-group">
                         <label class="form-label" for="expense_date">Date</label>
                         <input type="date" id="expense_date" name="expense_date"
-                               value="{{ old('expense_date', date('Y-m-d')) }}"
+                               value="{{ old('expense_date', date('Y-m-d')) }}" min="2000-01-01" max="2099-12-31"
                                class="form-control {{ $errors->has('expense_date') ? 'is-invalid' : '' }}" required>
                         @error('expense_date')<div class="form-error">{{ $message }}</div>@enderror
                     </div>

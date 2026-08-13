@@ -550,10 +550,10 @@
     <div></div>
     @endif
 
-    @if($returnTo && $step === 4)
-    <button class="pb-btn pb-btn-primary" wire:click="saveInterestsAndReturn" wire:loading.attr="disabled">
-        <span wire:loading.remove wire:target="saveInterestsAndReturn">Save & Return</span>
-        <span wire:loading wire:target="saveInterestsAndReturn"><i class="fa-solid fa-spinner fa-spin"></i></span>
+    @if($returnTo)
+    <button class="pb-btn pb-btn-primary" wire:click="saveAndReturn" wire:loading.attr="disabled">
+        <span wire:loading.remove wire:target="saveAndReturn"><i class="fa-solid fa-check" style="font-size:11px;"></i> Save Changes</span>
+        <span wire:loading wire:target="saveAndReturn"><i class="fa-solid fa-spinner fa-spin"></i></span>
     </button>
     @elseif($step < 6)
     <button class="pb-btn pb-btn-primary" wire:click="nextStep">

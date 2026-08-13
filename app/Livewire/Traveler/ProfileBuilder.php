@@ -131,7 +131,7 @@ class ProfileBuilder extends Component
         // Whitelist which "come back to" routes are allowed, so this can't
         // be abused as an open redirect via the query string.
         $requestedReturn = (string) request()->query('return', '');
-        if (in_array($requestedReturn, ['trips.plan.ai'], true)) {
+        if (in_array($requestedReturn, ['trips.plan.ai', 'profile.edit'], true)) {
             $this->returnTo = $requestedReturn;
         }
     }
@@ -300,11 +300,10 @@ class ProfileBuilder extends Component
         $this->redirect(route($this->returnTo ?: 'trips.plan'), navigate: true);
     }
 
-    // Quick-edit path: arrived here via "Edit" from the AI planner to change
-    // just the interests. Saves immediately and returns, instead of forcing
-    // the traveler through the remaining transportation/accommodation/group
-    // steps of the full onboarding wizard again.
-    public function saveInterestsAndReturn(): void
+    // Quick-edit path: arrived here via "Edit" from the AI planner or the
+    // profile page to change just one step. Saves immediately and returns,
+    // instead of forcing the traveler through the rest of the wizard again.
+    public function saveAndReturn(): void
     {
         $this->persistProfile();
         $this->redirect(route($this->returnTo ?: 'dashboard'), navigate: true);

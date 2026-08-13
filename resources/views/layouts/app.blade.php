@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? config('app.name', 'Budgetra') }}</title>
-    <link rel="icon" type="image/png" href="{{ asset('systemicons/budgetra-new-icon.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('systemicons/budgetraicon-modified.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -42,7 +42,7 @@
         var wrap = document.getElementById('dashWrapper');
         var icon = document.getElementById('sidebarToggleIcon');
         if (wrap) wrap.classList.add('sidebar-collapsed');
-        if (icon) icon.className = 'fa-solid fa-chevron-right';
+        if (icon) icon.className = 'fa-solid fa-angle-right';
     </script>
     @endif
 </body>

@@ -21,12 +21,12 @@
     </div>
     <div class="form-group">
         <label>Start Date</label>
-        <input type="date" name="start_date" class="form-control"
+        <input type="date" name="start_date" class="form-control" min="2000-01-01" max="2099-12-31"
                value="{{ old('start_date') }}" required>
     </div>
     <div class="form-group">
         <label>End Date</label>
-        <input type="date" name="end_date" class="form-control"
+        <input type="date" name="end_date" class="form-control" min="2000-01-01" max="2099-12-31"
                value="{{ old('end_date') }}" required>
     </div>
     <div class="form-group">

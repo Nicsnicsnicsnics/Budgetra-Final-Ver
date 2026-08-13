@@ -19,6 +19,12 @@
         ['href' => url('/settings'), 'icon' => 'fa-solid fa-gear', 'label' => 'Settings', 'key' => 'settings', 'segment' => 'settings'],
     ];
 
+    $profileInitials = collect(explode(' ', auth()->user()->full_name ?? ''))
+        ->filter()
+        ->map(fn ($p) => mb_substr($p, 0, 1))
+        ->take(2)
+        ->implode('');
+
     // Auto-detect active from URL if not explicitly passed
     $currentPath = request()->path();
     if (!$active) {
@@ -36,16 +42,16 @@
 
     <div class="sidebar-header">
         <button class="sidebar-toggle-btn" id="sidebarToggle" title="Toggle sidebar">
-            <i class="fa-solid fa-bars" id="sidebarToggleIcon"></i>
+            <i class="fa-solid fa-angle-left" id="sidebarToggleIcon"></i>
         </button>
     </div>
 
     <div class="sidebar-brand" style="display:flex;align-items:center;gap:10px;padding:4px 16px 14px;">
-        <img src="{{ asset('systemicons/budgetra-new-icon.png') }}" alt="Budgetra"
+        <img src="{{ asset('systemicons/budgetraicon-modified.png') }}" alt="Budgetra"
              style="width:38px;height:38px;border-radius:10px;object-fit:contain;flex-shrink:0;">
-        <span class="sidebar-link-label" style="font-size:18px;font-weight:800;color:var(--primary);letter-spacing:0.01em;">Budgetra</span>
+        <span class="sidebar-link-label" style="font-size:18px;font-weight:800;color:inherit;letter-spacing:0.01em;">Budgetra</span>
     </div>
-    <div class="sidebar-divider" style="margin-left:24px;margin-right:24px;"></div>
+    <div class="sidebar-divider sidebar-divider-brand"></div>
 
     <nav class="sidebar-nav">
         @foreach ($links as $link)
@@ -69,7 +75,16 @@
             <a href="{{ $link['href'] }}" wire:navigate data-segment="{{ $link['segment'] }}"
                class="sidebar-link {{ $active === $link['key'] ? 'active' : '' }}"
                title="{{ $link['label'] }}">
+                @if ($link['key'] === 'profile')
+                    @if (auth()->user()?->profile_photo)
+                    <img src="{{ Illuminate\Support\Facades\Storage::url(auth()->user()->profile_photo) }}"
+                         alt="Profile" class="sidebar-profile-avatar">
+                    @else
+                    <span class="sidebar-profile-avatar sidebar-profile-avatar-initials">{{ $profileInitials }}</span>
+                    @endif
+                @else
                 <i class="{{ $link['icon'] }}"></i>
+                @endif
                 <span class="sidebar-link-label">{{ $link['label'] }}</span>
             </a>
             @endforeach
@@ -77,7 +92,7 @@
             {{-- Logout --}}
             <form method="POST" action="{{ route('logout') }}" style="margin:0;">
                 @csrf
-                <button type="submit" class="sidebar-link" style="width:100%;background:none;border:none;cursor:pointer;text-align:left;" title="Logout">
+                <button type="submit" class="sidebar-link sidebar-logout-link" style="width:100%;background:none;border:none;cursor:pointer;text-align:left;" title="Logout">
                     <i class="fa-solid fa-right-from-bracket"></i>
                     <span class="sidebar-link-label">Logout</span>
                 </button>
@@ -95,7 +110,7 @@
         var icon = document.getElementById('sidebarToggleIcon');
         if (!wrap) return;
         wrap.classList.toggle('sidebar-collapsed', collapsed);
-        if (icon) icon.className = collapsed ? 'fa-solid fa-chevron-right' : 'fa-solid fa-bars';
+        if (icon) icon.className = collapsed ? 'fa-solid fa-angle-right' : 'fa-solid fa-angle-left';
     }
 
     applyState(localStorage.getItem('sidebarCollapsed') === '1');

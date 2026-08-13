@@ -43,7 +43,7 @@
                 @php $mthCount = $mthGroup['items']->count(); @endphp
                 <span style="font-size:11px;font-weight:800;{{ $mthCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:var(--muted);background:var(--bg);' }}border-radius:99px;min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $mthCount }}</span>
             </div>
-            <i class="fa-solid fa-chevron-down" style="font-size:12px;color:var(--muted);transition:.2s;" :style="open?'transform:rotate(180deg)':''"></i>
+            <i class="fa-solid fa-chevron-down" :style="'font-size:12px;color:var(--muted);transition:.2s;' + (open?'transform:rotate(180deg)':'')"></i>
         </button>
         <div x-show="open" x-transition style="padding:16px 18px 20px;border-top:1px solid var(--border);">
             @if ($mthGroup['items']->isEmpty())
@@ -117,7 +117,6 @@
                         </div>
 
                         <div style="display:flex;gap:10px;">
-                            <button type="button" class="btn btn-secondary" style="flex:1;text-transform:uppercase;letter-spacing:.05em;font-size:12px;" wire:click="showDetail({{ $trip->id }})">Details</button>
                             <button type="button" class="btn {{ $isPickedForCompare ? '' : 'btn-primary' }}"
                                     style="flex:1;text-transform:uppercase;letter-spacing:.05em;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;{{ $isPickedForCompare ? 'background:var(--primary-light);color:var(--primary);border:1.5px solid var(--primary);' : '' }}"
                                     wire:click="toggleCompare({{ $trip->id }})">
@@ -222,85 +221,190 @@
 
     {{-- Compare Modal --}}
     @if ($showComparison && count($compareData) === 2)
-    @php [$a, $b] = $compareData; @endphp
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;" wire:click.self="closeComparison">
-        <div style="background:var(--bg-white);border-radius:20px;max-width:700px;width:100%;max-height:90vh;overflow-y:auto;padding:28px;">
-            <h2 style="margin-bottom:4px;">Compare Trips</h2>
-            <p class="text-muted" style="margin-bottom:20px;font-size:13px;">
-                Comparing your recent trips to {{ $a['trip']->destination }} and {{ $b['trip']->destination }} to identify spending patterns.
-            </p>
+    @php
+        [$a, $b] = $compareData;
+        // "Better" trip = whichever used less of its budget (relative
+        // comparison, not just its own over/under status) — a tie means
+        // neither card gets a win/lose treatment.
+        $ta = $a['trip']; $tb = $b['trip'];
+        $tie = $ta->pct_used === $tb->pct_used;
+        $aWins = !$tie && $ta->pct_used < $tb->pct_used;
+    @endphp
+    <div class="cmp-backdrop" wire:click.self="closeComparison">
+        <div class="cmp-modal">
+            <div class="cmp-header">
+                <div class="cmp-header-icon"><i class="fa-solid fa-code-compare"></i></div>
+                <div>
+                    <h2 class="cmp-title">Compare Trips</h2>
+                    <p class="cmp-subtitle">Comparing your recent trips to {{ $ta->destination }} and {{ $tb->destination }} to identify spending patterns.</p>
+                </div>
+            </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;">
-                @foreach ([$a, $b] as $d)
+            <div class="cmp-cards">
+                @foreach ([['data' => $a, 'wins' => $aWins], ['data' => $b, 'wins' => !$tie && !$aWins]] as $entry)
                 @php
-                    $t    = $d['trip'];
-                    $diff = (float) $t->budget_limit - $t->total_spent;
-                    $over = $diff < 0;
-                    $color = $over ? '#DC2626' : '#16A34A';
+                    $t     = $entry['data']['trip'];
+                    $diff  = (float) $t->budget_limit - $t->total_spent;
+                    $over  = $diff < 0;
+                    $verdict = $tie ? 'neutral' : ($entry['wins'] ? 'win' : 'lose');
                 @endphp
-                <div style="border:1px solid var(--border);border-radius:14px;padding:16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;">
-                        <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:{{ $over ? '#FEF2F2' : '#F0FDF4' }};color:{{ $color }};white-space:nowrap;">
+                <div class="cmp-card cmp-card-{{ $verdict }}">
+                    @if ($verdict === 'win')
+                    <div class="cmp-ribbon"><i class="fa-solid fa-trophy"></i> Better value</div>
+                    @endif
+                    <div class="cmp-card-top">
+                        <span class="cmp-status-chip cmp-status-{{ $over ? 'over' : 'under' }}">
+                            <i class="fa-solid {{ $over ? 'fa-triangle-exclamation' : 'fa-circle-check' }}"></i>
                             {{ $over ? 'Over budget · overspent' : 'Under budget · saved' }} {{ currency_symbol() }}{{ number_format(abs($diff), 0) }}
                         </span>
-                        <div style="width:32px;height:32px;flex-shrink:0;border-radius:50%;background:{{ $color }};display:flex;align-items:center;justify-content:center;">
-                            <i class="fa-solid {{ $over ? 'fa-triangle-exclamation' : 'fa-rocket' }}" style="color:#fff;font-size:12px;"></i>
-                        </div>
                     </div>
-                    <div style="font-weight:700;">{{ $t->origin_code ?? 'MNL' }} &rarr; {{ $t->destination_code ?? '—' }}</div>
-                    <div class="text-muted" style="font-size:12px;margin-bottom:14px;">{{ $t->destination }} · {{ $fmtDate($t->start_date, 'M j') }} - {{ $fmtDate($t->end_date, 'M j, Y') }}</div>
-                    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">
-                        <span class="text-muted">Budget</span><span class="text-muted">Actual Spend</span>
+                    <div class="cmp-route">{{ $t->origin_code ?? 'MNL' }} <i class="fa-solid fa-arrow-right"></i> {{ $t->destination_code ?? '—' }}</div>
+                    <div class="cmp-dates">{{ $t->destination }} · {{ $fmtDate($t->start_date, 'M j') }} - {{ $fmtDate($t->end_date, 'M j, Y') }}</div>
+
+                    <div class="cmp-stat-row">
+                        <span>Budget</span><span>Actual Spend</span>
                     </div>
-                    <div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:8px;">
+                    <div class="cmp-stat-row cmp-stat-values">
                         <span>{{ currency_symbol() }}{{ number_format($t->budget_limit, 0) }}</span>
-                        <span style="color:{{ $color }};">{{ currency_symbol() }}{{ number_format($t->total_spent, 0) }}</span>
+                        <span class="cmp-{{ $over ? 'over' : 'under' }}-text">{{ currency_symbol() }}{{ number_format($t->total_spent, 0) }}</span>
                     </div>
-                    <div style="height:6px;background:var(--border-light);border-radius:99px;overflow:hidden;">
-                        <div style="height:100%;width:{{ min(100,$t->pct_used) }}%;background:{{ $color }};border-radius:99px;"></div>
+                    <div class="cmp-bar-track">
+                        <div class="cmp-bar-fill cmp-bar-{{ $over ? 'over' : 'under' }}" style="width:{{ min(100,$t->pct_used) }}%;"></div>
                     </div>
-                    <div class="text-muted" style="font-size:11px;margin-top:4px;">{{ $t->pct_used }}% of budget used</div>
+                    <div class="cmp-pct-label">{{ $t->pct_used }}% of budget used</div>
                 </div>
                 @endforeach
             </div>
 
-            <h3 style="margin-bottom:10px;">Spending by Category</h3>
-            <div style="display:flex;gap:16px;font-size:12px;margin-bottom:16px;">
-                <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16A34A;margin-right:5px;"></span>{{ $a['trip']->destination }}</span>
-                <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#F97316;margin-right:5px;"></span>{{ $b['trip']->destination }}</span>
+            <h3 class="cmp-section-title">Spending by Category</h3>
+            <div class="cmp-legend">
+                <span><span class="cmp-legend-dot" style="background:var(--primary);"></span>{{ $ta->destination }}</span>
+                <span><span class="cmp-legend-dot" style="background:#F5A623;"></span>{{ $tb->destination }}</span>
             </div>
 
-            @foreach ($a['categories'] as $cat => $aVal)
             @php
-                $bVal    = $b['categories'][$cat] ?? 0;
-                $max     = max($aVal, $bVal, 1);
-                $diffPct = $aVal > 0 ? round((($bVal - $aVal) / $aVal) * 100) : ($bVal > 0 ? 100 : 0);
-                $label   = $cat === 'Tourist Attractions' ? 'Attractions' : $cat;
+                $catIcons = [
+                    'Transportation' => 'fa-plane', 'Accommodation' => 'fa-bed', 'Food' => 'fa-utensils',
+                    'Tourist Attractions' => 'fa-camera-retro', 'Shopping' => 'fa-bag-shopping', 'Emergency Expenses' => 'fa-shield-halved',
+                ];
             @endphp
-            <div style="margin-bottom:14px;">
-                <div style="font-size:12px;font-weight:600;margin-bottom:6px;">{{ $label }}</div>
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                    <div style="flex:1;height:8px;background:var(--border-light);border-radius:99px;overflow:hidden;">
-                        <div style="height:100%;width:{{ $max > 0 ? min(100, $aVal / $max * 100) : 0 }}%;background:#16A34A;border-radius:99px;"></div>
+            <div class="cmp-cat-grid">
+                @foreach ($a['categories'] as $cat => $aVal)
+                @php
+                    $bVal    = $b['categories'][$cat] ?? 0;
+                    $max     = max($aVal, $bVal, 1);
+                    $diffPct = $aVal > 0 ? round((($bVal - $aVal) / $aVal) * 100) : ($bVal > 0 ? 100 : 0);
+                    $label   = $cat === 'Tourist Attractions' ? 'Attractions' : $cat;
+                    $aCheaper = $aVal < $bVal; $bCheaper = $bVal < $aVal;
+                @endphp
+                <div class="cmp-cat-card">
+                    <div class="cmp-cat-head">
+                        <div class="cmp-cat-icon"><i class="fa-solid {{ $catIcons[$cat] ?? 'fa-tag' }}"></i></div>
+                        <div class="cmp-cat-label">{{ $label }}</div>
                     </div>
-                    <span style="font-size:11px;width:80px;text-align:right;flex-shrink:0;">{{ currency_symbol() }}{{ number_format($aVal, 0) }}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="flex:1;height:8px;background:var(--border-light);border-radius:99px;overflow:hidden;">
-                        <div style="height:100%;width:{{ $max > 0 ? min(100, $bVal / $max * 100) : 0 }}%;background:#F97316;border-radius:99px;"></div>
+                    <div class="cmp-cat-bar-row">
+                        <div class="cmp-bar-track">
+                            <div class="cmp-bar-fill" style="width:{{ $max > 0 ? min(100, $aVal / $max * 100) : 0 }}%;background:var(--primary);"></div>
+                        </div>
+                        <span class="cmp-cat-value {{ $aCheaper ? 'cmp-under-text' : ($bCheaper ? 'cmp-over-text' : '') }}">{{ currency_symbol() }}{{ number_format($aVal, 0) }}</span>
                     </div>
-                    <span style="font-size:11px;width:80px;text-align:right;flex-shrink:0;">
-                        {{ currency_symbol() }}{{ number_format($bVal, 0) }}
-                        @if ($diffPct !== 0)
-                        <span class="text-muted">({{ $diffPct > 0 ? '+' : '' }}{{ $diffPct }}%)</span>
-                        @endif
-                    </span>
+                    <div class="cmp-cat-bar-row">
+                        <div class="cmp-bar-track">
+                            <div class="cmp-bar-fill" style="width:{{ $max > 0 ? min(100, $bVal / $max * 100) : 0 }}%;background:#F5A623;"></div>
+                        </div>
+                        <span class="cmp-cat-value {{ $bCheaper ? 'cmp-under-text' : ($aCheaper ? 'cmp-over-text' : '') }}">
+                            {{ currency_symbol() }}{{ number_format($bVal, 0) }}
+                            @if ($diffPct !== 0)
+                            <span class="text-muted">({{ $diffPct > 0 ? '+' : '' }}{{ $diffPct }}%)</span>
+                            @endif
+                        </span>
+                    </div>
                 </div>
+                @endforeach
             </div>
-            @endforeach
 
-            <button class="btn btn-secondary" style="width:100%;margin-top:8px;" wire:click="closeComparison">Back</button>
+            <div style="display:flex;justify-content:flex-end;margin-top:20px;">
+                <button class="btn btn-outline btn-sm" wire:click="closeComparison">Close</button>
+            </div>
         </div>
     </div>
     @endif
 </div>
+
+<style>
+    .cmp-backdrop {
+        position: fixed; inset: 0; background: rgba(10,8,16,.6); backdrop-filter: blur(3px);
+        z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .cmp-modal {
+        position: relative; background: var(--bg-white); border: 1.5px solid var(--border);
+        border-radius: 22px; max-width: 720px; width: 100%; max-height: 90vh; overflow-y: auto;
+        padding: 30px; box-shadow: 0 24px 60px rgba(0,0,0,.3);
+    }
+
+    .cmp-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 24px; }
+    .cmp-header-icon {
+        width: 44px; height: 44px; border-radius: 13px; background: var(--primary-light); color: var(--primary);
+        display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+    }
+    .cmp-title { font-size: 20px; font-weight: 800; color: var(--dark); margin: 0 0 4px; }
+    .cmp-subtitle { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.5; }
+
+    .cmp-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+    @media (max-width: 560px) { .cmp-cards { grid-template-columns: 1fr; } }
+
+    .cmp-card {
+        position: relative; border: 1.5px solid var(--border); border-radius: 16px; padding: 18px;
+        background: var(--bg-white); overflow: hidden;
+    }
+    .cmp-card-win { border-color: #4ADE80; box-shadow: 0 0 0 1px #4ADE80 inset; }
+    .cmp-card-lose { border-color: #FF4D6D; box-shadow: 0 0 0 1px #FF4D6D inset; }
+
+    .cmp-ribbon {
+        display: flex; align-items: center; gap: 6px; width: fit-content;
+        background: color-mix(in srgb, #4ADE80 22%, var(--bg-white)); color: #16A34A;
+        font-size: 10.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
+        padding: 4px 10px; border-radius: 99px; margin-bottom: 10px;
+    }
+
+    .cmp-card-top { margin-bottom: 12px; }
+    .cmp-status-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 20px; white-space: nowrap;
+    }
+    .cmp-status-chip i { font-size: 10px; }
+    .cmp-status-under { background: color-mix(in srgb, #4ADE80 20%, var(--bg-white)); color: #16A34A; }
+    .cmp-status-over  { background: color-mix(in srgb, #FF4D6D 18%, var(--bg-white)); color: #E11D48; }
+
+    .cmp-route { font-weight: 700; color: var(--dark); font-size: 15px; }
+    .cmp-route i { font-size: 11px; color: var(--muted); margin: 0 2px; }
+    .cmp-dates { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+
+    .cmp-stat-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .cmp-stat-values { font-weight: 700; font-size: 14px; color: var(--dark); margin-bottom: 8px; }
+    .cmp-under-text { color: #16A34A; }
+    .cmp-over-text  { color: #E11D48; }
+
+    .cmp-bar-track { height: 7px; background: var(--bg); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; box-sizing: border-box; }
+    .cmp-bar-fill { height: 100%; border-radius: 99px; min-width: 3px; }
+    .cmp-bar-under { background: #4ADE80; }
+    .cmp-bar-over  { background: #FF4D6D; }
+    .cmp-pct-label { color: var(--muted); font-size: 11px; margin-top: 6px; }
+
+    .cmp-section-title { font-size: 15px; font-weight: 800; color: var(--dark); margin: 0 0 10px; }
+    .cmp-legend { display: flex; gap: 16px; font-size: 12px; color: var(--dark); margin-bottom: 16px; }
+    .cmp-legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+
+    .cmp-cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 560px) { .cmp-cat-grid { grid-template-columns: 1fr; } }
+    .cmp-cat-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 14px 16px; background: var(--bg-white); }
+    .cmp-cat-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .cmp-cat-icon {
+        width: 30px; height: 30px; border-radius: 9px; background: var(--primary-light); color: var(--primary);
+        display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;
+    }
+    .cmp-cat-label { font-size: 13px; font-weight: 700; color: var(--dark); }
+    .cmp-cat-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .cmp-cat-bar-row:last-child { margin-bottom: 0; }
+    .cmp-cat-value { font-size: 11.5px; width: 92px; text-align: right; flex-shrink: 0; color: var(--dark); font-weight: 700; }
+</style>

@@ -72,7 +72,7 @@
 
         {{-- Progress label + pct --}}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">Savings Progress</span>
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">Progress</span>
             @if($cardDone)
             <span style="font-size:13px;font-weight:700;color:#16A34A;">Completed</span>
             @else
@@ -172,8 +172,8 @@
             </button>
 
             <button wire:click="closeDeposit"
-                    style="width:100%;background:transparent;border:none;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:'Hanken Grotesk',sans-serif;padding:8px;border-radius:8px;transition:background .18s;"
-                    onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
+                    style="width:100%;background:transparent;color:var(--dark);border:1.5px solid var(--border);border-radius:12px;padding:14px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:'Hanken Grotesk',sans-serif;cursor:pointer;transition:background .18s,border-color .18s;"
+                    onmouseenter="this.style.background='var(--bg)';this.style.borderColor='var(--muted)'" onmouseleave="this.style.background='transparent';this.style.borderColor='var(--border)'">
                 Cancel
             </button>
 

@@ -412,6 +412,7 @@
     .moments-modal-backdrop { animation: momentsModalBackdropIn .18s ease both; }
     .moments-modal-card { animation: momentsModalCardIn .22s cubic-bezier(.2,.9,.3,1.1) both; }
     .moments-input { transition: border-color .15s ease, box-shadow .15s ease; }
+    .moments-input::placeholder { font-weight: 400; color: var(--muted); }
     .moments-input:focus { outline: none; border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(147,75,25,.12); }
     .moments-btn-primary { transition: background .15s ease, transform .12s ease, box-shadow .15s ease; }
     .moments-btn-primary:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(147,75,25,.25); }
@@ -434,7 +435,7 @@
 
 {{-- ── Add/Edit Travel Pin modal ──────────────────────── --}}
 @if ($showPinModal)
-<div class="moments-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:16px;" wire:click.self="closePinModal">
+<div class="moments-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;" wire:click.self="closePinModal">
     <div class="moments-modal-card" style="margin-top:4vh;background:var(--bg-white);border-radius:20px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(45,27,20,.18);padding:20px 22px 18px;">
 
         {{-- Header --}}
@@ -479,8 +480,27 @@
                  in the Timeline View and the day_number comments below).
                  The calendar still opens on the right month via the default
                  value ItineraryManager::openAddPinModal() sets. --}}
-            <input type="date" wire:model="pinVisitedDate" class="moments-input"
-                   style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:9px 14px;font-size:13px;font-weight:600;color:var(--dark);box-sizing:border-box;">
+            <div style="position:relative;" x-data='momentDateCal(@json($pinVisitedDate ?: ""))'>
+                <div class="moments-input" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:9px 14px;box-sizing:border-box;" @click="open=!open">
+                    <span x-text="val ? fmtLabel(val) : 'Select date'" :style="val ? 'font-size:13px;font-weight:400;color:var(--dark);' : 'font-size:13px;color:var(--muted);'"></span>
+                    <i class="fa-regular fa-calendar" style="font-size:12px;color:var(--muted);flex-shrink:0;"></i>
+                </div>
+                <div x-show="open" @click.outside="open=false" @click.stop x-cloak
+                     style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:200;padding:16px;min-width:260px;">
+                    <div class="exp-cal-header">
+                        <button type="button" class="exp-cal-nav" @click="prevMonth()"><i class="fa-solid fa-chevron-left"></i></button>
+                        <span x-text="monthName(year,month)+' '+year"></span>
+                        <button type="button" class="exp-cal-nav" @click="nextMonth()"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <div class="exp-cal-grid">
+                        <template x-for="d in ['Su','Mo','Tu','We','Th','Fr','Sa']"><div class="exp-cal-day-name" x-text="d"></div></template>
+                        <template x-for="cell in cells" :key="cell.key">
+                            <div class="exp-cal-day" :class="{'selected': cell.d && cell.val===val, 'empty': !cell.d}"
+                                 @click.stop="cell.d && pick(cell.val)" x-text="cell.d||''"></div>
+                        </template>
+                    </div>
+                </div>
+            </div>
             @error('pinVisitedDate') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
 
@@ -526,14 +546,14 @@
                         $refs.pinPhotosInput.dispatchEvent(new Event('change'));
                    "
                    :style="over ? 'border-color:var(--primary);background:var(--primary-light);' : ''"
-                   style="width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;border:1.5px dashed var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:border-color .15s ease,background .15s ease;">
-                <div style="width:30px;height:30px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;">
-                    <i class="fa-solid fa-cloud-arrow-up" style="color:var(--primary);font-size:13px;"></i>
+                   style="width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;border:1.5px dashed var(--border);border-radius:14px;padding:28px 16px;cursor:pointer;transition:border-color .15s ease,background .15s ease;">
+                <div style="width:52px;height:52px;border-radius:14px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;">
+                    <i class="fa-solid fa-cloud-arrow-up" style="color:var(--primary);font-size:20px;"></i>
                 </div>
-                <div style="font-size:12px;font-weight:700;color:var(--dark);">
-                    <span style="color:var(--primary);">Click to upload</span> or drag photos here
+                <div style="font-size:14px;font-weight:700;color:var(--dark);">
+                    <span style="color:var(--primary);">Click to upload</span> or drag photos
                 </div>
-                <div style="font-size:10.5px;color:var(--muted);">PNG or JPG, up to 6 photos</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:-6px;">PNG or JPG, up to 6 photos (5MB each)</div>
                 <input id="pinPhotosInput" x-ref="pinPhotosInput" type="file" wire:model="pinPhotos" accept="image/*" multiple style="display:none;">
             </label>
             <div wire:loading wire:target="pinPhotos" style="font-size:11px;color:var(--muted);margin-top:6px;"><i class="fa-solid fa-spinner fa-spin"></i> Uploading…</div>
@@ -548,7 +568,7 @@
                 Cancel
             </button>
             <button wire:click="savePin" class="moments-btn-primary"
-                    style="flex:2;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;"
+                    style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;"
                     wire:loading.attr="disabled" wire:target="savePin">
                 <span wire:loading.remove wire:target="savePin">{{ $pinModalMode === 'edit' ? 'Save Changes' : 'Add Moment' }}</span>
                 <span wire:loading wire:target="savePin"><i class="fa-solid fa-spinner fa-spin"></i></span>
@@ -1009,9 +1029,7 @@
         }
 
         (pins || []).forEach(function (pin) {
-            L.marker([pin.lat, pin.lng], { icon: buildTripMarkerIcon(pin) })
-                .addTo(map)
-                .bindTooltip(pin.destination + ' · ' + pin.start_date + ' – ' + pin.end_date + ' · ' + (STATUS_LABELS[pin.status] || pin.status));
+            L.marker([pin.lat, pin.lng], { icon: buildTripMarkerIcon(pin) }).addTo(map);
             bounds.extend([pin.lat, pin.lng]);
             trackCoord(pin.lat, pin.lng);
         });
@@ -1060,4 +1078,68 @@
             window.__momentsOverviewMapUnsub.push(function () { mapResizeObserver.disconnect(); });
         }
     };
+
+    // Single-date calendar picker for the "Date Visited" field — same
+    // widget style as the Expenses page's From/To calendars, but for one
+    // date instead of a range, and syncing straight to Livewire via
+    // $wire.set() instead of a form-submitted hidden input.
+    window.momentDateCal = function (initialVal) {
+        var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        var seed = initialVal ? new Date(initialVal + 'T00:00:00') : new Date();
+
+        return {
+            open: false,
+            val: initialVal || '',
+            year: seed.getFullYear(), month: seed.getMonth() + 1,
+            cells: [],
+
+            init() { this.rebuild(); },
+
+            rebuild() {
+                var y = this.year, m = this.month;
+                var first = new Date(y, m - 1, 1).getDay();
+                var days  = new Date(y, m, 0).getDate();
+                var cells = [];
+                for (var i = 0; i < first; i++) cells.push({ d: null, key: 'e'+y+m+i, val: '' });
+                for (var d = 1; d <= days; d++) {
+                    cells.push({ d: d, key: 'd'+y+m+d, val: y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0') });
+                }
+                this.cells = cells;
+            },
+
+            monthName(y, m) { return months[m - 1]; },
+
+            prevMonth() {
+                this.month--; if (this.month < 1) { this.month = 12; this.year--; }
+                this.rebuild();
+            },
+            nextMonth() {
+                this.month++; if (this.month > 12) { this.month = 1; this.year++; }
+                this.rebuild();
+            },
+
+            fmtLabel(v) {
+                var parts = v.split('-');
+                return parts[2].padStart(2,'0') + '/' + parts[1].padStart(2,'0') + '/' + parts[0];
+            },
+
+            pick(v) {
+                this.val = v;
+                this.open = false;
+                this.$wire.set('pinVisitedDate', v);
+            },
+        };
+    };
 </script>
+
+<style>
+    .exp-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; font-weight: 700; color: var(--dark); }
+    .exp-cal-nav { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; padding: 4px 8px; }
+    .exp-cal-nav:hover { color: var(--primary); }
+    .exp-cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; text-align: center; }
+    .exp-cal-day-name { font-size: 10px; font-weight: 700; color: var(--muted); padding: 4px 0; }
+    .exp-cal-day { font-size: 12px; font-weight: 500; padding: 6px 4px; border-radius: 6px; cursor: pointer; color: var(--dark); }
+    .exp-cal-day:hover:not(.empty) { background: var(--bg); }
+    .exp-cal-day.selected { background: var(--primary); color: #fff; }
+    .exp-cal-day.empty { cursor: default; }
+</style>

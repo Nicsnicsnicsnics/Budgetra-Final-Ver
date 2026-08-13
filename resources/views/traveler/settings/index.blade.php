@@ -125,38 +125,12 @@
 @section('content')
 <div class="appearance-page">
 
-    <div class="page-head">
-        <h1>Settings</h1>
-        <p>Manage your account, preferences, and how Budgetra looks and notifies you.</p>
-    </div>
-
     @if (session('success'))
     <div class="alert alert-success mb-16">{{ session('success') }}</div>
     @endif
     @if ($errors->any())
     <div class="alert alert-danger mb-16">{{ $errors->first() }}</div>
     @endif
-
-    {{-- Account --}}
-    <div class="card settings-card"><div class="card-body">
-        <h2>Account</h2>
-        <div class="settings-row" style="border-top:none;padding-top:0;">
-            <div style="display:flex;align-items:center;gap:12px;min-width:0;">
-                <div class="settings-avatar">
-                    @if ($user->profile_photo)
-                    <img src="{{ Illuminate\Support\Facades\Storage::url($user->profile_photo) }}" alt="{{ $user->full_name }}">
-                    @else
-                    {{ collect(explode(' ', $user->full_name))->map(fn($p) => mb_substr($p, 0, 1))->take(2)->implode('') }}
-                    @endif
-                </div>
-                <div style="min-width:0;">
-                    <div class="settings-label">{{ $user->full_name }}</div>
-                    <div class="settings-sub">{{ $user->email }}</div>
-                </div>
-            </div>
-            <a href="{{ route('profile.edit') }}" wire:navigate class="settings-btn">Edit profile</a>
-        </div>
-    </div></div>
 
     {{-- Preferences --}}
     <div class="card settings-card"><div class="card-body">

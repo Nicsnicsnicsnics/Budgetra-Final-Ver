@@ -43,7 +43,7 @@
         <div class="form-group">
             <label class="form-label" for="deadline">Deadline</label>
             <input id="deadline" type="date" name="deadline"
-                   value="{{ old('deadline', $goal->deadline->format('Y-m-d')) }}"
+                   value="{{ old('deadline', $goal->deadline->format('Y-m-d')) }}" min="2000-01-01" max="2099-12-31"
                    class="form-control {{ $errors->has('deadline') ? 'is-invalid' : '' }}" required>
             @error('deadline')<div class="error">{{ $message }}</div>@enderror
         </div>
