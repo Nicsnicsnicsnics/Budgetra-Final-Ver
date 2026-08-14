@@ -68,12 +68,6 @@
             @click="$store.overviewMoments.view = 'timeline'">
         <i class="fa-solid fa-timeline"></i> Timeline View
     </button>
-    {{-- Not a view toggle like the two buttons above — this navigates away
-         to the standalone Reviews page, styled to match so it reads as part
-         of the same control instead of a random extra link. --}}
-    <a href="{{ route('reviews.index') }}" class="moments-segment" style="text-decoration:none;">
-        <i class="fa-regular fa-comment-dots"></i> Reviews
-    </a>
 </div>
 
 <div x-data>
@@ -164,15 +158,6 @@
                                     @endif
                                     <div style="font-size:11px;color:var(--muted);">
                                         <i class="fa-regular fa-clock" style="font-size:10px;"></i> Posted {{ $moment['posted_at'] }}
-                                    </div>
-                                    {{-- Bridges to the existing (separate) Reviews page rather
-                                         than rebuilding review display/submission here — same
-                                         data, one place it actually lives. --}}
-                                    <div style="display:flex;gap:12px;margin-top:6px;">
-                                        <a href="{{ route('reviews.index', ['destination' => $moment['place_name'], 'write' => 1]) }}"
-                                           style="font-size:11px;font-weight:600;color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
-                                            <i class="fa-regular fa-pen-to-square" style="font-size:10px;"></i> Write a review
-                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -271,11 +256,6 @@
             @click="$store.moments.view = 'timeline'">
         <i class="fa-solid fa-timeline"></i> Timeline View
     </button>
-    {{-- Navigates to the Reviews page pre-filtered to this trip's
-         destination, same reasoning as the overview toggle's Reviews link. --}}
-    <a href="{{ route('reviews.index', ['destination' => $trip->destination]) }}" class="moments-segment" style="text-decoration:none;">
-        <i class="fa-regular fa-comment-dots"></i> Reviews
-    </a>
 </div>
 
 <div x-data>
@@ -376,15 +356,6 @@
                                     @endif
                                     <div style="font-size:11px;color:var(--muted);">
                                         <i class="fa-regular fa-clock" style="font-size:10px;"></i> Posted {{ $moment['posted_at'] }}
-                                    </div>
-                                    {{-- Bridges to the existing (separate) Reviews page rather
-                                         than rebuilding review display/submission here — same
-                                         data, one place it actually lives. --}}
-                                    <div style="display:flex;gap:12px;margin-top:6px;">
-                                        <a href="{{ route('reviews.index', ['destination' => $moment['place_name'], 'write' => 1]) }}"
-                                           style="font-size:11px;font-weight:600;color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
-                                            <i class="fa-regular fa-pen-to-square" style="font-size:10px;"></i> Write a review
-                                        </a>
                                     </div>
                                 </div>
                             </div>

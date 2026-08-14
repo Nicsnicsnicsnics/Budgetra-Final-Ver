@@ -56,7 +56,7 @@ class DashboardController extends Controller
 
     private function buildData($user): array
     {
-        $trips = $user->trips()->withSum('expenses', 'amount')->latest()->get()->map(function (Trip $trip) {
+        $trips = $user->trips()->where('status', '!=', 'draft')->withSum('expenses', 'amount')->latest()->get()->map(function (Trip $trip) {
             $spent = $trip->expenses_sum_amount ?? 0;
             $today = Carbon::today();
             $trip->setAttribute('total_spent', $spent);
@@ -69,8 +69,9 @@ class DashboardController extends Controller
         $totalBudget = $trips->sum('budget_limit');
         $totalSpent  = $trips->sum('total_spent');
 
-        // Donut: spend by category, across every trip.
+        // Donut: spend by category, across every non-draft trip.
         $categorySpend = Expense::where('user_id', $user->id)
+            ->whereHas('trip', fn ($q) => $q->where('status', '!=', 'draft'))
             ->selectRaw('category, SUM(amount) as total')
             ->groupBy('category')
             ->orderByDesc('total')
@@ -85,6 +86,7 @@ class DashboardController extends Controller
 
         // Bars: total spend per calendar month, last 6 months.
         $monthlyRaw = Expense::where('user_id', $user->id)
+            ->whereHas('trip', fn ($q) => $q->where('status', '!=', 'draft'))
             ->where('expense_date', '>=', Carbon::today()->subMonths(5)->startOfMonth())
             ->selectRaw("to_char(expense_date, 'YYYY-MM') as ym, SUM(amount) as total")
             ->groupBy('ym')

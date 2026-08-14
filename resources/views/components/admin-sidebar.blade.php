@@ -1,8 +1,15 @@
 @props(['active' => ''])
 <aside class="admin-sidebar" id="adminSidebar">
+
+    <div class="admin-sidebar-header">
+        <button class="admin-sidebar-toggle-btn" id="adminSidebarToggle" title="Toggle sidebar">
+            <i class="fa-solid fa-angle-left" id="adminSidebarToggleIcon"></i>
+        </button>
+    </div>
+
     <div class="admin-sidebar-brand">
         <div class="admin-sidebar-logo"><i class="fa-solid fa-compass"></i></div>
-        <div>
+        <div class="admin-sidebar-brand-text">
             <div class="admin-sidebar-name">Budgetra</div>
             <div class="admin-sidebar-tagline">Travel Admin</div>
         </div>
@@ -18,45 +25,56 @@
             ['href' => route('admin.travel-costs.index'),  'icon' => 'fa-solid fa-sack-dollar',        'label' => 'Travel Costs',   'key' => 'travel-costs'],
             ['href' => route('admin.reviews.index'),       'icon' => 'fa-regular fa-flag',             'label' => 'User Reviews',   'key' => 'reviews'],
         ];
-        $moreLinks = [
-            ['href' => route('admin.reports.index'),      'icon' => 'fa-solid fa-chart-column',     'label' => 'Reports',      'key' => 'reports'],
-            ['href' => route('admin.config.index'),       'icon' => 'fa-solid fa-sliders',          'label' => 'Config',       'key' => 'config'],
-            ['href' => route('admin.ocr.index'),          'icon' => 'fa-solid fa-receipt',          'label' => 'OCR Logs',     'key' => 'ocr'],
-            ['href' => route('admin.backup.index'),       'icon' => 'fa-solid fa-database',         'label' => 'Backup',       'key' => 'backup'],
-        ];
         @endphp
         @foreach ($primaryLinks as $link)
-        <a href="{{ $link['href'] }}" class="admin-sidebar-link {{ $active === $link['key'] ? 'active' : '' }}">
+        <a href="{{ $link['href'] }}" class="admin-sidebar-link {{ $active === $link['key'] ? 'active' : '' }}" title="{{ $link['label'] }}">
             <i class="{{ $link['icon'] }}"></i>
             <span>{{ $link['label'] }}</span>
         </a>
         @endforeach
 
-        <div class="admin-sidebar-divider"></div>
-
-        @foreach ($moreLinks as $link)
-        <a href="{{ $link['href'] }}" class="admin-sidebar-link admin-sidebar-link-sub {{ $active === $link['key'] ? 'active' : '' }}">
-            <i class="{{ $link['icon'] }}"></i>
-            <span>{{ $link['label'] }}</span>
-        </a>
-        @endforeach
+        <div class="admin-sidebar-foot">
+            <a href="{{ route('profile.edit') }}" class="admin-sidebar-link {{ $active === 'profile' ? 'active' : '' }}" title="Profile">
+                <i class="fa-regular fa-user-circle"></i>
+                <span>Profile</span>
+            </a>
+            <a href="{{ route('admin.settings.index') }}" class="admin-sidebar-link {{ $active === 'settings' ? 'active' : '' }}" title="Settings">
+                <i class="fa-solid fa-gear"></i>
+                <span>Settings</span>
+            </a>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="admin-sidebar-link admin-sidebar-logout" title="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </button>
+            </form>
+        </div>
     </nav>
-
-    <div class="admin-sidebar-foot">
-        <a href="{{ route('admin.settings.index') }}" class="admin-sidebar-link {{ $active === 'settings' ? 'active' : '' }}">
-            <i class="fa-solid fa-gear"></i>
-            <span>Settings</span>
-        </a>
-        <a href="{{ route('dashboard') }}" class="admin-sidebar-link">
-            <i class="fa-solid fa-arrow-left"></i>
-            <span>Back to App</span>
-        </a>
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button type="submit" class="admin-sidebar-link admin-sidebar-logout">
-                <i class="fa-solid fa-right-from-bracket"></i>
-                <span>Logout</span>
-            </button>
-        </form>
-    </div>
 </aside>
+
+<script>
+(function () {
+    function applyState(collapsed) {
+        var shell = document.getElementById('adminShell');
+        var icon  = document.getElementById('adminSidebarToggleIcon');
+        if (!shell) return;
+        shell.classList.toggle('admin-sidebar-collapsed', collapsed);
+        if (icon) icon.className = collapsed ? 'fa-solid fa-angle-right' : 'fa-solid fa-angle-left';
+    }
+
+    applyState(localStorage.getItem('adminSidebarCollapsed') === '1');
+
+    if (!window.__adminSidebarToggleBound) {
+        window.__adminSidebarToggleBound = true;
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#adminSidebarToggle')) return;
+            var shell = document.getElementById('adminShell');
+            if (!shell) return;
+            var c = !shell.classList.contains('admin-sidebar-collapsed');
+            localStorage.setItem('adminSidebarCollapsed', c ? '1' : '0');
+            applyState(c);
+        });
+    }
+})();
+</script>

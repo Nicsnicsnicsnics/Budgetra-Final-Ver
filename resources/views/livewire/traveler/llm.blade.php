@@ -187,7 +187,7 @@
     <svg style="width:44px;height:44px;animation:aiSpin 1s linear infinite;margin-bottom:20px;" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round">
         <path d="M12 2a10 10 0 1 0 10 10" />
     </svg>
-    <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0 0 8px;">Building your trip package…</h2>
+    <h2 style="font-size:20px;font-weight:800;color:var(--dark);margin:0 0 8px;">Building your trip package</h2>
     <p style="font-size:14px;color:var(--muted);margin:0 0 6px;display:flex;align-items:center;gap:6px;">
         TARA is thinking
         <span style="display:inline-flex;gap:3px;">
@@ -251,9 +251,16 @@
         .llm-send-btn:hover{background:var(--primary-dark);transform:scale(1.08);}
         .llm-send-btn:active{transform:scale(.92);}
         .llm-thread{width:100%;max-width:600px;margin:0 auto;flex:1;overflow-y:auto;padding:80px 4px 16px;display:flex;flex-direction:column;gap:12px;}
-        .llm-msg{max-width:80%;padding:11px 16px;border-radius:16px;font-size:14px;line-height:1.5;animation:llmMsgIn .3s ease both;}
-        .llm-msg-user{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:4px;}
-        .llm-msg-assistant{align-self:flex-start;background:var(--bg-white);border:1.5px solid var(--border);color:var(--dark);border-bottom-left-radius:4px;}
+        .llm-msg-row{display:flex;align-items:flex-end;gap:8px;max-width:100%;}
+        .llm-msg-row-user{align-self:flex-end;flex-direction:row-reverse;}
+        .llm-msg-row-assistant{align-self:flex-start;}
+        .llm-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+        .llm-avatar-img{object-fit:cover;}
+        .llm-avatar-user{background:var(--primary);color:#fff;}
+        .llm-avatar-ai{background:linear-gradient(135deg,var(--primary),#C8874A);color:#fff;font-size:14px;}
+        .llm-msg{max-width:calc(100% - 36px);padding:11px 16px;border-radius:16px;font-size:14px;line-height:1.5;animation:llmMsgIn .3s ease both;}
+        .llm-msg-user{background:var(--primary);color:#fff;border-bottom-right-radius:4px;}
+        .llm-msg-assistant{background:var(--bg-white);border:1.5px solid var(--border);color:var(--dark);border-bottom-left-radius:4px;}
         @media (max-width:640px){
             .llm-composer{padding:6px 6px 6px 16px;}
         }
@@ -298,16 +305,31 @@
         {{-- Conversation is underway: chat thread + composer pinned below --}}
         <div style="width:100%;height:calc(100vh - 80px);display:flex;flex-direction:column;align-items:center;">
 
+            @php
+                $llmUserInitials = collect(explode(' ', auth()->user()->full_name ?? ''))
+                    ->filter()->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->implode('');
+            @endphp
             <div id="llm-thread" class="llm-thread">
                 @foreach ($messages as $msg)
-                    <div class="llm-msg llm-msg-{{ $msg['role'] }}">{{ $msg['text'] }}</div>
+                    <div class="llm-msg-row llm-msg-row-{{ $msg['role'] }}">
+                        @if ($msg['role'] === 'user')
+                            @if (auth()->user()->profile_photo)
+                            <img src="{{ Illuminate\Support\Facades\Storage::url(auth()->user()->profile_photo) }}" alt="You" class="llm-avatar llm-avatar-img">
+                            @else
+                            <div class="llm-avatar llm-avatar-user">{{ strtoupper($llmUserInitials) }}</div>
+                            @endif
+                        @else
+                        <div class="llm-avatar llm-avatar-ai"><i class="fa-solid fa-sparkle"></i></div>
+                        @endif
+                        <div class="llm-msg llm-msg-{{ $msg['role'] }}">{{ $msg['text'] }}</div>
+                    </div>
                 @endforeach
             </div>
 
             <div class="llm-composer" style="margin-top:auto;">
                 <style>#llm-ai-prompt::placeholder{color:#B7A99B;opacity:1;}</style>
                 <textarea id="llm-ai-prompt" wire:model="aiPrompt"
-                          placeholder="Type your reply…"
+                          placeholder="Type your reply"
                           rows="1"
                           x-data
                           x-on:input="$el.style.height='auto';$el.style.height=$el.scrollHeight+'px'"

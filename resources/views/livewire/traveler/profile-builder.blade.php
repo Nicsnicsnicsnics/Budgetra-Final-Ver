@@ -39,7 +39,7 @@
 .pb-suggest span{cursor:pointer;color:var(--primary);font-weight:600;text-decoration:underline;margin-left:4px;}
 .pb-btn{display:inline-flex;align-items:center;gap:8px;padding:13px 28px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;}
 .pb-btn-primary{background:var(--primary);color:#fff;}
-.pb-btn-primary:hover{background:#2D1206;}
+.pb-btn-primary:hover{background:var(--primary-dark);}
 .pb-btn-ghost{background:var(--bg-white);border:1.5px solid var(--border);color:var(--dark);}
 .pb-btn-ghost:hover{background:var(--bg);}
 .pb-nav{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:480px;margin-top:20px;}

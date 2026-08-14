@@ -10,8 +10,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     @livewireStyles
 </head>
-<body class="admin-body">
-    <div class="admin-shell">
+@php
+    $userTheme = auth()->user()->theme ?? 'daylight';
+@endphp
+<body class="admin-body" data-theme="{{ $userTheme }}">
+    @if ($userTheme === 'auto')
+    <script>
+        document.body.setAttribute('data-theme',
+            window.matchMedia('(prefers-color-scheme: dark)').matches ? 'nightflight' : 'daylight');
+    </script>
+    @endif
+    <div class="admin-shell" id="adminShell">
         <x-admin-sidebar :active="$active ?? ''" />
         <div class="admin-main">
             <div class="admin-topbar">

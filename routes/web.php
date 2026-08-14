@@ -78,6 +78,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/reviews',               [Traveler\ReviewController::class, 'index'])->name('reviews.index');
     Route::post('/reviews',              [Traveler\ReviewController::class, 'store'])->name('reviews.store');
+    Route::put('/reviews/{review}',      [Traveler\ReviewController::class, 'update'])->name('reviews.update');
     Route::post('/reviews/{review}/flag', [Traveler\ReviewController::class, 'flag'])->name('reviews.flag');
 
     Route::get('/alerts',                [Traveler\AlertController::class, 'index'])->name('alerts.index');

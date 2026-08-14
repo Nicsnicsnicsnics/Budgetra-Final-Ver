@@ -1514,10 +1514,17 @@ PROMPT;
         $fromCode = $this->resolveCode($this->aiFrom ?: 'Manila');
         $toCode   = $this->resolveCode($this->aiTo);
 
+        // Percentages intentionally sum to 95%, not 100% — the 5% left
+        // unallocated is a buffer so real market prices (which don't
+        // exactly match these targets) still tend to land the final
+        // total at or under budget instead of consistently over it.
+        // Attractions also got a bigger slice than before (4% → 12%) so
+        // the itinerary suggestion has real room instead of being an
+        // afterthought squeezed into whatever's left.
         $transportBudget     = (int)round($budget * 0.18);
-        $accommodationBudget = (int)round($budget * 0.50);
-        $foodBudget          = (int)round($budget * 0.28);
-        $attractionBudget    = (int)round($budget * 0.04);
+        $accommodationBudget = (int)round($budget * 0.45);
+        $foodBudget          = (int)round($budget * 0.20);
+        $attractionBudget    = (int)round($budget * 0.12);
 
         $gen = $this->aiGenCount;
         $flightData  = $serp->searchFlights($fromCode, $toCode, $checkIn, $checkOut, $gen, $transportBudget);
@@ -1641,6 +1648,40 @@ PROMPT;
                + $rawPackage['accommodation']['cost']
                + $rawPackage['food']['cost']
                + $rawPackage['attractions']['cost'];
+
+        // Real market prices from the flight/hotel/restaurant searches
+        // don't exactly match the allocated slices above, so the total
+        // can still land over budget. Rather than misrepresent a real
+        // flight or hotel price to force a fit, trim the priciest
+        // attraction/itinerary items first — that's the one category of
+        // suggestion, not a booked cost — until the package is at or
+        // under budget (or there's nothing left to trim).
+        if ($total > $budget && !empty($rawPackage['attractions']['items'])) {
+            $itemCost = fn ($item) => is_numeric(str_replace(['₱', ','], '', $item[1] ?? ''))
+                ? (int) str_replace(['₱', ','], '', $item[1]) : 0;
+
+            $items = $rawPackage['attractions']['items'];
+            usort($items, fn ($a, $b) => $itemCost($b) <=> $itemCost($a));
+
+            $overage = $total - $budget;
+            foreach ($items as $i => $item) {
+                if ($overage <= 0 || count($items) <= 1) break;
+                $cost = $itemCost($item);
+                if ($cost <= 0) continue;
+                unset($items[$i]);
+                $overage -= $cost;
+            }
+            $items = array_values($items);
+
+            if (count($items) !== count($rawPackage['attractions']['items'])) {
+                $rawPackage['attractions']['items'] = $items;
+                $rawPackage['attractions']['cost']  = array_sum(array_map($itemCost, $items));
+                $total = $rawPackage['transport']['cost']
+                       + $rawPackage['accommodation']['cost']
+                       + $rawPackage['food']['cost']
+                       + $rawPackage['attractions']['cost'];
+            }
+        }
 
         return array_merge($rawPackage, [
             'total'  => $total,

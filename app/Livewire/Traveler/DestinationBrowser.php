@@ -23,6 +23,7 @@ class DestinationBrowser extends Component
     public function getDestinationsProperty()
     {
         $query = Destination::withCount('attractions')
+            ->withAvg('attractions', 'rating')
             ->whereIn('name', $this->plannerCityNames());
         if ($this->search)  $query->where('name', 'like', "%{$this->search}%");
         if ($this->country) $query->where('country', $this->country);
