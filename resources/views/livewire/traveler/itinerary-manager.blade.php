@@ -714,9 +714,6 @@ $titleIconMap = [
                     @endif
                 </div>
             </div>
-            <button wire:click="closeModals" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;flex-shrink:0;border-radius:8px;">
-                <i class="fa-solid fa-xmark" style="font-size:15px;"></i>
-            </button>
         </div>
 
         <div style="height:1px;background:var(--border-light);flex-shrink:0;"></div>

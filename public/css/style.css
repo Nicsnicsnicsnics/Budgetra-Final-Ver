@@ -2086,14 +2086,19 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 .pg-disabled:hover, .pg-dots:hover { border-color: var(--border, #E7DCCF); color: var(--dark, #241208); }
 
 /* ══════════════════════════════════════════════════
-   Travel Admin theme — scoped, self-contained tokens
-   (does not touch traveler-facing :root theme vars)
+   Travel Admin theme — the content area (background, text,
+   borders, cards) now follows the same data-theme system as the
+   traveler side, so the admin panel's own theme picker actually
+   works instead of switching some elements (traveler-styled cards)
+   while leaving others (the fixed chrome) on a hardcoded cream
+   palette. The sidebar/accent brand color stays its own fixed
+   brown identity on purpose — only the page content re-themes.
 ══════════════════════════════════════════════════ */
 .admin-body {
-  --admin-bg: #F7F1EA; --admin-ink: #241208; --admin-muted: #8A7A6C;
-  --admin-border: #E7DCCF; --admin-card: #FFFFFF;
-  --admin-brand-bg: #2A160C; --admin-brand-bg-2: #1D0F07;
-  --admin-accent: #C2703D; --admin-accent-dark: #A85A2C;
+  --admin-bg: var(--bg); --admin-ink: var(--dark); --admin-muted: var(--muted);
+  --admin-border: var(--border); --admin-card: var(--bg-white);
+  --admin-brand-bg: var(--sidebar-bg); --admin-brand-bg-2: var(--sidebar-bg);
+  --admin-accent: var(--primary); --admin-accent-dark: var(--primary-dark);
   --admin-danger: #D64545; --admin-success: #2F9E5B;
   margin: 0; background: var(--admin-bg); color: var(--admin-ink);
   font-family: 'Hanken Grotesk', system-ui, sans-serif;
@@ -2105,30 +2110,78 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 .admin-sidebar {
   width: 260px; flex-shrink: 0; background: var(--admin-brand-bg);
   background-image: linear-gradient(180deg, var(--admin-brand-bg), var(--admin-brand-bg-2));
-  color: #fff; display: flex; flex-direction: column; padding: 22px 16px;
+  color: #fff; display: flex; flex-direction: column; padding: 12px 16px 16px;
+  height: 100vh; overflow-y: auto; box-sizing: border-box; position: sticky; top: 0;
+  transition: width .25s ease, min-width .25s ease;
 }
-.admin-sidebar-brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 22px; }
+.admin-sidebar-header { display: flex; padding: 0 8px 8px; flex-shrink: 0; }
+.admin-sidebar-toggle-btn {
+  width: 30px; height: 30px; border-radius: 8px; border: none; background: none;
+  color: rgba(255,255,255,.55); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; transition: background .15s ease, color .15s ease;
+}
+.admin-sidebar-toggle-btn:hover { background: rgba(255,255,255,.08); color: #fff; }
+.admin-sidebar-brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 14px; flex-shrink: 0; }
 .admin-sidebar-logo {
-  width: 42px; height: 42px; border-radius: 12px; background: var(--admin-accent);
-  display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 11px; background: var(--admin-accent);
+  display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
 }
-.admin-sidebar-name { font-size: 18px; font-weight: 800; line-height: 1.2; }
-.admin-sidebar-tagline { font-size: 12px; color: rgba(255,255,255,.55); }
-.admin-sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
+.admin-sidebar-name { font-size: 16px; font-weight: 800; line-height: 1.2; }
+.admin-sidebar-tagline { font-size: 11px; color: rgba(255,255,255,.55); }
+.admin-sidebar-nav { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
 .admin-sidebar-link {
-  display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 10px;
-  color: rgba(255,255,255,.65); text-decoration: none; font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 9px;
+  color: rgba(255,255,255,.65); text-decoration: none; font-size: 13.5px; font-weight: 600;
   border: none; background: none; width: 100%; text-align: left; cursor: pointer;
   font-family: inherit; transition: background .15s ease, color .15s ease;
 }
-.admin-sidebar-link i { width: 18px; text-align: center; font-size: 15px; }
+.admin-sidebar-link i { width: 18px; text-align: center; font-size: 14px; }
 .admin-sidebar-link:hover { background: rgba(255,255,255,.08); color: #fff; }
 .admin-sidebar-link.active { background: var(--admin-accent); color: #fff; }
-.admin-sidebar-link-sub { font-weight: 500; font-size: 13px; color: rgba(255,255,255,.5); }
-.admin-sidebar-divider { height: 1px; background: rgba(255,255,255,.1); margin: 10px 8px; }
-.admin-sidebar-foot { display: flex; flex-direction: column; gap: 2px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.1); }
-.admin-sidebar-logout { color: rgba(255,120,120,.85); }
-.admin-sidebar-logout:hover { background: rgba(214,69,69,.15); color: #ff8a8a; }
+.admin-sidebar-link-sub { font-weight: 500; font-size: 12.5px; color: rgba(255,255,255,.5); }
+.admin-sidebar-divider { height: 1px; background: rgba(255,255,255,.1); margin: 6px 8px; }
+.admin-sidebar-foot { display: flex; flex-direction: column; gap: 1px; margin-top: 16px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.1); flex-shrink: 0; }
+.admin-sidebar-logout { color: #E23A4E; }
+.admin-sidebar-logout:hover { background: rgba(226,58,78,0.12); color: #E23A4E; }
+
+/* ── Collapsed admin sidebar — same icon-rail treatment as the
+   traveler sidebar's collapsed state. ─────────────────────── */
+.admin-sidebar-collapsed .admin-sidebar { width: 58px; min-width: 58px; padding: 12px 0; overflow-y: hidden; }
+.admin-sidebar-collapsed .admin-sidebar-header { justify-content: center; padding: 0 0 4px; }
+.admin-sidebar-collapsed .admin-sidebar-brand { justify-content: center; padding: 0 0 10px; }
+.admin-sidebar-collapsed .admin-sidebar-brand-text { display: none; }
+.admin-sidebar-collapsed .admin-sidebar-link { justify-content: center; padding: 9px 0; gap: 0; }
+.admin-sidebar-collapsed .admin-sidebar-link span { display: none; }
+.admin-sidebar-collapsed .admin-sidebar-link i { font-size: 16px; }
+
+/* Light-sidebar themes need dark-on-light overrides here too, same
+   reasoning as the traveler sidebar's per-theme block above. */
+[data-theme="terracotta"] .admin-sidebar-name,
+[data-theme="terracotta"] .admin-sidebar-toggle-btn { color: #3B2A1E; }
+[data-theme="terracotta"] .admin-sidebar-tagline { color: rgba(59,42,30,0.55); }
+[data-theme="terracotta"] .admin-sidebar-link { color: rgba(59,42,30,0.65); }
+[data-theme="terracotta"] .admin-sidebar-link:hover { background: rgba(59,42,30,0.08); color: #3B2A1E; }
+[data-theme="terracotta"] .admin-sidebar-toggle-btn:hover { background: rgba(59,42,30,0.08); }
+[data-theme="terracotta"] .admin-sidebar-divider,
+[data-theme="terracotta"] .admin-sidebar-foot { border-color: rgba(59,42,30,0.15); }
+
+[data-theme="daylight"] .admin-sidebar-name,
+[data-theme="daylight"] .admin-sidebar-toggle-btn { color: #1A2333; }
+[data-theme="daylight"] .admin-sidebar-tagline { color: rgba(26,35,51,0.55); }
+[data-theme="daylight"] .admin-sidebar-link { color: rgba(26,35,51,0.65); }
+[data-theme="daylight"] .admin-sidebar-link:hover { background: rgba(26,35,51,0.08); color: #1A2333; }
+[data-theme="daylight"] .admin-sidebar-toggle-btn:hover { background: rgba(26,35,51,0.08); }
+[data-theme="daylight"] .admin-sidebar-divider,
+[data-theme="daylight"] .admin-sidebar-foot { border-color: rgba(26,35,51,0.10); }
+
+[data-theme="sakura-bloom"] .admin-sidebar-name,
+[data-theme="sakura-bloom"] .admin-sidebar-toggle-btn { color: #2E2A2C; }
+[data-theme="sakura-bloom"] .admin-sidebar-tagline { color: rgba(46,42,44,0.55); }
+[data-theme="sakura-bloom"] .admin-sidebar-link { color: rgba(46,42,44,0.65); }
+[data-theme="sakura-bloom"] .admin-sidebar-link:hover { background: rgba(214,92,130,0.10); color: #2E2A2C; }
+[data-theme="sakura-bloom"] .admin-sidebar-toggle-btn:hover { background: rgba(46,42,44,0.08); }
+[data-theme="sakura-bloom"] .admin-sidebar-divider,
+[data-theme="sakura-bloom"] .admin-sidebar-foot { border-color: rgba(46,42,44,0.10); }
 
 /* Main / topbar */
 .admin-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }

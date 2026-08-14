@@ -900,6 +900,10 @@ class SerpApiService
             'engine'  => 'google_images',
             'q'       => trim($name . ' ' . $context . ' ' . $hint),
             'hl'      => 'en',
+            // Bias toward large photos instead of accepting whatever the
+            // first result happens to be — the un-filtered default search
+            // frequently surfaced small/blurry thumbnails.
+            'tbs'     => 'isz:l',
             'api_key' => $this->key,
         ];
 
@@ -907,10 +911,24 @@ class SerpApiService
         if (!$data) return null;
 
         $results = $data['images_results'] ?? [];
-        foreach ($results as $r) {
+        if (!$results) return null;
+
+        // Among the top results, pick the highest-resolution image rather
+        // than just the first one — the first result isn't always the
+        // sharpest, and original_width/height let us rank for clarity.
+        $best     = null;
+        $bestArea = 0;
+        foreach (array_slice($results, 0, 8) as $r) {
             $url = $r['original'] ?? $r['thumbnail'] ?? null;
-            if ($url) return $url;
+            if (!$url) continue;
+            $area = (int) ($r['original_width'] ?? 0) * (int) ($r['original_height'] ?? 0);
+            if ($area > $bestArea) {
+                $bestArea = $area;
+                $best     = $url;
+            }
+            if ($best === null) $best = $url;
         }
-        return null;
+
+        return $best;
     }
 }

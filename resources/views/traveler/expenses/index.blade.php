@@ -146,7 +146,7 @@
             <div style="width:34px;height:34px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fa-solid fa-plane" style="color:var(--primary);font-size:13px;"></i>
             </div>
-            <span style="font-size:14px;font-weight:700;color:var(--dark);">{{ $tripLabel($t) }}</span>
+            <span style="font-size:14px;font-weight:600;color:var(--dark);">{{ $tripLabel($t) }}</span>
         </div>
         @else
         <div x-data="{ open: false }" style="position:relative;">
@@ -156,7 +156,7 @@
                 <div style="width:34px;height:34px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fa-solid fa-plane" style="color:var(--primary);font-size:13px;"></i>
                 </div>
-                <span style="flex:1;font-size:14px;font-weight:700;color:var(--dark);">
+                <span style="flex:1;font-size:14px;font-weight:600;color:var(--dark);">
                     @php $sel = $trips->firstWhere('id', $selectedTripId); @endphp
                     {{ $sel ? $tripLabel($sel) : 'Select a trip' }}
                 </span>
@@ -171,7 +171,7 @@
                     <div style="width:28px;height:28px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <i class="fa-solid fa-plane" style="color:var(--primary);font-size:11px;"></i>
                     </div>
-                    <span style="font-size:13px;font-weight:{{ $selectedTripId == $t->id ? '700' : '500' }};color:{{ $selectedTripId == $t->id ? 'var(--primary)' : 'var(--text)' }};">{{ $tripLabel($t) }}</span>
+                    <span style="font-size:13px;font-weight:{{ $selectedTripId == $t->id ? '600' : '400' }};color:{{ $selectedTripId == $t->id ? 'var(--primary)' : 'var(--muted)' }};">{{ $tripLabel($t) }}</span>
                 </a>
                 @endforeach
             </div>
@@ -300,9 +300,9 @@
     </div></div>
 
     {{-- Transactions --}}
-    <div class="card" style="overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;{{ (!$selectedTrip || $expenses->isEmpty()) ? 'min-height:calc(100vh - 260px);' : '' }}">
+    <div class="card" style="overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
         @if (!$selectedTrip || $expenses->isEmpty())
-        <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;text-align:center;">
             <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
                 <i class="fa-solid fa-receipt" style="font-size:24px;color:var(--primary);"></i>
             </div>

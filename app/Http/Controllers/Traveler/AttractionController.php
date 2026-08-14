@@ -20,11 +20,12 @@ class AttractionController extends Controller
             ->latest()
             ->get();
 
-        $avgRating   = $reviews->avg('rating') ?? 0;
-        $hasReviewed = auth()->user()->reviews()
+        $avgRating = $reviews->avg('rating') ?? 0;
+        $myReview  = auth()->user()->reviews()
             ->where('attraction_id', $attraction->id)
-            ->exists();
+            ->first();
+        $hasReviewed = (bool) $myReview;
 
-        return view('traveler.attractions.show', compact('attraction', 'reviews', 'avgRating', 'hasReviewed'));
+        return view('traveler.attractions.show', compact('attraction', 'reviews', 'avgRating', 'hasReviewed', 'myReview'));
     }
 }

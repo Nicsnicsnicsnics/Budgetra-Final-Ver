@@ -38,7 +38,7 @@
         <a href="{{ route('attractions.show', $attraction) }}" class="attr-card">
             <div class="attr-card-media">
                 @if ($attraction->image)
-                <img src="{{ asset('storage/' . $attraction->image) }}" alt="{{ $attraction->name }}" loading="lazy">
+                <img src="{{ asset('storage/' . $attraction->image) }}" alt="{{ $attraction->name }}" loading="eager" decoding="async" fetchpriority="high">
                 @else
                 <div class="attr-card-noimg">
                     <i class="fa-solid fa-image"></i>

@@ -60,6 +60,24 @@ class ReviewController extends Controller
         return redirect()->route('reviews.index')->with('success', 'Review submitted!');
     }
 
+    public function update(Request $request, Review $review)
+    {
+        abort_if($review->user_id !== auth()->id(), 403, "You can only edit your own review.");
+
+        $validated = $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'body'   => 'required|string|min:10|max:2000',
+        ]);
+
+        $review->update($validated);
+
+        if ($request->filled('attraction_id')) {
+            return redirect()->route('attractions.show', $request->attraction_id)
+                             ->with('success', 'Review updated!');
+        }
+        return redirect()->route('reviews.index')->with('success', 'Review updated!');
+    }
+
     public function flag(Request $request, Review $review)
     {
         abort_if($review->user_id === auth()->id(), 403, "You can't flag your own review.");

@@ -9,7 +9,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
-#[Signature('app:fill-attraction-images {--limit=15}')]
+#[Signature('app:fill-attraction-images {--limit=15} {--refresh : Re-fetch a sharper photo even for attractions that already have one}')]
 #[Description('Fetch a photo via SerpAPI for attractions that do not have one yet, capped daily so live trip-planning traffic still has quota left')]
 class FillAttractionImages extends Command
 {
@@ -29,7 +29,8 @@ class FillAttractionImages extends Command
         }
 
         $toFetch = min((int) $this->option('limit'), $budgetLeft);
-        $attractions = Attraction::whereNull('image')->orderBy('name')->limit($toFetch)->get();
+        $query = $this->option('refresh') ? Attraction::query() : Attraction::whereNull('image');
+        $attractions = $query->orderBy('name')->limit($toFetch)->get();
 
         if ($attractions->isEmpty()) {
             $this->info('No attractions missing images.');
