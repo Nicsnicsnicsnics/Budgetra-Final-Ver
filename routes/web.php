@@ -78,6 +78,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/reviews',               [Traveler\ReviewController::class, 'index'])->name('reviews.index');
     Route::post('/reviews',              [Traveler\ReviewController::class, 'store'])->name('reviews.store');
+    Route::post('/reviews/{review}/flag', [Traveler\ReviewController::class, 'flag'])->name('reviews.flag');
 
     Route::get('/alerts',                [Traveler\AlertController::class, 'index'])->name('alerts.index');
     Route::patch('/alerts/read-all',             [Traveler\AlertController::class, 'markAllRead'])->name('alerts.read-all');
@@ -114,6 +115,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/reviews',                   [Admin\ReviewModerationController::class, 'index'])->name('reviews.index');
     Route::patch('/reviews/{review}/hide',   [Admin\ReviewModerationController::class, 'hide'])->name('reviews.hide');
     Route::patch('/reviews/{review}/show',   [Admin\ReviewModerationController::class, 'show'])->name('reviews.show');
+    Route::patch('/reviews/{review}/unflag', [Admin\ReviewModerationController::class, 'unflag'])->name('reviews.unflag');
     Route::delete('/reviews/{review}',       [Admin\ReviewModerationController::class, 'destroy'])->name('reviews.destroy');
 
     Route::get('/config',            [Admin\ConfigController::class, 'index'])->name('config.index');

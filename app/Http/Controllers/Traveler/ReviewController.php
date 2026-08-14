@@ -59,4 +59,25 @@ class ReviewController extends Controller
         }
         return redirect()->route('reviews.index')->with('success', 'Review submitted!');
     }
+
+    public function flag(Request $request, Review $review)
+    {
+        abort_if($review->user_id === auth()->id(), 403, "You can't flag your own review.");
+
+        $validated = $request->validate([
+            'reason' => 'required|in:inappropriate,improvement',
+        ]);
+
+        if ($review->flagged_by === auth()->id()) {
+            return back()->with('success', "You've already flagged this review — an admin will take a look.");
+        }
+
+        $review->update([
+            'flag_reason' => $validated['reason'],
+            'flagged_at'  => now(),
+            'flagged_by'  => auth()->id(),
+        ]);
+
+        return back()->with('success', 'Thanks — this review has been flagged for admin review.');
+    }
 }

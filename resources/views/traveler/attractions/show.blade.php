@@ -80,11 +80,34 @@
                         <div class="atd-review-date">{{ $review->created_at->format('M j, Y') }}</div>
                     </div>
                 </div>
-                <span class="atd-review-stars">
-                    @for ($i = 1; $i <= 5; $i++)
-                        <i class="fa-{{ $i <= $review->rating ? 'solid' : 'regular' }} fa-star"></i>
-                    @endfor
-                </span>
+                <div class="atd-review-head-right">
+                    <span class="atd-review-stars">
+                        @for ($i = 1; $i <= 5; $i++)
+                            <i class="fa-{{ $i <= $review->rating ? 'solid' : 'regular' }} fa-star"></i>
+                        @endfor
+                    </span>
+                    @if ($review->user_id !== auth()->id())
+                        @if ($review->flagged_by === auth()->id())
+                        <span class="atd-review-flagged" title="You flagged this review"><i class="fa-solid fa-flag"></i></span>
+                        @else
+                        <details class="atd-review-flag">
+                            <summary title="Report this review"><i class="fa-regular fa-flag"></i></summary>
+                            <div class="atd-review-flag-menu">
+                                <form method="POST" action="{{ route('reviews.flag', $review) }}">
+                                    @csrf
+                                    <input type="hidden" name="reason" value="inappropriate">
+                                    <button type="submit">Inappropriate</button>
+                                </form>
+                                <form method="POST" action="{{ route('reviews.flag', $review) }}">
+                                    @csrf
+                                    <input type="hidden" name="reason" value="improvement">
+                                    <button type="submit">Suggest info update</button>
+                                </form>
+                            </div>
+                        </details>
+                        @endif
+                    @endif
+                </div>
             </div>
             <p class="atd-review-body">{{ $review->body }}</p>
         </div>
@@ -226,6 +249,25 @@
     .atd-review-stars { color: #F5A623; font-size: 12.5px; letter-spacing: 1.5px; flex-shrink: 0; }
     .atd-review-stars i.fa-regular { color: var(--border); }
     .atd-review-body { font-size: 13.5px; color: var(--muted); line-height: 1.65; margin: 0; }
+
+    .atd-review-head-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .atd-review-flagged { color: var(--danger); font-size: 12px; }
+    .atd-review-flag { position: relative; }
+    .atd-review-flag summary { list-style: none; cursor: pointer; color: var(--muted); font-size: 12px; }
+    .atd-review-flag summary::-webkit-details-marker { display: none; }
+    .atd-review-flag summary:hover { color: var(--danger); }
+    .atd-review-flag[open] summary { color: var(--danger); }
+    .atd-review-flag-menu {
+        position: absolute; right: 0; top: 22px; z-index: 20; background: var(--bg-white);
+        border: 1.5px solid var(--border); border-radius: 10px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        display: flex; flex-direction: column; gap: 2px; min-width: 170px;
+    }
+    .atd-review-flag-menu form { margin: 0; }
+    .atd-review-flag-menu button {
+        width: 100%; text-align: left; background: none; border: none; padding: 7px 10px; border-radius: 6px;
+        font-size: 12.5px; color: var(--dark); cursor: pointer;
+    }
+    .atd-review-flag-menu button:hover { background: var(--border-light); }
 
     .atd-empty {
         text-align: center; padding: 48px 24px; background: var(--bg-white);

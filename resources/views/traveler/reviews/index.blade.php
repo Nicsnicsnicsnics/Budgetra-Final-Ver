@@ -25,7 +25,30 @@
                     <strong>{{ $review->destination }}</strong>
                     <span style="color:#f5a623;margin-left:8px;">{{ str_repeat('★',$review->rating) }}{{ str_repeat('☆',5-$review->rating) }}</span>
                 </div>
-                <small style="color:var(--muted);">{{ $review->user->full_name }} &bull; {{ $review->created_at->diffForHumans() }}</small>
+                <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                    <small style="color:var(--muted);">{{ $review->user->full_name }} &bull; {{ $review->created_at->diffForHumans() }}</small>
+                    @if ($review->user_id !== auth()->id())
+                        @if ($review->flagged_by === auth()->id())
+                        <span style="color:var(--danger, #DC2626);font-size:12px;" title="You flagged this review"><i class="fa-solid fa-flag"></i></span>
+                        @else
+                        <details style="position:relative;">
+                            <summary style="list-style:none;cursor:pointer;color:var(--muted);font-size:12px;" title="Report this review"><i class="fa-regular fa-flag"></i></summary>
+                            <div style="position:absolute;right:0;top:20px;z-index:20;background:var(--bg-white);border:1.5px solid var(--border);border-radius:10px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:2px;min-width:170px;">
+                                <form method="POST" action="{{ route('reviews.flag', $review) }}" style="margin:0;">
+                                    @csrf
+                                    <input type="hidden" name="reason" value="inappropriate">
+                                    <button type="submit" style="width:100%;text-align:left;background:none;border:none;padding:7px 10px;border-radius:6px;font-size:12.5px;color:var(--dark);cursor:pointer;">Inappropriate</button>
+                                </form>
+                                <form method="POST" action="{{ route('reviews.flag', $review) }}" style="margin:0;">
+                                    @csrf
+                                    <input type="hidden" name="reason" value="improvement">
+                                    <button type="submit" style="width:100%;text-align:left;background:none;border:none;padding:7px 10px;border-radius:6px;font-size:12.5px;color:var(--dark);cursor:pointer;">Suggest info update</button>
+                                </form>
+                            </div>
+                        </details>
+                        @endif
+                    @endif
+                </div>
             </div>
             <p style="margin-top:.5rem;">{{ $review->body }}</p>
         </div>

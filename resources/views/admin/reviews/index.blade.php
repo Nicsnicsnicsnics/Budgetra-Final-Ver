@@ -6,8 +6,9 @@
         <p>Moderate reviews travelers have left on attractions and destinations.</p>
     </div>
     <form method="GET" class="admin-search-form">
+        @if(request('flagged'))<input type="hidden" name="flagged" value="1">@endif
         <select name="status" class="admin-input" onchange="this.form.submit()">
-            <option value="">All Statuses</option>
+            <option value="">All Reviews</option>
             <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
             <option value="hidden" {{ request('status') === 'hidden' ? 'selected' : '' }}>Hidden</option>
         </select>
@@ -15,20 +16,42 @@
 </div>
 @if(session('success'))<div class="admin-alert-success">{{ session('success') }}</div>@endif
 
+<div class="admin-tabs">
+    <a href="{{ route('admin.reviews.index', ['status' => request('status')]) }}" class="admin-tab {{ request('flagged') ? '' : 'active' }}">All</a>
+    <a href="{{ route('admin.reviews.index', ['flagged' => 1, 'status' => request('status')]) }}" class="admin-tab {{ request('flagged') ? 'active' : '' }}">Flagged</a>
+</div>
+
 <div style="display:flex;flex-direction:column;gap:14px;">
     @forelse($reviews as $review)
-    <div class="admin-card" style="padding:18px 22px;{{ $review->status === 'hidden' ? 'opacity:.6;' : '' }}">
+    <div class="admin-card" style="padding:18px 22px;{{ $review->status === 'hidden' ? 'opacity:.6;' : '' }}{{ $review->flag_reason ? 'border-color:var(--admin-danger, #D64545);' : '' }}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
             <div style="flex:1;min-width:240px;">
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
                     <strong style="font-size:14px;color:var(--admin-ink);">{{ $review->destination }}</strong>
                     <span style="color:#F59E0B;font-size:13px;">{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</span>
                     <span class="admin-badge {{ $review->status === 'active' ? 'admin-badge-success' : 'admin-badge-danger' }}">{{ strtoupper($review->status) }}</span>
+                    @if($review->flag_reason)
+                        <span class="admin-badge admin-badge-danger">
+                            <i class="fa-solid fa-flag"></i>
+                            {{ $review->flag_reason === 'inappropriate' ? 'FLAGGED: INAPPROPRIATE' : 'FLAGGED: SUGGESTS INFO UPDATE' }}
+                        </span>
+                    @endif
                 </div>
                 <p style="margin:0 0 8px;font-size:14px;color:var(--admin-ink);line-height:1.6;">{{ $review->body }}</p>
-                <small style="color:var(--admin-muted);font-size:12px;">{{ $review->user->full_name ?? 'Traveler' }} &bull; {{ $review->created_at->format('M j, Y') }}</small>
+                <small style="color:var(--admin-muted);font-size:12px;">
+                    {{ $review->user->full_name ?? 'Traveler' }} &bull; {{ $review->created_at->format('M j, Y') }}
+                    @if($review->flag_reason)
+                        &bull; flagged by {{ $review->flagger->full_name ?? 'a traveler' }} {{ $review->flagged_at?->diffForHumans() }}
+                    @endif
+                </small>
             </div>
             <div style="flex-shrink:0;display:flex;gap:6px;">
+                @if($review->flag_reason)
+                    <form method="POST" action="{{ route('admin.reviews.unflag', $review) }}">
+                        @csrf @method('PATCH')
+                        <button type="submit" class="admin-btn admin-btn-outline admin-btn-sm"><i class="fa-solid fa-flag"></i> Unflag</button>
+                    </form>
+                @endif
                 @if($review->status === 'active')
                     <form method="POST" action="{{ route('admin.reviews.hide', $review) }}">
                         @csrf @method('PATCH')
