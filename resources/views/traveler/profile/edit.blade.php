@@ -42,7 +42,7 @@
                 </div>
             </div>
 
-            <div style="padding:20px 28px 28px;display:flex;flex-direction:column;flex:1;">
+            <div style="padding:20px 28px 28px;display:flex;flex-direction:column;flex:1;min-height:0;">
 
                 <div style="margin-bottom:16px;">
                     <label for="first_name" style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">
@@ -73,10 +73,10 @@
                     </div>
                 </div>
 
-                <div style="margin-bottom:24px;display:flex;flex-direction:column;flex:1;">
+                <div style="margin-bottom:24px;display:flex;flex-direction:column;flex:1;min-height:0;">
                     <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Profile Photo</label>
                     <label for="profile_photo" class="profile-photo-dropzone"
-                           style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;width:100%;flex:1;min-height:180px;box-sizing:border-box;border:1.5px dashed var(--border);border-radius:14px;padding:28px 16px;cursor:pointer;transition:border-color .15s ease,background .15s ease;text-align:center;">
+                           style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;width:100%;flex:1;min-height:100px;box-sizing:border-box;border:1.5px dashed var(--border);border-radius:14px;padding:18px 16px;cursor:pointer;transition:border-color .15s ease,background .15s ease;text-align:center;">
                         <div style="width:52px;height:52px;border-radius:14px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                             <i class="fa-solid fa-cloud-arrow-up" style="color:var(--primary);font-size:20px;"></i>
                         </div>

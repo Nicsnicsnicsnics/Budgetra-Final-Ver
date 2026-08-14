@@ -74,7 +74,11 @@
         <div class="atd-review-card">
             <div class="atd-review-head">
                 <div class="atd-review-who">
+                    @if ($review->user?->profile_photo)
+                    <img src="{{ Illuminate\Support\Facades\Storage::url($review->user->profile_photo) }}" alt="{{ $review->user->full_name }}" class="atd-review-avatar atd-review-avatar-img">
+                    @else
                     <div class="atd-review-avatar">{{ strtoupper($initials) }}</div>
+                    @endif
                     <div>
                         <div class="atd-review-name">{{ $review->user->full_name ?? 'Traveler' }}</div>
                         <div class="atd-review-date">{{ $review->created_at->format('M j, Y') }}</div>
@@ -244,6 +248,7 @@
         background: var(--primary); color: #fff; font-size: 13px; font-weight: 700;
         display: flex; align-items: center; justify-content: center;
     }
+    .atd-review-avatar-img { object-fit: cover; }
     .atd-review-name { font-size: 13.5px; font-weight: 700; color: var(--dark); }
     .atd-review-date { font-size: 11px; color: var(--muted); margin-top: 1px; }
     .atd-review-stars { color: #F5A623; font-size: 12.5px; letter-spacing: 1.5px; flex-shrink: 0; }
