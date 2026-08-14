@@ -8,6 +8,13 @@
         <div class="admin-form-group"><label>Destination *</label><input type="text" name="destination" value="{{ old('destination', $attraction->destination) }}" class="admin-input" required></div>
         <div class="admin-form-group"><label>Name *</label><input type="text" name="name" value="{{ old('name', $attraction->name) }}" class="admin-input" required></div>
         <div class="admin-form-group"><label>Category</label><input type="text" name="category" value="{{ old('category', $attraction->category) }}" class="admin-input"></div>
+        <div class="admin-form-group">
+            <label>Region *</label>
+            <select name="region" class="admin-input" required>
+                <option value="local" {{ old('region', $attraction->region) === 'local' ? 'selected' : '' }}>Local</option>
+                <option value="international" {{ old('region', $attraction->region) === 'international' ? 'selected' : '' }}>International</option>
+            </select>
+        </div>
         <div class="admin-form-group"><label>Rating (0–5)</label><input type="number" step="0.1" min="0" max="5" name="rating" value="{{ old('rating', $attraction->rating) }}" class="admin-input"></div>
         <div class="admin-form-group"><label>Description</label><textarea name="description" class="admin-input" rows="3">{{ old('description', $attraction->description) }}</textarea></div>
         <div class="admin-form-group">

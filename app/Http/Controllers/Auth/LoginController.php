@@ -19,6 +19,13 @@ class LoginController extends Controller
         ]);
 
         if (auth()->attempt($credentials, $request->boolean('remember'))) {
+            if (auth()->user()->role === 'banned') {
+                auth()->logout();
+                return back()
+                    ->withErrors(['email' => 'Your account has been suspended. Contact support if you believe this is a mistake.'])
+                    ->withInput($request->only('email'));
+            }
+
             $request->session()->regenerate();
             $request->session()->put('collapse_sidebar', true);
 

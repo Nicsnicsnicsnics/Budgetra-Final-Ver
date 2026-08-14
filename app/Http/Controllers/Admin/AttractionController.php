@@ -5,7 +5,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Attraction;
 use App\Services\PlaceImageService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
 
 class AttractionController extends Controller
@@ -13,7 +12,6 @@ class AttractionController extends Controller
     public function index(Request $request)
     {
         $active = 'attractions';
-        $missingImageCount = Attraction::whereNull('image')->count();
         $query = Attraction::query();
         if ($request->filled('destination')) {
             $query->where('destination', $request->destination);
@@ -21,9 +19,12 @@ class AttractionController extends Controller
         if ($request->filled('category')) {
             $query->where('category', $request->category);
         }
+        if ($request->filled('region')) {
+            $query->where('region', $request->region);
+        }
         $attractions = $query->orderBy('destination')->orderBy('name')->paginate(24)->withQueryString();
         $categories  = Attraction::whereNotNull('category')->distinct()->orderBy('category')->pluck('category');
-        return view('admin.attractions.index', compact('attractions', 'active', 'categories', 'missingImageCount'));
+        return view('admin.attractions.index', compact('attractions', 'active', 'categories'));
     }
 
     public function create()
@@ -39,6 +40,7 @@ class AttractionController extends Controller
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
             'category'    => 'nullable|string|max:100',
+            'region'      => 'required|in:local,international',
             'rating'      => 'nullable|numeric|min:0|max:5',
             'image'       => 'nullable|image|max:5120',
         ]);
@@ -55,6 +57,7 @@ class AttractionController extends Controller
             'name'        => $validated['name'],
             'description' => $validated['description'] ?? null,
             'category'    => $validated['category'] ?? null,
+            'region'      => $validated['region'],
             'rating'      => $validated['rating'] ?? 0,
             'image'       => $imagePath,
         ]);
@@ -75,6 +78,7 @@ class AttractionController extends Controller
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
             'category'    => 'nullable|string|max:100',
+            'region'      => 'required|in:local,international',
             'rating'      => 'nullable|numeric|min:0|max:5',
             'image'       => 'nullable|image|max:5120',
         ]);
@@ -84,6 +88,7 @@ class AttractionController extends Controller
             'name'        => $validated['name'],
             'description' => $validated['description'] ?? null,
             'category'    => $validated['category'] ?? null,
+            'region'      => $validated['region'],
             'rating'      => $validated['rating'] ?? $attraction->rating,
         ];
 
@@ -109,14 +114,5 @@ class AttractionController extends Controller
             return back()->with('error', 'Could not find or download a photo for this attraction right now.');
         }
         return redirect()->route('admin.attractions.index')->with('success', 'Photo fetched for ' . $attraction->name . '.');
-    }
-
-    // Runs the same batching + daily-quota-reserve logic as the scheduled
-    // `app:fill-attraction-images` command, just triggered on demand.
-    public function fillMissingImages()
-    {
-        set_time_limit(120);
-        Artisan::call('app:fill-attraction-images', ['--limit' => 15]);
-        return redirect()->route('admin.attractions.index')->with('success', trim(Artisan::output()));
     }
 }

@@ -5,7 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Destination extends Model
 {
-    protected $fillable = ['name', 'country', 'description', 'image'];
+    protected $fillable = ['name', 'country', 'region', 'description', 'image'];
 
     public function attractions()
     {

@@ -130,7 +130,7 @@ class DestinationPlacesSeeder extends Seeder
             foreach ($cities as $city) {
                 Destination::firstOrCreate(
                     ['name' => $city, 'country' => $country],
-                    ['description' => null, 'image' => null]
+                    ['region' => $country === 'Philippines' ? 'local' : 'international', 'description' => null, 'image' => null]
                 );
             }
         }

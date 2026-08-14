@@ -71,10 +71,10 @@
                 </td>
                 <td class="admin-table-actions">
                     @if($user->id !== auth()->id())
-                        <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('Delete this user? This cannot be undone.')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="admin-icon-btn admin-icon-btn-danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
-                        </form>
+                        <button type="button" class="admin-icon-btn admin-icon-btn-danger js-delete-user-btn"
+                            data-action="{{ route('admin.users.destroy', $user) }}"
+                            data-name="{{ $user->full_name ?: $user->email }}"
+                            title="Delete"><i class="fa-solid fa-trash"></i></button>
                         <form method="POST" action="{{ route('admin.users.ban', $user) }}">
                             @csrf @method('PATCH')
                             <button type="submit" class="admin-icon-btn {{ $user->role === 'banned' ? 'admin-icon-btn-active' : '' }}" title="{{ $user->role === 'banned' ? 'Unban' : 'Ban' }}">
@@ -91,4 +91,38 @@
     </table>
 </div>
 <div class="admin-pagination">{{ $users->links() }}</div>
+
+<div id="deleteUserModal" class="admin-modal-backdrop" style="display:none;" onclick="if(event.target===this)closeDeleteUserModal();">
+    <div class="admin-modal-card">
+        <div class="admin-modal-head">
+            <h3>Delete User</h3>
+            <button type="button" class="admin-modal-close" onclick="closeDeleteUserModal();"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div style="padding:20px 24px;">
+            <p style="margin:0 0 20px;font-size:14px;color:var(--admin-muted, #8A7A6C);line-height:1.6;">
+                Delete <strong id="deleteUserName" style="color:var(--admin-ink, #241208);"></strong>? This cannot be undone — their trips, expenses, and other data will be permanently removed.
+            </p>
+            <form id="deleteUserForm" method="POST">
+                @csrf @method('DELETE')
+                <div class="admin-modal-actions">
+                    <button type="button" class="admin-btn admin-btn-outline" onclick="closeDeleteUserModal();">Cancel</button>
+                    <button type="submit" class="admin-btn admin-btn-primary" style="background:var(--admin-danger, #D64545);border-color:var(--admin-danger, #D64545);">Delete User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.js-delete-user-btn');
+        if (!btn) return;
+        document.getElementById('deleteUserName').textContent = btn.dataset.name || 'this user';
+        document.getElementById('deleteUserForm').action = btn.dataset.action;
+        document.getElementById('deleteUserModal').style.display = 'flex';
+    });
+    function closeDeleteUserModal() {
+        document.getElementById('deleteUserModal').style.display = 'none';
+    }
+</script>
 @endsection

@@ -5,7 +5,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Destination;
 use App\Services\PlaceImageService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
 
 class DestinationController extends Controller
@@ -13,7 +12,6 @@ class DestinationController extends Controller
     public function index(Request $request)
     {
         $active = 'destinations';
-        $missingImageCount = Destination::whereNull('image')->count();
 
         // Surface destinations travelers are actually actively/upcoming
         // trip-ing to first, ahead of the ~260 pre-seeded reference cities —
@@ -37,8 +35,11 @@ class DestinationController extends Controller
             $s = '%' . strtolower($request->search) . '%';
             $query->where(fn($q) => $q->whereRaw('LOWER(name) LIKE ?', [$s])->orWhereRaw('LOWER(country) LIKE ?', [$s]));
         }
+        if ($request->filled('region')) {
+            $query->where('region', $request->region);
+        }
         $destinations = $query->paginate(24)->withQueryString();
-        return view('admin.destinations.index', compact('destinations', 'active', 'missingImageCount'));
+        return view('admin.destinations.index', compact('destinations', 'active'));
     }
 
     public function update(Request $request, Destination $destination)
@@ -46,6 +47,7 @@ class DestinationController extends Controller
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
             'country'     => 'nullable|string|max:255',
+            'region'      => 'required|in:local,international',
             'description' => 'nullable|string|max:2000',
             'image'       => 'nullable|image|max:5120',
         ]);
@@ -53,6 +55,7 @@ class DestinationController extends Controller
         $updateData = [
             'name'        => $validated['name'],
             'country'     => $validated['country'] ?? null,
+            'region'      => $validated['region'],
             'description' => $validated['description'] ?? null,
         ];
 
@@ -78,15 +81,5 @@ class DestinationController extends Controller
             return back()->with('error', 'Could not find or download a photo for this destination right now.');
         }
         return redirect()->route('admin.destinations.index')->with('success', 'Photo fetched for ' . $destination->name . '.');
-    }
-
-    // Runs the same batching + daily-quota-reserve logic as the scheduled
-    // `app:fill-destination-images` command (see that class), just
-    // triggered on demand instead of waiting for the next scheduled run.
-    public function fillMissingImages()
-    {
-        set_time_limit(120);
-        Artisan::call('app:fill-destination-images', ['--limit' => 20]);
-        return redirect()->route('admin.destinations.index')->with('success', trim(Artisan::output()));
     }
 }

@@ -417,9 +417,10 @@ class AttractionSeeder extends Seeder
         ];
 
         foreach ($attractions as $a) {
+            // Every destination in this seeder is a Philippine city.
             Attraction::firstOrCreate(
                 ['name' => $a['name'], 'destination' => $a['destination']],
-                $a
+                [...$a, 'region' => 'local']
             );
         }
     }

@@ -106,16 +106,15 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('/users/{user}',   [Admin\UserController::class, 'destroy'])->name('users.destroy');
 
     Route::resource('destinations',  Admin\DestinationController::class)->only(['index', 'update', 'destroy']);
-    Route::post('/destinations/fill-missing-images', [Admin\DestinationController::class, 'fillMissingImages'])->name('destinations.fill-missing-images');
     Route::post('/destinations/{destination}/fetch-image', [Admin\DestinationController::class, 'fetchImage'])->name('destinations.fetch-image');
     Route::resource('travel-costs',  Admin\TravelCostController::class)->except(['show']);
     Route::resource('attractions',   Admin\AttractionController::class)->except(['show']);
-    Route::post('/attractions/fill-missing-images', [Admin\AttractionController::class, 'fillMissingImages'])->name('attractions.fill-missing-images');
     Route::post('/attractions/{attraction}/fetch-image', [Admin\AttractionController::class, 'fetchImage'])->name('attractions.fetch-image');
 
     Route::get('/reviews',                   [Admin\ReviewModerationController::class, 'index'])->name('reviews.index');
     Route::patch('/reviews/{review}/hide',   [Admin\ReviewModerationController::class, 'hide'])->name('reviews.hide');
     Route::patch('/reviews/{review}/show',   [Admin\ReviewModerationController::class, 'show'])->name('reviews.show');
+    Route::delete('/reviews/{review}',       [Admin\ReviewModerationController::class, 'destroy'])->name('reviews.destroy');
 
     Route::get('/config',            [Admin\ConfigController::class, 'index'])->name('config.index');
     Route::post('/config',           [Admin\ConfigController::class, 'store'])->name('config.store');

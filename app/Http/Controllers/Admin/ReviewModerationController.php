@@ -9,6 +9,7 @@ class ReviewModerationController extends Controller
 {
     public function index(Request $request)
     {
+        $active = 'reviews';
         $query = Review::with('user')->latest();
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -17,7 +18,7 @@ class ReviewModerationController extends Controller
             $query->where('destination', $request->destination);
         }
         $reviews = $query->paginate(25)->withQueryString();
-        return view('admin.reviews.index', compact('reviews'));
+        return view('admin.reviews.index', compact('reviews', 'active'));
     }
 
     public function hide(Review $review)
@@ -30,5 +31,11 @@ class ReviewModerationController extends Controller
     {
         $review->update(['status' => 'active']);
         return back()->with('success', 'Review is now active.');
+    }
+
+    public function destroy(Review $review)
+    {
+        $review->delete();
+        return back()->with('success', 'Review deleted.');
     }
 }

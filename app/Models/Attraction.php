@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 class Attraction extends Model
 {
     protected $fillable = [
-        'name', 'destination', 'category', 'image', 'rating', 'description',
+        'name', 'destination', 'category', 'region', 'image', 'rating', 'description',
     ];
 
     protected function casts(): array

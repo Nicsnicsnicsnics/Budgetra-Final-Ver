@@ -2303,6 +2303,56 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 .admin-pagination { margin-top: 4px; }
 .admin-pagination .pg-nav { width: 100%; }
 
+/* Dashboard analytics overview */
+.admin-stat-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.admin-stat-icon {
+  width: 38px; height: 38px; border-radius: 10px; background: rgba(194,112,61,.12); color: var(--admin-accent);
+  display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0;
+}
+.admin-stat-change { font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.admin-stat-change.up { color: var(--admin-success); }
+.admin-stat-change.down { color: var(--admin-danger); }
+
+.admin-dash-grid { display: grid; grid-template-columns: 1.3fr 1fr 1.3fr; gap: 18px; margin-bottom: 18px; align-items: stretch; }
+.admin-dash-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+.admin-panel { background: var(--admin-card); border: 1.5px solid var(--admin-border); border-radius: 16px; padding: 20px 22px; display: flex; flex-direction: column; }
+.admin-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.admin-panel-head h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--admin-ink); }
+.admin-panel-head a { font-size: 12px; font-weight: 700; color: var(--admin-accent); text-decoration: none; }
+.admin-panel-empty { color: var(--admin-muted); font-size: 13px; text-align: center; padding: 20px 0; }
+
+.admin-rank-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.admin-rank-row:last-child { margin-bottom: 0; }
+.admin-rank-num { width: 22px; height: 22px; border-radius: 7px; background: var(--admin-bg); color: var(--admin-muted); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.admin-rank-body { flex: 1; min-width: 0; }
+.admin-rank-top { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; margin-bottom: 5px; }
+.admin-rank-name { font-weight: 700; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-rank-value { color: var(--admin-muted); font-weight: 700; flex-shrink: 0; }
+.admin-rank-bar { height: 6px; border-radius: 99px; background: var(--admin-bg); overflow: hidden; }
+.admin-rank-bar-fill { height: 100%; background: var(--admin-accent); border-radius: 99px; }
+
+.admin-donut-legend { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.admin-donut-legend-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--admin-ink); }
+.admin-donut-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+.admin-trip-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--admin-border); }
+.admin-trip-row:first-child { border-top: none; padding-top: 0; }
+.admin-trip-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--admin-accent); color: #fff; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.admin-trip-row-body { flex: 1; min-width: 0; }
+.admin-trip-row-name { font-size: 12.5px; font-weight: 700; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-trip-row-sub { font-size: 11px; color: var(--admin-muted); }
+.admin-trip-row-amount { font-size: 12px; font-weight: 700; color: var(--admin-ink); background: var(--admin-bg); padding: 4px 10px; border-radius: 8px; flex-shrink: 0; }
+
+.admin-curated-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--admin-border); }
+.admin-curated-row:first-child { border-top: none; padding-top: 0; }
+.admin-curated-thumb { width: 40px; height: 40px; border-radius: 10px; background: var(--admin-bg) center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: var(--admin-muted); font-size: 14px; flex-shrink: 0; }
+.admin-curated-name { font-size: 12.5px; font-weight: 700; color: var(--admin-ink); }
+.admin-curated-country { font-size: 11px; color: var(--admin-muted); }
+
+@media (max-width: 1100px) {
+  .admin-dash-grid { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 900px) {
   .admin-sidebar { position: fixed; z-index: 40; height: 100vh; transform: translateX(-100%); transition: transform .2s ease; }
   .admin-sidebar.open { transform: translateX(0); }

@@ -1,44 +1,89 @@
 @extends('layouts.admin')
-@section('title', 'Review Moderation')
 @section('content')
-<h1>Review Moderation</h1>
-<form method="GET" style="display:flex;gap:8px;margin-bottom:1rem;">
-    <select name="status" class="form-control" style="width:auto;" onchange="this.form.submit()">
-        <option value="">All Statuses</option>
-        <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
-        <option value="hidden" {{ request('status') === 'hidden' ? 'selected' : '' }}>Hidden</option>
-    </select>
-</form>
-@if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
-@forelse($reviews as $review)
-    <div class="card" style="margin-bottom:.75rem;{{ $review->status === 'hidden' ? 'opacity:.6;' : '' }}">
-        <div class="card-body">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                <div>
-                    <strong>{{ $review->destination }}</strong>
-                    <span style="color:#f5a623;">{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5-$review->rating) }}</span>
-                    <span style="margin-left:8px;padding:2px 6px;border-radius:4px;font-size:.75rem;background:{{ $review->status === 'active' ? '#d4edda' : '#f8d7da' }};color:{{ $review->status === 'active' ? '#155724' : '#721c24' }};">{{ $review->status }}</span>
-                    <p style="margin:.5rem 0;">{{ $review->body }}</p>
-                    <small style="color:#999;">{{ $review->user->full_name }} &bull; {{ $review->created_at->format('M j, Y') }}</small>
+<div class="admin-page-head">
+    <div>
+        <h1>User Reviews</h1>
+        <p>Moderate reviews travelers have left on attractions and destinations.</p>
+    </div>
+    <form method="GET" class="admin-search-form">
+        <select name="status" class="admin-input" onchange="this.form.submit()">
+            <option value="">All Statuses</option>
+            <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
+            <option value="hidden" {{ request('status') === 'hidden' ? 'selected' : '' }}>Hidden</option>
+        </select>
+    </form>
+</div>
+@if(session('success'))<div class="admin-alert-success">{{ session('success') }}</div>@endif
+
+<div style="display:flex;flex-direction:column;gap:14px;">
+    @forelse($reviews as $review)
+    <div class="admin-card" style="padding:18px 22px;{{ $review->status === 'hidden' ? 'opacity:.6;' : '' }}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:240px;">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+                    <strong style="font-size:14px;color:var(--admin-ink);">{{ $review->destination }}</strong>
+                    <span style="color:#F59E0B;font-size:13px;">{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</span>
+                    <span class="admin-badge {{ $review->status === 'active' ? 'admin-badge-success' : 'admin-badge-danger' }}">{{ strtoupper($review->status) }}</span>
                 </div>
-                <div style="display:flex;gap:4px;flex-shrink:0;margin-left:1rem;">
-                    @if($review->status === 'active')
-                        <form method="POST" action="{{ route('admin.reviews.hide', $review) }}">
-                            @csrf @method('PATCH')
-                            <button class="btn btn-sm btn-warning">Hide</button>
-                        </form>
-                    @else
-                        <form method="POST" action="{{ route('admin.reviews.show', $review) }}">
-                            @csrf @method('PATCH')
-                            <button class="btn btn-sm btn-success">Show</button>
-                        </form>
-                    @endif
-                </div>
+                <p style="margin:0 0 8px;font-size:14px;color:var(--admin-ink);line-height:1.6;">{{ $review->body }}</p>
+                <small style="color:var(--admin-muted);font-size:12px;">{{ $review->user->full_name ?? 'Traveler' }} &bull; {{ $review->created_at->format('M j, Y') }}</small>
+            </div>
+            <div style="flex-shrink:0;display:flex;gap:6px;">
+                @if($review->status === 'active')
+                    <form method="POST" action="{{ route('admin.reviews.hide', $review) }}">
+                        @csrf @method('PATCH')
+                        <button type="submit" class="admin-btn admin-btn-outline admin-btn-sm"><i class="fa-solid fa-eye-slash"></i> Hide</button>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('admin.reviews.show', $review) }}">
+                        @csrf @method('PATCH')
+                        <button type="submit" class="admin-btn admin-btn-primary admin-btn-sm"><i class="fa-solid fa-eye"></i> Show</button>
+                    </form>
+                @endif
+                <button type="button" class="admin-icon-btn admin-icon-btn-danger js-delete-review-btn"
+                    data-action="{{ route('admin.reviews.destroy', $review) }}"
+                    data-name="{{ Str::limit($review->body, 40) }}"
+                    title="Delete"><i class="fa-solid fa-trash"></i></button>
             </div>
         </div>
     </div>
-@empty
-    <p>No reviews found.</p>
-@endforelse
-{{ $reviews->links() }}
+    @empty
+    <div class="admin-empty-state">No reviews found.</div>
+    @endforelse
+</div>
+<div class="admin-pagination">{{ $reviews->links() }}</div>
+
+<div id="deleteReviewModal" class="admin-modal-backdrop" style="display:none;" onclick="if(event.target===this)closeDeleteReviewModal();">
+    <div class="admin-modal-card">
+        <div class="admin-modal-head">
+            <h3>Delete Review</h3>
+            <button type="button" class="admin-modal-close" onclick="closeDeleteReviewModal();"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div style="padding:20px 24px;">
+            <p style="margin:0 0 20px;font-size:14px;color:var(--admin-muted, #8A7A6C);line-height:1.6;">
+                Delete the review "<strong id="deleteReviewName" style="color:var(--admin-ink, #241208);"></strong>"? This cannot be undone.
+            </p>
+            <form id="deleteReviewForm" method="POST">
+                @csrf @method('DELETE')
+                <div class="admin-modal-actions">
+                    <button type="button" class="admin-btn admin-btn-outline" onclick="closeDeleteReviewModal();">Cancel</button>
+                    <button type="submit" class="admin-btn admin-btn-primary" style="background:var(--admin-danger, #D64545);border-color:var(--admin-danger, #D64545);">Delete Review</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.js-delete-review-btn');
+        if (!btn) return;
+        document.getElementById('deleteReviewName').textContent = btn.dataset.name || 'this review';
+        document.getElementById('deleteReviewForm').action = btn.dataset.action;
+        document.getElementById('deleteReviewModal').style.display = 'flex';
+    });
+    function closeDeleteReviewModal() {
+        document.getElementById('deleteReviewModal').style.display = 'none';
+    }
+</script>
 @endsection
