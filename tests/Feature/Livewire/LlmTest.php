@@ -48,6 +48,26 @@ class LlmTest extends TestCase
         ]);
     }
 
+    // Fakes extractWithAi()'s classification call (Mistral is tried
+    // first in that chain) to return a controlled, deterministic result
+    // instead of hitting a live model — used by tests where a message
+    // reaches extractWithAi() but the test only cares about routing
+    // behavior, not what the AI itself would extract.
+    private function fakeExtraction(array $overrides = []): void
+    {
+        $data = array_merge([
+            'off_topic' => false, 'is_greeting' => false, 'is_inappropriate' => false,
+            'origin' => null, 'destination' => null, 'travelers' => null,
+            'budget_min' => null, 'budget_max' => null, 'date_from' => null, 'date_to' => null,
+        ], $overrides);
+
+        Http::fake([
+            'api.mistral.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => json_encode($data)]]],
+            ], 200),
+        ]);
+    }
+
     // "1 week" (or any relative duration) has nothing to be relative TO
     // unless the AI is told what today is — without that anchor, it can
     // hallucinate a date from its own training-data era. Even with the
@@ -472,15 +492,7 @@ class LlmTest extends TestCase
     // off-topic" so the classification step is deterministic too.
     public function test_reset_marks_awaiting_destination_so_a_bad_first_reply_gets_the_destination_retry(): void
     {
-        Http::fake([
-            'api.mistral.ai/*' => Http::response([
-                'choices' => [['message' => ['content' => json_encode([
-                    'off_topic' => false, 'is_greeting' => false, 'is_inappropriate' => false,
-                    'origin' => null, 'destination' => null, 'travelers' => null,
-                    'budget_min' => null, 'budget_max' => null, 'date_from' => null, 'date_to' => null,
-                ])]]],
-            ], 200),
-        ]);
+        $this->fakeExtraction();
         $user = User::factory()->create();
 
         $component = Livewire::actingAs($user)->test(Llm::class)
@@ -513,5 +525,122 @@ class LlmTest extends TestCase
         $component->assertSet('aiTo', 'Bohol');
         $component->assertSet('aiFrom', 'Manila'); // untouched
         $component->assertSet('awaitingSlot', 'confirmation');
+    }
+
+    // The exact scenario from the spec: a rejected/unresolved origin must
+    // not hijack a later, unrelated question. TARA is still waiting on
+    // origin (simulating "I'm from Nicsland" having just been rejected)
+    // when the traveler asks about budget instead — that should get
+    // answered about budget, not another "where are you from?" nag.
+    public function test_asking_about_budget_while_origin_is_still_unresolved_answers_about_budget(): void
+    {
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('awaitingSlot', 'origin')
+            ->set('aiFrom', '') // still unresolved — e.g. "Nicsland" was just rejected
+            ->set('aiPrompt', 'what is my budget?')
+            ->call('automateTrip');
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('budget', strtolower($lastMessage));
+        $this->assertStringNotContainsString('traveling from', $lastMessage); // not the origin re-ask
+        $component->assertSet('aiFrom', ''); // origin still untouched, just not re-nagged about right now
+    }
+
+    public function test_asking_about_a_budget_that_was_already_given_recalls_it(): void
+    {
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiBudgetMin', 30000)
+            ->set('aiBudgetMax', 30000)
+            ->set('aiPrompt', "what's my budget?")
+            ->call('automateTrip');
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('30,000', $lastMessage);
+    }
+
+    // Must not swallow a genuine advice-seeking question just because it
+    // contains the word "destination" — only an explicit "my destination"
+    // possessive counts as recalling an existing answer.
+    public function test_asking_for_destination_advice_is_not_mistaken_for_a_status_question(): void
+    {
+        $user = User::factory()->create();
+        $this->fakeExtraction();
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', "what's a good destination for beaches?")
+            ->call('automateTrip');
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringNotContainsString("haven't told me your destination", $lastMessage);
+    }
+
+    public function test_asking_for_a_recap_shows_everything_known_so_far(): void
+    {
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiTo', 'Cebu')
+            ->set('aiFrom', '')
+            ->set('aiPrompt', 'what have you got so far?')
+            ->call('automateTrip');
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('Cebu', $lastMessage);
+        $this->assertStringContainsString('not set yet', $lastMessage); // origin/budget/etc. still blank
+    }
+
+    // The exact bug reported live: answering a completely different slot
+    // while travelers is being awaited got its number cannibalized —
+    // "My Budget is 50000" contains no travelers info at all, but the
+    // old code grabbed the first 1-2 digits ("50") out of "50000" and
+    // saved it as 50 travelers.
+    public function test_budget_answer_while_awaiting_travelers_does_not_corrupt_travelers_count(): void
+    {
+        $user = User::factory()->create();
+        $this->fakeExtraction(); // no travelers/budget in the AI's own read either
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('awaitingSlot', 'travelers')
+            ->set('aiPrompt', 'My Budget is 50000')
+            ->call('automateTrip');
+
+        $component->assertSet('aiTravelers', 0); // NOT 50
+    }
+
+    // Same class of bug, the other direction — a travelers answer must
+    // not get cannibalized into the budget while budget is being awaited.
+    public function test_travelers_answer_while_awaiting_budget_does_not_corrupt_budget(): void
+    {
+        $user = User::factory()->create();
+        $this->fakeExtraction();
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('awaitingSlot', 'budget')
+            ->set('aiPrompt', '4 travelers')
+            ->call('automateTrip');
+
+        $component->assertSet('aiBudgetMin', 0);
+        $component->assertSet('aiBudgetMax', 0);
+    }
+
+    // Regression check: a bare, unlabeled number genuinely is ambiguous
+    // and must still answer whatever slot is actually being asked — the
+    // fix must only skip extraction when a DIFFERENT slot is explicitly
+    // named, not numbers in general.
+    public function test_bare_unlabeled_number_still_answers_the_awaited_slot(): void
+    {
+        $user = User::factory()->create();
+        $this->fakeExtraction();
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('awaitingSlot', 'travelers')
+            ->set('aiPrompt', '3')
+            ->call('automateTrip');
+
+        $component->assertSet('aiTravelers', 3);
     }
 }

@@ -442,6 +442,19 @@ class Llm extends Component
             return;
         }
 
+        // Checked before any slot-filling logic runs, so a question about
+        // what's already known ("what's my budget?") always gets answered
+        // directly — never misread as an attempt to answer whatever slot
+        // happens to still be missing, and never buried by a leftover
+        // error from an earlier, unrelated answer.
+        $statusReply = $this->answerStatusQuestion($userText);
+        if ($statusReply !== null) {
+            $this->aiPrompt   = '';
+            $this->messages[] = ['role' => 'assistant', 'text' => $statusReply];
+            $this->dispatch('message-added');
+            return;
+        }
+
         if ($this->isGreetingOnly($userText)) {
             $this->aiPrompt = '';
             $this->messages[] = ['role' => 'assistant', 'text' => self::GREETING_REPLY];
@@ -888,6 +901,18 @@ class Llm extends Component
         if (str_word_count($userText) > 6) return;
         if ($this->isNonAnswerFiller($userText)) return;
 
+        // A message that explicitly names a DIFFERENT slot ("my budget is
+        // 50000" while travelers is being asked) must never be blindly
+        // mined for whatever THIS slot's own crude pattern happens to
+        // match inside it — confirmed live: awaitingSlot === 'travelers'
+        // + "\d{1,2}" grabbed "50" out of "50000" and saved it as 50
+        // travelers, when the traveler was answering a completely
+        // different question. A bare, unlabeled number ("3") still has no
+        // named slot here and is unaffected — that genuinely is ambiguous
+        // and safest read as answering whatever was actually asked.
+        $mentionedSlot = $this->detectEditSlot($userText);
+        if ($mentionedSlot !== null && $mentionedSlot !== $this->awaitingSlot) return;
+
         if ($this->awaitingSlot === 'destination' && $this->aiTo === '') {
 
             $resolved = $this->knownPlaceName($this->cleanCityName($userText), 'destination');
@@ -1068,17 +1093,80 @@ PROMPT;
     // file shows money (displayAmount()), not always pesos.
     private function confirmationSummary(): string
     {
-        $budget = $this->aiBudgetMin === $this->aiBudgetMax
-            ? $this->displayAmount($this->aiBudgetMax)
-            : $this->displayAmount($this->aiBudgetMin) . ' - ' . $this->displayAmount($this->aiBudgetMax);
-
         return "Here's what I've got so far:\n"
             . "- From: {$this->aiFrom}\n"
             . "- Destination: {$this->aiTo}\n"
             . "- Travel dates: {$this->aiDateFrom} to {$this->aiDateTo}\n"
             . "- Travelers: {$this->aiTravelers}\n"
-            . "- Budget: {$budget}\n\n"
+            . "- Budget: {$this->formattedBudget()}\n\n"
             . "Would you like me to proceed with this plan?";
+    }
+
+    // Pulled out of confirmationSummary() so statusSummary() and
+    // answerStatusQuestion() below can show the same min-max-or-single
+    // formatting without repeating it.
+    private function formattedBudget(): string
+    {
+        return $this->aiBudgetMin === $this->aiBudgetMax
+            ? $this->displayAmount($this->aiBudgetMax)
+            : $this->displayAmount($this->aiBudgetMin) . ' - ' . $this->displayAmount($this->aiBudgetMax);
+    }
+
+    // Everything TARA has collected SO FAR, whether or not the trip is
+    // fully filled in yet — unlike confirmationSummary() (only ever shown
+    // once every slot is done and ready to review), this is safe to show
+    // mid-conversation in response to "what have you got so far?".
+    private function statusSummary(): string
+    {
+        $lines = [
+            $this->aiTo !== '' ? "- Destination: {$this->aiTo}" : '- Destination: not set yet',
+            $this->aiFrom !== '' ? "- From: {$this->aiFrom}" : '- From: not set yet',
+            ($this->aiBudgetMin > 0 || $this->aiBudgetMax > 0) ? "- Budget: {$this->formattedBudget()}" : '- Budget: not set yet',
+            $this->aiTravelers > 0 ? "- Travelers: {$this->aiTravelers}" : '- Travelers: not set yet',
+            ($this->aiDateFrom !== '' && $this->aiDateTo !== '') ? "- Travel dates: {$this->aiDateFrom} to {$this->aiDateTo}" : '- Travel dates: not set yet',
+        ];
+
+        return "Here's what you've told me so far:\n" . implode("\n", $lines);
+    }
+
+    // Answers a direct question about what TARA already knows ("what's my
+    // budget?", "what have I told you so far?") instead of silently
+    // ignoring it and re-asking for whatever slot is still unresolved —
+    // a rejected or still-missing answer (e.g. an unverified origin)
+    // must not hijack every later message that's actually about
+    // something else. Requires an explicit possessive ("my budget"), not
+    // just the bare word, so "what's a good destination for beaches?"
+    // (asking for advice, not recalling an answer) is never mistaken for
+    // this. Returns null when the message isn't this kind of question at
+    // all, so normal processing continues unaffected.
+    private function answerStatusQuestion(string $text): ?string
+    {
+        $lower = strtolower(trim($text));
+
+        if (preg_match('/\bwhat (?:have i told you|do you have|do you know)\b|\brecap\b|\bso far\b/i', $lower)) {
+            return $this->statusSummary();
+        }
+
+        if (!preg_match('/\bwhat\'?s?\b|\bhow much\b|\bhow many\b/i', $lower)) return null;
+        if (!preg_match('/\bmy (destination|origin|budget|travelers?)\b/i', $lower, $m)) return null;
+
+        $slot = str_starts_with($m[1], 'traveler') ? 'travelers' : $m[1];
+
+        return match ($slot) {
+            'destination' => $this->aiTo !== ''
+                ? "Your destination so far is {$this->aiTo}."
+                : "You haven't told me your destination yet — where would you like to go?",
+            'origin' => $this->aiFrom !== ''
+                ? "Your origin so far is {$this->aiFrom}."
+                : "You haven't told me your origin yet — where will you be traveling from?",
+            'budget' => ($this->aiBudgetMin > 0 || $this->aiBudgetMax > 0)
+                ? "Your budget so far is {$this->formattedBudget()}."
+                : "You haven't told me your budget yet — how much would you like to spend?",
+            'travelers' => $this->aiTravelers > 0
+                ? "You've told me {$this->aiTravelers} " . \Illuminate\Support\Str::plural('traveler', $this->aiTravelers) . " so far."
+                : "You haven't told me how many travelers yet — how many are going?",
+            default => null,
+        };
     }
 
     // Which slot (if any) a message during confirmation is talking about —
