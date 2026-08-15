@@ -2277,8 +2277,9 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 /* Forms */
 .admin-input {
   width: 100%; padding: 10px 13px; border: 1.5px solid var(--admin-border); border-radius: 10px;
-  font-size: 14px; font-family: inherit; color: var(--admin-ink); background: #fff; box-sizing: border-box;
+  font-size: 14px; font-family: inherit; color: #1A1208; background: #fff; box-sizing: border-box;
 }
+.admin-input option { color: #1A1208; background: #fff; }
 .admin-input:focus { outline: none; border-color: var(--admin-accent); }
 .admin-form-group { margin-bottom: 16px; }
 .admin-form-group label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: var(--admin-ink); }
