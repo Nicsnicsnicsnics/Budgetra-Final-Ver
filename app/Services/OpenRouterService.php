@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Http;
 
 class OpenRouterService
 {
+    private const MAX_AI_ITINERARY_DAYS = 10;
+
     private string $key;
     private string $endpoint = 'https://openrouter.ai/api/v1/chat/completions';
     private string $model    = 'nvidia/nemotron-3-super-120b-a12b:free';
@@ -166,6 +168,8 @@ PROMPT;
         int     $timeout = 18
     ): ?array {
         $days         = max(1, (int) round((strtotime($endDate) - strtotime($startDate)) / 86400));
+        // See GroqService::suggestAdditionalItinerary() for why this is capped.
+        $days         = min($days, self::MAX_AI_ITINERARY_DAYS);
         $selected     = implode(', ', $alreadySelected) ?: 'none';
         $tags         = implode(', ', array_filter($interests, fn($i) => strlen($i) < 80)) ?: 'general travel';
         $minBudg      = $budgetMin ?: (int) round(($budgetMax ?: 0) * 0.7);

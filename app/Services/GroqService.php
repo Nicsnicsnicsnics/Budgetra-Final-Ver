@@ -5,6 +5,10 @@ use Illuminate\Support\Facades\Http;
 
 class GroqService
 {
+    // See the comment at its usage below — kept a class const so it stays
+    // consistent with the same cap in the other AI provider services.
+    private const MAX_AI_ITINERARY_DAYS = 10;
+
     private string $key;
     private string $endpoint = 'https://api.groq.com/openai/v1/chat/completions';
     private string $model    = 'llama-3.3-70b-versatile';
@@ -175,6 +179,13 @@ PROMPT;
         int     $timeout = 18
     ): ?array {
         $days         = max(1, (int) round((strtotime($endDate) - strtotime($startDate)) / 86400) + 1);
+        // Cap how many day-objects we ask the model for — a full day-by-day
+        // JSON itinerary for a multi-week/month trip is large enough that it
+        // routinely gets truncated mid-response (breaking json_decode and
+        // silently failing the whole suggestion), regardless of provider.
+        // buildAllDays() on the wizard side already copes fine with fewer
+        // AI-generated days than the trip's actual length.
+        $days         = min($days, self::MAX_AI_ITINERARY_DAYS);
         $selected     = implode(', ', $alreadySelected) ?: 'none';
         $tags         = implode(', ', array_filter($interests, fn($i) => strlen($i) < 80)) ?: 'general travel';
         $minBudg      = $budgetMin ?: (int) round(($budgetMax ?: 0) * 0.7);

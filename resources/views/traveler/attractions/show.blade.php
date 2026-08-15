@@ -9,7 +9,6 @@
         'Adventure' => ['icon' => 'fa-person-hiking', 'color' => '#FB923C'],
         'Shopping'  => ['icon' => 'fa-bag-shopping',  'color' => '#60A5FA'],
     ][$attraction->category] ?? ['icon' => 'fa-map-pin', 'color' => 'var(--primary)'];
-    $ratingRounded = round($avgRating);
 @endphp
 
 <a href="{{ route('attractions.index') }}" class="atd-back">
@@ -36,14 +35,6 @@
     <h1 class="atd-caption-name">{{ $attraction->name }}</h1>
     <div class="atd-caption-meta">
         <span class="atd-caption-location"><i class="fa-solid fa-location-dot"></i> {{ $attraction->destination }}</span>
-        <span class="atd-caption-dot">&middot;</span>
-        <span class="atd-stars">
-            @for ($i = 1; $i <= 5; $i++)
-                <i class="fa-{{ $i <= $ratingRounded ? 'solid' : 'regular' }} fa-star"></i>
-            @endfor
-        </span>
-        <span class="atd-rating-num">{{ number_format($avgRating, 1) }}</span>
-        <span class="atd-rating-count">({{ $reviews->count() }} {{ Str::plural('review', $reviews->count()) }})</span>
     </div>
     @if ($attraction->description)
     <p class="atd-caption-text">{{ $attraction->description }}</p>
@@ -231,11 +222,6 @@
     .atd-caption-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
     .atd-caption-location { color: var(--muted); font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
     .atd-caption-location i { font-size: 11px; }
-    .atd-caption-dot { color: var(--border); }
-    .atd-stars { color: #F5A623; font-size: 14px; letter-spacing: 1.5px; }
-    .atd-stars i.fa-regular { color: var(--border); }
-    .atd-rating-num { color: var(--dark); font-size: 13.5px; font-weight: 700; }
-    .atd-rating-count { color: var(--muted); font-size: 12.5px; }
     .atd-caption-text { font-size: 17px; font-weight: 700; line-height: 1.6; color: var(--dark); margin: 0; max-width: 900px; }
 
     .atd-card {

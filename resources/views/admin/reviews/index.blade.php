@@ -5,20 +5,12 @@
         <h1>User Reviews</h1>
         <p>Moderate reviews travelers have left on attractions and destinations.</p>
     </div>
-    <form method="GET" class="admin-search-form">
-        @if(request('flagged'))<input type="hidden" name="flagged" value="1">@endif
-        <select name="status" class="admin-input" onchange="this.form.submit()">
-            <option value="">All Reviews</option>
-            <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
-            <option value="hidden" {{ request('status') === 'hidden' ? 'selected' : '' }}>Hidden</option>
-        </select>
-    </form>
 </div>
 @if(session('success'))<div class="admin-alert-success">{{ session('success') }}</div>@endif
 
 <div class="admin-tabs">
-    <a href="{{ route('admin.reviews.index', ['status' => request('status')]) }}" class="admin-tab {{ request('flagged') ? '' : 'active' }}">All</a>
-    <a href="{{ route('admin.reviews.index', ['flagged' => 1, 'status' => request('status')]) }}" class="admin-tab {{ request('flagged') ? 'active' : '' }}">Flagged</a>
+    <a href="{{ route('admin.reviews.index') }}" class="admin-tab {{ request('flagged') ? '' : 'active' }}">All</a>
+    <a href="{{ route('admin.reviews.index', ['flagged' => 1]) }}" class="admin-tab {{ request('flagged') ? 'active' : '' }}">Flagged</a>
 </div>
 
 <div style="display:flex;flex-direction:column;gap:14px;">
@@ -27,9 +19,8 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
             <div style="flex:1;min-width:240px;">
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
-                    <strong style="font-size:14px;color:var(--admin-ink);">{{ $review->destination }}</strong>
+                    <strong style="font-size:14px;color:var(--admin-ink);">{{ $review->attraction->name ?? $review->destination }}</strong>
                     <span style="color:#F59E0B;font-size:13px;">{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</span>
-                    <span class="admin-badge {{ $review->status === 'active' ? 'admin-badge-success' : 'admin-badge-danger' }}">{{ strtoupper($review->status) }}</span>
                     @if($review->flag_reason)
                         <span class="admin-badge admin-badge-danger">
                             <i class="fa-solid fa-flag"></i>

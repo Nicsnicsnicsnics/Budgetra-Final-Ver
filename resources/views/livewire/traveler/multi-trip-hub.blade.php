@@ -31,23 +31,28 @@
             ['key' => 'past',   'label' => 'Past Trips',   'icon' => 'fa-solid fa-clock-rotate-left', 'items' => $mthPastTrips],
         ];
     @endphp
-    @foreach ($mthGroups as $mthGroup)
-    <div x-data="{ open: {{ $mthGroup['key'] === 'active' ? 'true' : 'false' }} }" style="margin-bottom:20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:999px;transition:border-radius .2s,border-color .2s;"
-         :style="open ? 'border-radius:22px;border-color:var(--primary);' : ''">
-        <button @click="open=!open" type="button" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:none;border:none;cursor:pointer;">
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:32px;height:32px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="{{ $mthGroup['icon'] }}" style="color:#fff;font-size:13px;"></i>
+    <div x-data="{ tab: 'active' }" style="display:flex;flex-direction:column;">
+        {{-- Browser-tab-style switcher --}}
+        <div style="display:flex;align-items:flex-end;gap:4px;flex-shrink:0;">
+            @foreach ($mthGroups as $mthGroup)
+            @php $mthCount = $mthGroup['items']->count(); @endphp
+            <button @click="tab = '{{ $mthGroup['key'] }}'" type="button"
+                    :style="'display:flex;align-items:center;gap:10px;padding:12px 22px;border:1.5px solid;border-bottom:none;border-radius:18px 18px 0 0;cursor:pointer;font-family:inherit;position:relative;white-space:nowrap;flex-wrap:nowrap;transition:background .15s ease,color .15s ease;' + (tab === '{{ $mthGroup['key'] }}' ? 'background:var(--bg-white);border-color:var(--border);color:var(--dark);z-index:2;margin-bottom:-1.5px;' : 'background:var(--bg);border-color:transparent;color:var(--muted);z-index:1;')">
+                <div style="width:26px;height:26px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="{{ $mthGroup['icon'] }}" style="color:#fff;font-size:11px;"></i>
                 </div>
-                <span style="font-size:15px;font-weight:700;color:var(--dark);">{{ $mthGroup['label'] }}</span>
-                @php $mthCount = $mthGroup['items']->count(); @endphp
-                <span style="font-size:11px;font-weight:800;{{ $mthCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:var(--muted);background:var(--bg);' }}border-radius:99px;min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $mthCount }}</span>
-            </div>
-            <i class="fa-solid fa-chevron-down" :style="'font-size:12px;color:var(--muted);transition:.2s;' + (open?'transform:rotate(180deg)':'')"></i>
-        </button>
-        <div x-show="open" x-transition style="padding:16px 18px 20px;border-top:1px solid var(--border);">
+                <span style="font-size:14px;font-weight:700;">{{ $mthGroup['label'] }}</span>
+                <span style="font-size:11px;font-weight:800;{{ $mthCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:var(--muted);background:var(--bg);' }}border-radius:99px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $mthCount }}</span>
+            </button>
+            @endforeach
+        </div>
+
+        {{-- Tab panels --}}
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:0 16px 16px 16px;padding:24px;display:flex;flex-direction:column;position:relative;">
+        @foreach ($mthGroups as $mthGroup)
+        <div x-show="tab === '{{ $mthGroup['key'] }}'" x-cloak style="display:flex;flex-direction:column;">
             @if ($mthGroup['items']->isEmpty())
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
+            <div style="min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
                 <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
                     <i class="{{ $mthGroup['icon'] }}" style="font-size:24px;color:#fff;"></i>
                 </div>
@@ -130,8 +135,9 @@
             </div>
             @endif
         </div>
+        @endforeach
+        </div>
     </div>
-    @endforeach
 
     @endif {{-- end @else (has trips) --}}
 

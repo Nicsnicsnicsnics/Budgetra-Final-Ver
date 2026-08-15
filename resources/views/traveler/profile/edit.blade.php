@@ -1,4 +1,5 @@
-@extends('layouts.app')
+@php $active = 'profile'; @endphp
+@extends(auth()->user()?->role === 'admin' ? 'layouts.admin' : 'layouts.app')
 
 @section('title', 'My Profile')
 

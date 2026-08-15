@@ -13,7 +13,8 @@ class ReviewModerationController extends Controller
         // Flagged reviews surface first — inappropriate-content reports in
         // particular need prompt moderation attention, not just whatever
         // happened to be posted most recently.
-        $query = Review::with(['user', 'flagger'])
+        $query = Review::with(['user', 'flagger', 'attraction'])
+            ->whereNotNull('attraction_id')
             ->orderByRaw('CASE WHEN flag_reason IS NOT NULL THEN 0 ELSE 1 END')
             ->latest();
         if ($request->filled('status')) {

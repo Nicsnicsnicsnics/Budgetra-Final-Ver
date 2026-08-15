@@ -2114,7 +2114,7 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
   height: 100vh; overflow-y: auto; box-sizing: border-box; position: sticky; top: 0;
   transition: width .25s ease, min-width .25s ease;
 }
-.admin-sidebar-header { display: flex; padding: 0 8px 8px; flex-shrink: 0; }
+.admin-sidebar-header { display: flex; justify-content: flex-end; padding: 0 8px 8px; flex-shrink: 0; }
 .admin-sidebar-toggle-btn {
   width: 30px; height: 30px; border-radius: 8px; border: none; background: none;
   color: rgba(255,255,255,.55); cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -2153,6 +2153,8 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 .admin-sidebar-collapsed .admin-sidebar-link { justify-content: center; padding: 9px 0; gap: 0; }
 .admin-sidebar-collapsed .admin-sidebar-link span { display: none; }
 .admin-sidebar-collapsed .admin-sidebar-link i { font-size: 16px; }
+.admin-sidebar-collapsed .admin-sidebar-nav { flex: 1; overflow-y: hidden; }
+.admin-sidebar-collapsed .admin-sidebar-foot { align-items: center; margin-top: auto; padding-top: 8px; gap: 8px; }
 
 /* Light-sidebar themes need dark-on-light overrides here too, same
    reasoning as the traveler sidebar's per-theme block above. */
@@ -2277,9 +2279,9 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 /* Forms */
 .admin-input {
   width: 100%; padding: 10px 13px; border: 1.5px solid var(--admin-border); border-radius: 10px;
-  font-size: 14px; font-family: inherit; color: #1A1208; background: #fff; box-sizing: border-box;
+  font-size: 14px; font-family: inherit; color: var(--admin-ink); background: var(--admin-card); box-sizing: border-box;
 }
-.admin-input option { color: #1A1208; background: #fff; }
+.admin-input option { color: var(--admin-ink); background: var(--admin-card); }
 .admin-input:focus { outline: none; border-color: var(--admin-accent); }
 .admin-form-group { margin-bottom: 16px; }
 .admin-form-group label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: var(--admin-ink); }

@@ -23,18 +23,6 @@
     <div class="admin-shell" id="adminShell">
         <x-admin-sidebar :active="$active ?? ''" />
         <div class="admin-main">
-            <div class="admin-topbar">
-                <button type="button" class="admin-icon-btn" title="Notifications"><i class="fa-regular fa-bell"></i></button>
-                <button type="button" class="admin-icon-btn" title="Help"><i class="fa-regular fa-circle-question"></i></button>
-                <div class="admin-topbar-divider"></div>
-                <div class="admin-topbar-profile">
-                    <div class="admin-topbar-profile-text">
-                        <div class="admin-topbar-name">Admin Profile</div>
-                        <div class="admin-topbar-role">{{ auth()->user()?->role === 'admin' ? 'Super Admin' : 'Admin' }}</div>
-                    </div>
-                    <div class="admin-avatar">{{ strtoupper(substr(auth()->user()?->full_name ?: 'A', 0, 1)) }}</div>
-                </div>
-            </div>
             <div class="admin-content">
                 @yield('content')
             </div>

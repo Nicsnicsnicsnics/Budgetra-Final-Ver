@@ -58,7 +58,7 @@
             <div style="width:34px;height:34px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fa-solid fa-plane" style="color:var(--primary);font-size:13px;"></i>
             </div>
-            <span style="font-size:14px;font-weight:700;color:var(--dark);">{{ $tripLabel($onlyTrip) }}</span>
+            <span style="font-size:13px;font-weight:600;color:var(--dark);">{{ $tripLabel($onlyTrip) }}</span>
         </div>
         @else
         <div x-data="{ open: false }" style="position:relative;">
@@ -69,7 +69,7 @@
                 <div style="width:34px;height:34px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fa-solid fa-plane" style="color:var(--primary);font-size:13px;"></i>
                 </div>
-                <span style="flex:1;font-size:14px;font-weight:700;color:var(--dark);">
+                <span style="flex:1;font-size:13px;font-weight:600;color:var(--dark);">
                     @foreach($this->trips as $t)
                         @if($selectedTripId == $t->id){{ $tripLabel($t) }}@endif
                     @endforeach

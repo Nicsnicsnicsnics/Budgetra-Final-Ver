@@ -1,4 +1,4 @@
-<div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;width:420px;flex-shrink:0;">
+<div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;width:100%;">
 
     @php
         $trip       = $goal->trip;

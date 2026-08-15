@@ -54,23 +54,28 @@
         ];
     @endphp
 
-    @foreach ($stGroups as $stGroup)
-    <div x-data="{ open: {{ ($stGroup['key'] === 'active' && $stGroup['items']->isNotEmpty()) ? 'true' : 'false' }} }" style="margin-bottom:20px;background:var(--bg-white);border:2px solid var(--border);border-radius:999px;box-shadow:none;transition:border-radius .2s,border-color .2s;"
-         :style="open ? 'border-radius:22px;border-color:var(--primary);' : ''">
-        <button @click="open=!open" type="button" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:none;border:none;cursor:pointer;">
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:32px;height:32px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="{{ $stGroup['icon'] }}" style="color:#fff;font-size:13px;"></i>
+    <div x-data="{ tab: 'active' }" style="display:flex;flex-direction:column;">
+        {{-- Browser-tab-style switcher --}}
+        <div style="display:flex;align-items:flex-end;gap:4px;flex-shrink:0;">
+            @foreach ($stGroups as $stGroup)
+            @php $stCount = $stGroup['items']->count(); @endphp
+            <button @click="tab = '{{ $stGroup['key'] }}'" type="button"
+                    :style="'display:flex;align-items:center;gap:10px;padding:12px 22px;border:1.5px solid;border-bottom:none;border-radius:18px 18px 0 0;cursor:pointer;font-family:inherit;position:relative;white-space:nowrap;flex-wrap:nowrap;transition:background .15s ease,color .15s ease;' + (tab === '{{ $stGroup['key'] }}' ? 'background:var(--bg-white);border-color:var(--border);color:var(--dark);z-index:2;margin-bottom:-1.5px;' : 'background:var(--bg);border-color:transparent;color:var(--muted);z-index:1;')">
+                <div style="width:26px;height:26px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="{{ $stGroup['icon'] }}" style="color:#fff;font-size:11px;"></i>
                 </div>
-                <span style="font-size:15px;font-weight:700;color:var(--dark);">{{ $stGroup['label'] }}</span>
-                @php $stCount = $stGroup['items']->count(); @endphp
-                <span style="font-size:11px;font-weight:800;{{ $stCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:#B3A69A;background:#F3EEE8;' }}border-radius:99px;min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $stCount }}</span>
-            </div>
-            <i class="fa-solid fa-chevron-down" :style="'font-size:12px;color:var(--muted);transition:.2s;' + (open?'transform:rotate(180deg)':'')"></i>
-        </button>
-        <div x-show="open" x-transition style="padding:16px 18px 20px;border-top:1px solid var(--border);">
+                <span style="font-size:14px;font-weight:700;">{{ $stGroup['label'] }}</span>
+                <span style="font-size:11px;font-weight:800;{{ $stCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:#B3A69A;background:#F3EEE8;' }}border-radius:99px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $stCount }}</span>
+            </button>
+            @endforeach
+        </div>
+
+        {{-- Tab panels --}}
+        <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:0 16px 16px 16px;padding:32px 24px;display:flex;flex-direction:column;position:relative;">
+        @foreach ($stGroups as $stGroup)
+        <div x-show="tab === '{{ $stGroup['key'] }}'" x-cloak style="display:flex;flex-direction:column;">
             @if ($stGroup['items']->isEmpty())
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
+            <div style="min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
                 <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
                     <i class="{{ $stGroup['icon'] }}" style="font-size:24px;color:#fff;"></i>
                 </div>
@@ -78,8 +83,11 @@
                 <p style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">Plan a trip first to see your {{ $stGroup['noun'] }}.</p>
             </div>
             @else
-            <div style="display:flex;flex-wrap:wrap;gap:28px 32px;justify-content:center;align-items:flex-start;">
+            @php $stTotalPages = (int) ceil($stGroup['items']->count() / 3); @endphp
+            <div x-data="{ page: 1 }" style="display:flex;flex-direction:column;">
+            <div style="width:100%;display:grid;grid-template-columns:repeat(3, 1fr);gap:28px;align-items:start;">
                 @foreach ($stGroup['items'] as $trip)
+                <div x-show="page === {{ (int) floor($loop->index / 3) + 1 }}" style="{{ $detailTripId === $trip->id ? 'grid-column:span 2;' : '' }}">
         <div style="display:flex;align-items:stretch;">
         @php
             // A never-finished draft (saved before a destination was picked)
@@ -104,10 +112,10 @@
             $spendColor = $trip->spend_pct >= 80 ? '#DC2626' : ($trip->spend_pct >= 50 ? '#D97706' : 'var(--dark)');
             $isDraft = $trip->status === 'draft';
         @endphp
-        <div wire:key="trip-{{ $trip->id }}" style="position:relative;background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;width:420px;flex-shrink:0;">
+        <div wire:key="trip-{{ $trip->id }}" style="position:relative;background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;width:100%;">
             <div @if($isDraft) style="filter:blur(6px);pointer-events:none;user-select:none;" @endif>
             {{-- Cover image --}}
-            <div style="position:relative;height:200px;background:linear-gradient(135deg,var(--primary),#C8874A);overflow:hidden;">
+            <div style="position:relative;height:230px;background:linear-gradient(135deg,var(--primary),#C8874A);overflow:hidden;">
                 @if($cover)
                 <img src="{{ $cover }}" alt="{{ $dest }}"
                      style="width:100%;height:100%;object-fit:cover;display:block;"
@@ -296,12 +304,45 @@
         </div>
         @endif
         </div>
+                </div>
                 @endforeach
+            </div>
+            @if ($stTotalPages > 1)
+            @php
+                // Show first 4 pages, then an ellipsis + the last page once
+                // the run grows past what fits comfortably (matches the
+                // reference design: 1 2 3 4 … 10).
+                $stPageNums = $stTotalPages <= 5
+                    ? range(1, $stTotalPages)
+                    : [1, 2, 3, 4, '…', $stTotalPages];
+            @endphp
+            <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;padding-top:20px;">
+                <button type="button" @click="page = Math.max(1, page - 1)" :disabled="page === 1"
+                        :style="'display:flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--dark);font-size:13px;font-weight:700;font-family:inherit;' + (page === 1 ? 'opacity:.4;cursor:not-allowed;' : 'cursor:pointer;')">
+                    <i class="fa-solid fa-chevron-left" style="font-size:11px;"></i> Prev
+                </button>
+                @foreach ($stPageNums as $p)
+                    @if ($p === '…')
+                    <span style="width:38px;text-align:center;color:var(--muted);font-size:13px;font-weight:700;">&hellip;</span>
+                    @else
+                    <button type="button" @click="page = {{ $p }}"
+                            :style="'min-width:38px;height:38px;padding:0 4px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s ease,color .15s ease;' + (page === {{ $p }} ? 'background:var(--primary);color:#fff;' : 'background:var(--bg);color:var(--muted);')">
+                        {{ $p }}
+                    </button>
+                    @endif
+                @endforeach
+                <button type="button" @click="page = Math.min({{ $stTotalPages }}, page + 1)" :disabled="page === {{ $stTotalPages }}"
+                        :style="'display:flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--dark);font-size:13px;font-weight:700;font-family:inherit;' + (page === {{ $stTotalPages }} ? 'opacity:.4;cursor:not-allowed;' : 'cursor:pointer;')">
+                    Next <i class="fa-solid fa-chevron-right" style="font-size:11px;"></i>
+                </button>
+            </div>
+            @endif
             </div>
             @endif
         </div>
+        @endforeach
+        </div>
     </div>
-    @endforeach
     @endif
 
     {{-- Delete Confirmation Modal --}}

@@ -25,7 +25,7 @@ Route::post('/logout', [Auth\LoginController::class, 'logout'])
     ->middleware('auth');
 
 // Authenticated traveler routes
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'not-admin'])->group(function () {
     Route::get('/dashboard', [Traveler\DashboardController::class, '__invoke'])->name('dashboard');
     Route::get('/dashboard/report', [Traveler\DashboardController::class, 'downloadReport'])->name('dashboard.report');
 

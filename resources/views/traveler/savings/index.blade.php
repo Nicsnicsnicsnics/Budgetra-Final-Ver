@@ -48,39 +48,45 @@
     ];
 @endphp
 
-@foreach ($sgGroups as $sgGroup)
-<div x-data="{ open: {{ ($sgGroup['key'] === 'active' && $sgGroup['items']->isNotEmpty()) ? 'true' : 'false' }} }" style="margin-bottom:20px;background:var(--bg-white);border:2px solid var(--border);border-radius:999px;box-shadow:none;transition:border-radius .2s,border-color .2s;"
-     :style="open ? 'border-radius:22px;border-color:var(--primary);' : ''">
-    <button @click="open=!open" type="button" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:none;border:none;cursor:pointer;">
-        <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:32px;height:32px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="{{ $sgGroup['icon'] }}" style="color:#fff;font-size:13px;"></i>
+<div x-data="{ tab: 'active' }" style="display:flex;flex-direction:column;">
+    {{-- Browser-tab-style switcher --}}
+    <div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:0;flex-shrink:0;">
+        @foreach ($sgGroups as $sgGroup)
+        @php $sgCount = $sgGroup['items']->count(); @endphp
+        <button @click="tab = '{{ $sgGroup['key'] }}'" type="button"
+                :style="'display:flex;align-items:center;gap:10px;padding:12px 22px;border:1.5px solid;border-bottom:none;border-radius:18px 18px 0 0;cursor:pointer;font-family:inherit;position:relative;white-space:nowrap;flex-wrap:nowrap;transition:background .15s ease,color .15s ease;' + (tab === '{{ $sgGroup['key'] }}' ? 'background:var(--bg-white);border-color:var(--border);color:var(--dark);z-index:2;margin-bottom:-1.5px;' : 'background:var(--bg);border-color:transparent;color:var(--muted);z-index:1;')">
+            <div style="width:26px;height:26px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="{{ $sgGroup['icon'] }}" style="color:#fff;font-size:11px;"></i>
             </div>
-            <span style="font-size:15px;font-weight:700;color:var(--dark);">{{ $sgGroup['label'] }}</span>
-            @php $sgCount = $sgGroup['items']->count(); @endphp
-            <span style="font-size:11px;font-weight:800;{{ $sgCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:#B3A69A;background:#F3EEE8;' }}border-radius:99px;min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $sgCount }}</span>
-        </div>
-        <i class="fa-solid fa-chevron-down" :style="'font-size:12px;color:var(--muted);transition:.2s;' + (open?'transform:rotate(180deg)':'')"></i>
-    </button>
-    <div x-show="open" x-transition style="padding:16px 18px 20px;border-top:1px solid var(--border);">
-        @if ($sgGroup['items']->isEmpty())
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
-            <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-                <i class="{{ $sgGroup['icon'] }}" style="font-size:24px;color:#fff;"></i>
+            <span style="font-size:14px;font-weight:700;">{{ $sgGroup['label'] }}</span>
+            <span style="font-size:11px;font-weight:800;{{ $sgCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:#B3A69A;background:#F3EEE8;' }}border-radius:99px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $sgCount }}</span>
+        </button>
+        @endforeach
+    </div>
+
+    {{-- Tab panels --}}
+    <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:0 16px 16px 16px;padding:24px;display:flex;flex-direction:column;position:relative;">
+        @foreach ($sgGroups as $sgGroup)
+        <div x-show="tab === '{{ $sgGroup['key'] }}'" x-cloak style="display:flex;flex-direction:column;">
+            @if ($sgGroup['items']->isEmpty())
+            <div style="min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
+                <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+                    <i class="{{ $sgGroup['icon'] }}" style="font-size:24px;color:#fff;"></i>
+                </div>
+                <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No {{ $sgGroup['label'] }} yet</h3>
+                <p style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">Plan a trip first to see your {{ $sgGroup['noun'] }}.</p>
             </div>
-            <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No {{ $sgGroup['label'] }} yet</h3>
-            <p style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">Plan a trip first to see your {{ $sgGroup['noun'] }}.</p>
+            @else
+            <div style="width:100%;display:grid;grid-template-columns:repeat(auto-fill, minmax(360px, 1fr));gap:20px;align-items:start;">
+                @foreach ($sgGroup['items'] as $goal)
+                @livewire('traveler.savings-goal-manager', ['goal' => $goal], key($goal->id))
+                @endforeach
+            </div>
+            @endif
         </div>
-        @else
-        <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;align-items:flex-start;">
-            @foreach ($sgGroup['items'] as $goal)
-            @livewire('traveler.savings-goal-manager', ['goal' => $goal], key($goal->id))
-            @endforeach
-        </div>
-        @endif
+        @endforeach
     </div>
 </div>
-@endforeach
 @endif
 
 @endsection

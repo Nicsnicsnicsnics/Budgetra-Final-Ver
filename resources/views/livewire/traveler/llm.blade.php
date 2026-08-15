@@ -319,7 +319,7 @@
                             <div class="llm-avatar llm-avatar-user">{{ strtoupper($llmUserInitials) }}</div>
                             @endif
                         @else
-                        <div class="llm-avatar llm-avatar-ai"><i class="fa-solid fa-sparkle"></i></div>
+                        <div class="llm-avatar llm-avatar-ai"><i class="fa-regular fa-paper-plane"></i></div>
                         @endif
                         <div class="llm-msg llm-msg-{{ $msg['role'] }}">{{ $msg['text'] }}</div>
                     </div>
