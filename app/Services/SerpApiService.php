@@ -278,7 +278,7 @@ class SerpApiService
         $price   = (int)($top['price'] ?? 0);
 
         return [
-            'detail' => $airline . ' Â· ' . ($returnDate ? 'Round Trip' : 'One Way'),
+            'detail' => $airline . ' · ' . ($returnDate ? 'Round Trip' : 'One Way'),
             'cost'   => $price,
         ];
     }
@@ -427,7 +427,7 @@ class SerpApiService
             $valid[] = [
                 'name'   => $name,
                 'stars'  => $stars,
-                'detail' => $nights . ' Nights Â· ' . $type . ' Â· ' . $destination,
+                'detail' => $nights . ' Nights · ' . $type . ' · ' . $destination,
                 'cost'   => $cost,
             ];
         }
@@ -562,7 +562,7 @@ class SerpApiService
 
         return [
             'name'   => $name,
-            'detail' => $days . ' Days Â· Breakfast, Lunch, & Dinner Â· ' . $city,
+            'detail' => $days . ' Days · Breakfast, Lunch, & Dinner · ' . $city,
             'cost'   => $actualBudget,
             'perDay' => $perDay,
         ];

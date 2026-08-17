@@ -77,9 +77,11 @@
                 <p style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">Plan a trip first to see your {{ $sgGroup['noun'] }}.</p>
             </div>
             @else
-            <div style="width:100%;display:grid;grid-template-columns:repeat(auto-fill, minmax(360px, 1fr));gap:20px;align-items:start;">
+            <div style="width:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:20px;align-items:flex-start;">
                 @foreach ($sgGroup['items'] as $goal)
-                @livewire('traveler.savings-goal-manager', ['goal' => $goal], key($goal->id))
+                <div style="flex:1 1 360px;max-width:420px;">
+                    @livewire('traveler.savings-goal-manager', ['goal' => $goal], key($goal->id))
+                </div>
                 @endforeach
             </div>
             @endif

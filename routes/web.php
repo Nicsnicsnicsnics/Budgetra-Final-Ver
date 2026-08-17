@@ -80,6 +80,7 @@ Route::middleware(['auth', 'not-admin'])->group(function () {
     Route::post('/reviews',              [Traveler\ReviewController::class, 'store'])->name('reviews.store');
     Route::put('/reviews/{review}',      [Traveler\ReviewController::class, 'update'])->name('reviews.update');
     Route::post('/reviews/{review}/flag', [Traveler\ReviewController::class, 'flag'])->name('reviews.flag');
+    Route::post('/reviews/{review}/helpful', [Traveler\ReviewController::class, 'markHelpful'])->name('reviews.helpful');
 
     Route::get('/alerts',                [Traveler\AlertController::class, 'index'])->name('alerts.index');
     Route::patch('/alerts/read-all',             [Traveler\AlertController::class, 'markAllRead'])->name('alerts.read-all');

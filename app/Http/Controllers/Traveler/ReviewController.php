@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Attraction;
 use App\Models\DestinationCost;
 use App\Models\Review;
+use App\Models\ReviewHelpfulVote;
 use Illuminate\Http\Request;
 
 class ReviewController extends Controller
@@ -45,10 +46,13 @@ class ReviewController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'destination'   => 'required|string|max:255',
-            'rating'        => 'required|integer|min:1|max:5',
-            'body'          => 'required|string|min:10|max:2000',
-            'attraction_id' => 'nullable|exists:attractions,id',
+            'destination'    => 'required|string|max:255',
+            'rating'         => 'required|integer|min:1|max:5',
+            'body'           => 'required|string|min:10|max:2000',
+            'attraction_id'  => 'nullable|exists:attractions,id',
+            'trip_type'      => 'nullable|in:Solo,Couple,Family,Barkada',
+            'pax_count'      => 'nullable|integer|min:1|max:50',
+            'spent_amount'   => 'nullable|numeric|min:0|max:9999999',
         ]);
 
         auth()->user()->reviews()->create(array_merge($validated, ['status' => 'active']));
@@ -65,8 +69,11 @@ class ReviewController extends Controller
         abort_if($review->user_id !== auth()->id(), 403, "You can only edit your own review.");
 
         $validated = $request->validate([
-            'rating' => 'required|integer|min:1|max:5',
-            'body'   => 'required|string|min:10|max:2000',
+            'rating'        => 'required|integer|min:1|max:5',
+            'body'          => 'required|string|min:10|max:2000',
+            'trip_type'     => 'nullable|in:Solo,Couple,Family,Barkada',
+            'pax_count'     => 'nullable|integer|min:1|max:50',
+            'spent_amount'  => 'nullable|numeric|min:0|max:9999999',
         ]);
 
         $review->update($validated);
@@ -97,5 +104,23 @@ class ReviewController extends Controller
         ]);
 
         return back()->with('success', 'Thanks — this review has been flagged for admin review.');
+    }
+
+    // One vote per traveler per review — firstOrCreate on the unique
+    // (review_id, user_id) pair silently no-ops on a repeat click instead
+    // of inflating the count, so helpful_count always matches the real
+    // number of distinct voters.
+    public function markHelpful(Review $review)
+    {
+        $vote = ReviewHelpfulVote::firstOrCreate([
+            'review_id' => $review->id,
+            'user_id'   => auth()->id(),
+        ]);
+
+        if ($vote->wasRecentlyCreated) {
+            $review->increment('helpful_count');
+        }
+
+        return back();
     }
 }

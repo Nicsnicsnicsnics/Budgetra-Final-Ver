@@ -1244,7 +1244,7 @@ window.sortVenues = function(dir) {
 [x-cloak]{display:none!important;}
 .acc-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;transition:box-shadow .2s,transform .2s,border-color .2s;}
 .acc-card:hover{box-shadow:0 10px 30px rgba(45,27,20,0.10);transform:translateY(-2px);border-color:#E7D4C4;}
-.acc-img{width:140px;flex-shrink:0;object-fit:cover;}
+.acc-img{width:140px;height:100%;min-height:132px;flex-shrink:0;object-fit:cover;align-self:stretch;display:block;}
 .acc-body{flex:1;padding:16px 20px;display:flex;flex-direction:column;justify-content:center;gap:4px;}
 .acc-action{padding:16px 20px;display:flex;align-items:center;flex-shrink:0;}
 </style>
@@ -1471,7 +1471,7 @@ window.sortVenues = function(dir) {
 <style>
 .venue-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s,border-color .2s;}
 .venue-card:hover{box-shadow:0 10px 30px rgba(45,27,20,0.10);transform:translateY(-2px);border-color:#E7D4C4;}
-.venue-img{width:130px;flex-shrink:0;object-fit:cover;}
+.venue-img{width:130px;height:100%;min-height:110px;flex-shrink:0;object-fit:cover;align-self:stretch;display:block;}
 .venue-body{flex:1;padding:14px 18px;min-width:0;}
 .venue-action{padding:16px 20px;display:flex;align-items:center;flex-shrink:0;}
 </style>
@@ -1759,7 +1759,7 @@ window.sortVenues = function(dir) {
 <style>
 .attr-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s,border-color .2s;}
 .attr-card:hover{box-shadow:0 10px 30px rgba(45,27,20,0.10);transform:translateY(-2px);border-color:#E7D4C4;}
-.attr-img{width:140px;min-height:120px;flex-shrink:0;object-fit:cover;object-position:center;display:block;align-self:stretch;}
+.attr-img{width:140px;height:100%;min-height:120px;flex-shrink:0;object-fit:cover;object-position:center;display:block;align-self:stretch;}
 .attr-body{flex:1;padding:14px 18px;min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;}
 .attr-action{padding:16px 20px;display:flex;align-items:center;flex-shrink:0;}
 </style>
@@ -2072,9 +2072,15 @@ window.sortAttractions = function(dir) {
     $budMaxRaw = (int) preg_replace('/[^\d]/', '', $manualBudgetMax ?: $manualBudgetMin);
     $budMaxRaw = $budMaxRaw ?: 0;
 
-    // First value = profile preferred budget (daily_budget from Profile Builder)
+    // First value = profile preferred budget (daily_budget from Profile Builder).
+    // Only fall back to the trip's own min budget when the profile value is
+    // genuinely unset — NOT when it happens to be >= the trip's total budget,
+    // which used to collapse both numbers to the same figure: daily_budget is
+    // a PER-DAY rate while budMaxRaw is the trip's TOTAL budget, so comparing
+    // them directly is an apples-to-oranges unit mismatch, not a real signal
+    // that the profile value is unusable.
     $budMinRaw = (int) ($profile?->daily_budget ?? 0);
-    if ($budMinRaw <= 0 || $budMinRaw >= $budMaxRaw) {
+    if ($budMinRaw <= 0) {
         $budMinRaw = (int) preg_replace('/[^\d]/', '', $manualBudgetMin);
     }
 
@@ -2906,8 +2912,8 @@ window.sortAttractions = function(dir) {
         </button>
         <div style="display:flex;gap:8px;">
             <button wire:click="downloadPdf" wire:loading.attr="disabled" wire:target="downloadPdf"
-                    style="width:170px;padding:8px 18px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg-white);font-size:12px;font-weight:700;color:var(--dark);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;transition:border-color .18s,background .18s;"
-                    onmouseenter="this.style.background='var(--bg)';this.style.borderColor='#D9C4AE'" onmouseleave="this.style.background='#fff';this.style.borderColor='var(--border)'">
+                    style="width:170px;padding:8px 18px;border:1.5px solid var(--primary);border-radius:10px;background:var(--bg-white);font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;transition:border-color .18s,background .18s,color .18s;"
+                    onmouseenter="this.style.background='var(--primary)';this.style.color='#fff'" onmouseleave="this.style.background='var(--bg-white)';this.style.color='var(--primary)'">
                 <span wire:loading.remove wire:target="downloadPdf"><i class="fa-solid fa-download" style="font-size:10px;"></i> Download PDF</span>
                 <span wire:loading wire:target="downloadPdf"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </button>

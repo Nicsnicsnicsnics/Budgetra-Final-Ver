@@ -10,7 +10,15 @@ class AlertController extends Controller
     public function index()
     {
         $user  = auth()->user();
-        $trips = $user->trips()->orderByDesc('start_date')->get();
+        // "!= 'draft'" alone silently drops any trip with a NULL status too
+        // (SQL's three-valued logic: NULL != 'draft' is unknown, not true) —
+        // a real, non-draft trip that predates a status default being set
+        // would vanish from this list and wrongly trigger the "no trips"
+        // empty state. Explicitly keep NULL-status trips as well.
+        $trips = $user->trips()
+            ->where(fn ($q) => $q->where('status', '!=', 'draft')->orWhereNull('status'))
+            ->orderByDesc('start_date')
+            ->get();
 
         // Default to the latest trip if no trip_id specified
         $tripId     = request('trip_id');

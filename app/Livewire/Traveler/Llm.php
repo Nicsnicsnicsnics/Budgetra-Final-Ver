@@ -354,6 +354,21 @@ class Llm extends Component
             }
         }
 
+        // The trip package has already been built and shown (aiStep ===
+        // 'results') — every slot still reads as "filled", so without this
+        // check any follow-up message ("looks good, thanks!") falls through
+        // to the same "all slots filled, ready to proceed?" logic used
+        // BEFORE generation and re-shows that stale confirmation prompt for
+        // a trip that's already done. Intercepted here, ahead of that
+        // logic, so the conversation acknowledges it's finished instead.
+        if ($this->aiStep === 'results') {
+            $this->aiPrompt = '';
+            $this->messages[] = ['role' => 'assistant', 'text' =>
+                "Glad you like it! You can view the full trip details above, or type /reset if you'd like to plan a different trip."];
+            $this->dispatch('message-added');
+            return;
+        }
+
         // Final "ready to generate?" confirmation, set below once every
         // slot is filled. Intercepted here, before normal parsing, so a
         // "yes"/"no" reply here never gets mis-read as an attempt to
@@ -929,7 +944,18 @@ class Llm extends Component
             if (preg_match('/\bsolo\b|\bjust me\b|\balone\b|\bmyself\b/i', $userText)
                 && !preg_match('/\band\b|\bwith\b|\+/i', $userText)) {
                 $this->aiTravelers = 1;
-            } elseif (preg_match('/(\d{1,2})/', $userText, $m)) {
+            // Word-boundary anchored on BOTH sides — matches only a
+            // complete, standalone 1-2 digit number, never a truncated
+            // fragment of a longer one. Without the \b's, this used to
+            // match the first two digits of ANY number in the message —
+            // confirmed live: answering "5000 pesos" here (a budget
+            // figure mistakenly sent while travelers was still being
+            // asked) grabbed "50" out of "5000" and silently saved 50
+            // travelers, corrupting a field the traveler never actually
+            // answered. A genuine bare answer like "12" or "20 people"
+            // still matches fine; "5000" (4 digits) now correctly matches
+            // nothing here at all.
+            } elseif (preg_match('/\b(\d{1,2})\b/', $userText, $m)) {
                 $v = (int) $m[1];
                 if ($v > 0) $this->aiTravelers = $v;
             }
@@ -1480,7 +1506,17 @@ PROMPT;
             return;
         }
 
-        $this->parseAiPrompt();
+        // NOTE: previously called parseAiPrompt() here, which reads
+        // $this->aiPrompt to extract slot values from the traveler's raw
+        // text — but aiPrompt is always already-cleared/empty by this
+        // point in the flow (every earlier turn resets it right after
+        // consuming it), so that call could never usefully extract
+        // anything. Its only real effect was a harmful side one: finding
+        // no budget/destination/etc. in the empty string and pushing a
+        // confusing "I didn't catch a number" re-ask into the chat, even
+        // though every slot was already filled and confirmed. Removed —
+        // this fallback goes straight to building the trip from real
+        // SerpAPI/static data using the slot values already on $this.
         $serpPackage = $this->buildSerpApiPackage();
         if ($serpPackage) {
             $this->aiPackage = $serpPackage;

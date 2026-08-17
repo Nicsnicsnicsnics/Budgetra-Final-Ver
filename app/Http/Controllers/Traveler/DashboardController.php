@@ -56,7 +56,10 @@ class DashboardController extends Controller
 
     private function buildData($user): array
     {
-        $trips = $user->trips()->where('status', '!=', 'draft')->withSum('expenses', 'amount')->latest()->get()->map(function (Trip $trip) {
+        // "!= 'draft'" alone silently drops any trip with a NULL status too
+        // (SQL: NULL != 'draft' is unknown, not true) — explicitly keep
+        // NULL-status trips since they're real trips, not drafts.
+        $trips = $user->trips()->where(fn ($q) => $q->where('status', '!=', 'draft')->orWhereNull('status'))->withSum('expenses', 'amount')->latest()->get()->map(function (Trip $trip) {
             $spent = $trip->expenses_sum_amount ?? 0;
             $today = Carbon::today();
             $trip->setAttribute('total_spent', $spent);
@@ -71,7 +74,7 @@ class DashboardController extends Controller
 
         // Donut: spend by category, across every non-draft trip.
         $categorySpend = Expense::where('user_id', $user->id)
-            ->whereHas('trip', fn ($q) => $q->where('status', '!=', 'draft'))
+            ->whereHas('trip', fn ($q) => $q->where('status', '!=', 'draft')->orWhereNull('status'))
             ->selectRaw('category, SUM(amount) as total')
             ->groupBy('category')
             ->orderByDesc('total')
@@ -86,7 +89,7 @@ class DashboardController extends Controller
 
         // Bars: total spend per calendar month, last 6 months.
         $monthlyRaw = Expense::where('user_id', $user->id)
-            ->whereHas('trip', fn ($q) => $q->where('status', '!=', 'draft'))
+            ->whereHas('trip', fn ($q) => $q->where('status', '!=', 'draft')->orWhereNull('status'))
             ->where('expense_date', '>=', Carbon::today()->subMonths(5)->startOfMonth())
             ->selectRaw("to_char(expense_date, 'YYYY-MM') as ym, SUM(amount) as total")
             ->groupBy('ym')

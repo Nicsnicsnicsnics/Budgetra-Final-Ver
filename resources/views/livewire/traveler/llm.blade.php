@@ -127,9 +127,9 @@
             <div style="text-align:right;flex-shrink:0;min-width:80px;">
                 <button wire:click="editWithWizard('{{ $card['key'] }}')" wire:loading.attr="disabled" wire:target="editWithWizard"
                         title="Edit {{ $card['label'] }}"
-                        style="background:none;border:none;padding:0;margin:0 0 4px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--primary);"
+                        style="background:none;border:none;padding:0;margin:0 0 4px;cursor:pointer;font-size:12px;font-weight:600;color:var(--primary);"
                         onmouseenter="this.style.textDecoration='underline'" onmouseleave="this.style.textDecoration='none'">
-                    <i class="fa-solid fa-pen" style="font-size:9px;"></i> Edit
+                    Edit
                 </button>
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:4px;">Est. Cost</div>
                 <div style="font-size:18px;font-weight:800;color:var(--dark);">{{ $this->displayAmount($sec['cost'] ?? 0) }}</div>

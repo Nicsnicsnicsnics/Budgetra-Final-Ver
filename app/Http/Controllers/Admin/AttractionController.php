@@ -36,13 +36,14 @@ class AttractionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'destination' => 'required|string|max:255',
-            'name'        => 'required|string|max:255',
-            'description' => 'nullable|string|max:2000',
-            'category'    => 'nullable|string|max:100',
-            'region'      => 'required|in:local,international',
-            'rating'      => 'nullable|numeric|min:0|max:5',
-            'image'       => 'nullable|image|max:5120',
+            'destination'    => 'required|string|max:255',
+            'name'           => 'required|string|max:255',
+            'description'    => 'nullable|string|max:2000',
+            'category'       => 'nullable|string|max:100',
+            'region'         => 'required|in:local,international',
+            'rating'         => 'nullable|numeric|min:0|max:5',
+            'estimated_cost' => 'nullable|numeric|min:0|max:999999',
+            'image'          => 'nullable|image|max:5120',
         ]);
 
         $imagePath = null;
@@ -53,13 +54,14 @@ class AttractionController extends Controller
         }
 
         Attraction::create([
-            'destination' => $validated['destination'],
-            'name'        => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'category'    => $validated['category'] ?? null,
-            'region'      => $validated['region'],
-            'rating'      => $validated['rating'] ?? 0,
-            'image'       => $imagePath,
+            'destination'    => $validated['destination'],
+            'name'           => $validated['name'],
+            'description'    => $validated['description'] ?? null,
+            'category'       => $validated['category'] ?? null,
+            'region'         => $validated['region'],
+            'rating'         => $validated['rating'] ?? 0,
+            'estimated_cost' => $validated['estimated_cost'] ?? null,
+            'image'          => $imagePath,
         ]);
 
         return redirect()->route('admin.attractions.index')->with('success', 'Attraction added.');
@@ -74,22 +76,24 @@ class AttractionController extends Controller
     public function update(Request $request, Attraction $attraction)
     {
         $validated = $request->validate([
-            'destination' => 'required|string|max:255',
-            'name'        => 'required|string|max:255',
-            'description' => 'nullable|string|max:2000',
-            'category'    => 'nullable|string|max:100',
-            'region'      => 'required|in:local,international',
-            'rating'      => 'nullable|numeric|min:0|max:5',
-            'image'       => 'nullable|image|max:5120',
+            'destination'    => 'required|string|max:255',
+            'name'           => 'required|string|max:255',
+            'description'    => 'nullable|string|max:2000',
+            'category'       => 'nullable|string|max:100',
+            'region'         => 'required|in:local,international',
+            'rating'         => 'nullable|numeric|min:0|max:5',
+            'estimated_cost' => 'nullable|numeric|min:0|max:999999',
+            'image'          => 'nullable|image|max:5120',
         ]);
 
         $updateData = [
-            'destination' => $validated['destination'],
-            'name'        => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'category'    => $validated['category'] ?? null,
-            'region'      => $validated['region'],
-            'rating'      => $validated['rating'] ?? $attraction->rating,
+            'destination'    => $validated['destination'],
+            'name'           => $validated['name'],
+            'description'    => $validated['description'] ?? null,
+            'category'       => $validated['category'] ?? null,
+            'region'         => $validated['region'],
+            'rating'         => $validated['rating'] ?? $attraction->rating,
+            'estimated_cost' => $validated['estimated_cost'] ?? null,
         ];
 
         if ($request->hasFile('image')) {

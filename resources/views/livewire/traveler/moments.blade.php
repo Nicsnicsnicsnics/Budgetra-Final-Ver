@@ -113,7 +113,7 @@
         <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;padding:20px 24px;box-shadow:0 6px 28px rgba(45,27,20,.10);max-height:640px;overflow-y:auto;">
             @if ($overviewTimelineGrouped->isEmpty())
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 24px;text-align:center;">
-                <div style="width:64px;height:64px;border-radius:16px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+                <div style="width:64px;height:64px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
                     <i class="fa-solid fa-book-open-reader" style="font-size:26px;color:var(--primary);"></i>
                 </div>
                 <div style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:8px;">Your travel diary starts here</div>
@@ -144,14 +144,14 @@
                                 <img src="{{ $moment['photo_urls'][0] }}" alt="{{ $moment['place_name'] }}"
                                      style="width:76px;height:76px;border-radius:10px;object-fit:cover;flex-shrink:0;">
                                 @else
-                                <div style="width:76px;height:76px;border-radius:10px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <div style="width:76px;height:76px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fa-solid fa-camera" style="color:var(--primary);font-size:20px;"></i>
                                 </div>
                                 @endif
                                 <div style="flex:1;min-width:0;">
                                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
                                         <span style="font-size:14px;font-weight:700;color:var(--dark);">{{ $moment['place_name'] }}</span>
-                                        <span style="font-size:10px;font-weight:700;color:var(--primary);background:#FDF3EB;padding:2px 8px;border-radius:20px;">{{ $moment['day_number'] < 1 ? 'Pre-Trip' : 'Day ' . $moment['day_number'] }}</span>
+                                        <span style="font-size:10px;font-weight:700;color:var(--primary);background:var(--primary-light);padding:2px 8px;border-radius:20px;">{{ $moment['day_number'] < 1 ? 'Pre-Trip' : 'Day ' . $moment['day_number'] }}</span>
                                     </div>
                                     @if ($moment['description'])
                                     <div style="font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:6px;">{{ $moment['description'] }}</div>
@@ -294,7 +294,7 @@
             @if ($timelineGrouped->isEmpty())
             {{-- Empty state --}}
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 24px;text-align:center;">
-                <div style="width:64px;height:64px;border-radius:16px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+                <div style="width:64px;height:64px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
                     <i class="fa-solid fa-book-open-reader" style="font-size:26px;color:var(--primary);"></i>
                 </div>
                 <div style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:8px;">Your travel diary starts here</div>
@@ -345,7 +345,7 @@
                                 <img src="{{ $moment['photo_urls'][0] }}" alt="{{ $moment['place_name'] }}"
                                      style="width:76px;height:76px;border-radius:10px;object-fit:cover;flex-shrink:0;">
                                 @else
-                                <div style="width:76px;height:76px;border-radius:10px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <div style="width:76px;height:76px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fa-solid fa-camera" style="color:var(--primary);font-size:20px;"></i>
                                 </div>
                                 @endif

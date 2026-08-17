@@ -16,6 +16,11 @@
             </select>
         </div>
         <div class="admin-form-group"><label>Rating (0–5)</label><input type="number" step="0.1" min="0" max="5" name="rating" value="{{ old('rating', $attraction->rating) }}" class="admin-input"></div>
+        <div class="admin-form-group">
+            <label>Estimated Cost (₱ per person)</label>
+            <input type="number" step="0.01" min="0" name="estimated_cost" value="{{ old('estimated_cost', $attraction->estimated_cost) }}" class="admin-input">
+            <small class="admin-form-hint">Typical per-person cost to visit — used to compute the "cost matched estimate" figure against traveler reviews.</small>
+        </div>
         <div class="admin-form-group"><label>Description</label><textarea name="description" class="admin-input" rows="3">{{ old('description', $attraction->description) }}</textarea></div>
         <div class="admin-form-group">
             <label>Featured Image (leave blank to keep existing)</label>

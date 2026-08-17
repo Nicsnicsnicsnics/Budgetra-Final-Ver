@@ -26,12 +26,14 @@
             ['href' => route('admin.reviews.index'),       'icon' => 'fa-regular fa-flag',             'label' => 'User Reviews',   'key' => 'reviews'],
         ];
         @endphp
-        @foreach ($primaryLinks as $link)
-        <a href="{{ $link['href'] }}" class="admin-sidebar-link {{ $active === $link['key'] ? 'active' : '' }}" title="{{ $link['label'] }}">
-            <i class="{{ $link['icon'] }}"></i>
-            <span>{{ $link['label'] }}</span>
-        </a>
-        @endforeach
+        <div class="admin-sidebar-primary">
+            @foreach ($primaryLinks as $link)
+            <a href="{{ $link['href'] }}" class="admin-sidebar-link {{ $active === $link['key'] ? 'active' : '' }}" title="{{ $link['label'] }}">
+                <i class="{{ $link['icon'] }}"></i>
+                <span>{{ $link['label'] }}</span>
+            </a>
+            @endforeach
+        </div>
 
         <div class="admin-sidebar-foot">
             <a href="{{ route('profile.edit') }}" class="admin-sidebar-link {{ $active === 'profile' ? 'active' : '' }}" title="Profile">

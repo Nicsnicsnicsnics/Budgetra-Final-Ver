@@ -927,6 +927,8 @@ body.dashboard-body {
   justify-content: center;
 }
 .sidebar-collapsed .sidebar-link i { font-size: 16px; }
+.sidebar-collapsed .sidebar-profile-avatar { width: 26px; height: 26px; }
+.sidebar-collapsed .sidebar-profile-avatar-initials { font-size: 11px; }
 .sidebar-collapsed .sidebar-brand { justify-content: center !important; padding: 8px 0 10px !important; margin-top: 0; margin-bottom: 6px; }
 .sidebar-collapsed .sidebar-link {
   justify-content: center; padding: 7px 0; margin-bottom: 0; gap: 0;
@@ -2128,7 +2130,8 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 }
 .admin-sidebar-name { font-size: 16px; font-weight: 800; line-height: 1.2; }
 .admin-sidebar-tagline { font-size: 11px; color: rgba(255,255,255,.55); }
-.admin-sidebar-nav { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+.admin-sidebar-nav { flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-height: 0; }
+.admin-sidebar-primary { display: flex; flex-direction: column; gap: 1px; }
 .admin-sidebar-link {
   display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 9px;
   color: rgba(255,255,255,.65); text-decoration: none; font-size: 13.5px; font-weight: 600;
@@ -2140,7 +2143,7 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 .admin-sidebar-link.active { background: var(--admin-accent); color: #fff; }
 .admin-sidebar-link-sub { font-weight: 500; font-size: 12.5px; color: rgba(255,255,255,.5); }
 .admin-sidebar-divider { height: 1px; background: rgba(255,255,255,.1); margin: 6px 8px; }
-.admin-sidebar-foot { display: flex; flex-direction: column; gap: 1px; margin-top: 16px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.1); flex-shrink: 0; }
+.admin-sidebar-foot { display: flex; flex-direction: column; gap: 1px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.1); flex-shrink: 0; }
 .admin-sidebar-logout { color: #E23A4E; }
 .admin-sidebar-logout:hover { background: rgba(226,58,78,0.12); color: #E23A4E; }
 
@@ -2153,8 +2156,8 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 .admin-sidebar-collapsed .admin-sidebar-link { justify-content: center; padding: 9px 0; gap: 0; }
 .admin-sidebar-collapsed .admin-sidebar-link span { display: none; }
 .admin-sidebar-collapsed .admin-sidebar-link i { font-size: 16px; }
-.admin-sidebar-collapsed .admin-sidebar-nav { flex: 1; overflow-y: hidden; }
-.admin-sidebar-collapsed .admin-sidebar-foot { align-items: center; margin-top: auto; padding-top: 8px; gap: 8px; }
+.admin-sidebar-collapsed .admin-sidebar-nav { overflow-y: hidden; }
+.admin-sidebar-collapsed .admin-sidebar-foot { align-items: center; padding-top: 8px; gap: 8px; }
 
 /* Light-sidebar themes need dark-on-light overrides here too, same
    reasoning as the traveler sidebar's per-theme block above. */
@@ -2285,6 +2288,7 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 .admin-input:focus { outline: none; border-color: var(--admin-accent); }
 .admin-form-group { margin-bottom: 16px; }
 .admin-form-group label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: var(--admin-ink); }
+.admin-form-hint { display: block; margin-top: 5px; font-size: 11.5px; font-weight: 500; color: var(--admin-muted); }
 .admin-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .admin-form-error { color: var(--admin-danger); font-size: 12px; margin-top: 4px; }
 .admin-back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--admin-muted); text-decoration: none; margin-bottom: 16px; }

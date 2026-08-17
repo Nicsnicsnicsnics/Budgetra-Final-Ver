@@ -85,9 +85,9 @@
             @else
             @php $stTotalPages = (int) ceil($stGroup['items']->count() / 3); @endphp
             <div x-data="{ page: 1 }" style="display:flex;flex-direction:column;">
-            <div style="width:100%;display:grid;grid-template-columns:repeat(3, 1fr);gap:28px;align-items:start;">
+            <div style="width:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:28px;align-items:flex-start;">
                 @foreach ($stGroup['items'] as $trip)
-                <div x-show="page === {{ (int) floor($loop->index / 3) + 1 }}" style="{{ $detailTripId === $trip->id ? 'grid-column:span 2;' : '' }}">
+                <div x-show="page === {{ (int) floor($loop->index / 3) + 1 }}" style="{{ $detailTripId === $trip->id ? 'flex:0 0 calc((100% - 56px) / 3 * 2 + 28px);max-width:calc((100% - 56px) / 3 * 2 + 28px);' : 'flex:0 0 calc((100% - 56px) / 3);max-width:calc((100% - 56px) / 3);' }}">
         <div style="display:flex;align-items:stretch;">
         @php
             // A never-finished draft (saved before a destination was picked)
@@ -253,7 +253,7 @@
              style="width:320px;flex-shrink:0;margin-left:16px;background:var(--bg-white);border-radius:20px;overflow-y:auto;max-height:{{ 200 + 20 + 62 + 44 + 42 }}px;">
 
             <div style="padding:18px 20px 6px;display:flex;align-items:center;gap:9px;">
-                <div style="width:26px;height:26px;border-radius:8px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <div style="width:26px;height:26px;border-radius:8px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fa-solid fa-receipt" style="color:var(--primary);font-size:11px;"></i>
                 </div>
                 <span style="font-size:15px;font-weight:800;color:var(--dark);">Trip Summary</span>
