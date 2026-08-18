@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Attraction;
 use App\Models\Destination;
-use App\Models\Expense;
 use App\Models\Trip;
 use App\Models\User;
 use Carbon\Carbon;
@@ -21,7 +20,6 @@ class DashboardController extends Controller
             'trips'       => $this->statCard(Trip::class, $now, $prev),
             'attractions' => $this->statCard(Attraction::class, $now, $prev),
             'users'       => $this->statCard(User::class, $now, $prev, fn ($q) => $q->where('role', '!=', 'banned')),
-            'travelCost'  => $this->expenseStatCard($now, $prev),
         ];
 
         // Top destinations — ranked by how many trips (either leg) actually
@@ -92,18 +90,6 @@ class DashboardController extends Controller
         $total = $base()->count();
         $thisMonth = (clone $base())->whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count();
         $lastMonth = (clone $base())->whereMonth('created_at', $prev->month)->whereYear('created_at', $prev->year)->count();
-
-        return [
-            'total'  => $total,
-            'change' => $this->pctChange($lastMonth, $thisMonth),
-        ];
-    }
-
-    private function expenseStatCard(Carbon $now, Carbon $prev): array
-    {
-        $total = (float) Expense::sum('amount');
-        $thisMonth = (float) Expense::whereMonth('expense_date', $now->month)->whereYear('expense_date', $now->year)->sum('amount');
-        $lastMonth = (float) Expense::whereMonth('expense_date', $prev->month)->whereYear('expense_date', $prev->year)->sum('amount');
 
         return [
             'total'  => $total,

@@ -108,20 +108,27 @@
                             </div>
                         </div>
                     </div>
-                    <div style="padding:18px 20px;">
-                        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-                            <span class="text-muted" style="font-size:12px;">Budget Used</span>
-                            <span style="font-weight:700;font-size:13px;color:var(--dark);">{{ $trip->pct_used }}%</span>
+                    <div style="padding:20px 22px 22px;display:flex;flex-direction:column;flex:1;">
+                        @php $cardPct = min(100, $trip->pct_used); @endphp
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">Used</span>
+                            <span style="font-size:15px;font-weight:700;color:var(--dark);">{{ $cardPct }}%</span>
                         </div>
-                        <div style="height:6px;background:var(--border-light);border-radius:99px;overflow:hidden;margin-bottom:12px;">
-                            <div style="height:100%;width:{{ $pct }}%;background:var(--primary);border-radius:99px;"></div>
+                        <div style="height:6px;background:var(--border-light);border-radius:99px;overflow:hidden;margin-bottom:18px;">
+                            <div style="height:100%;width:{{ $cardPct }}%;background:var(--primary);border-radius:99px;transition:width 0.3s;"></div>
                         </div>
-                        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:18px;">
-                            <span>Spent: <strong style="color:var(--primary);">{{ currency_symbol() }}{{ number_format($trip->total_spent, 2) }}</strong></span>
-                            <span class="text-muted">Allocated Budget: {{ currency_symbol() }}{{ number_format($trip->budget_limit, 2) }}</span>
+                        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;">
+                            <div>
+                                <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Spent</div>
+                                <div style="font-size:23px;font-weight:800;color:#C8874A;">{{ currency_symbol() }}{{ number_format($trip->total_spent, 2) }}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Budget Allocated</div>
+                                <div style="font-size:23px;font-weight:800;color:var(--dark);">{{ currency_symbol() }}{{ number_format($trip->total_cost ?? $trip->budget_limit, 2) }}</div>
+                            </div>
                         </div>
 
-                        <div style="display:flex;gap:10px;">
+                        <div style="display:flex;gap:10px;margin-top:auto;">
                             <button type="button" class="btn {{ $isPickedForCompare ? '' : 'btn-primary' }}"
                                     style="flex:1;text-transform:uppercase;letter-spacing:.05em;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;{{ $isPickedForCompare ? 'background:var(--primary-light);color:var(--primary);border:1.5px solid var(--primary);' : '' }}"
                                     wire:click="toggleCompare({{ $trip->id }})">
@@ -147,7 +154,7 @@
         <span style="font-size:13px;font-weight:600;color:var(--dark);white-space:nowrap;">
             <i class="fa-solid fa-code-compare" style="color:var(--primary);margin-right:6px;"></i> 2 trips selected
         </span>
-        <button type="button" wire:click="clearCompareSelection" style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:8px 4px;">Clear</button>
+        <button type="button" wire:click="clearCompareSelection" class="btn btn-outline" style="padding:12px 18px;">Clear</button>
         <button type="button" wire:click="runComparison" class="btn btn-primary" style="white-space:nowrap;">Compare Trips</button>
     </div>
     @endif
@@ -229,12 +236,18 @@
     @if ($showComparison && count($compareData) === 2)
     @php
         [$a, $b] = $compareData;
+        $ta = $a['trip']; $tb = $b['trip'];
+        // % used against the SAME savings-based budget figure the cards
+        // below display — computed here too so the win/lose ribbon always
+        // agrees with what's actually shown, instead of secretly ranking
+        // by the old budget_limit while the cards show savings data.
+        $aPctUsed = $a['budget'] > 0 ? round($ta->total_spent / $a['budget'] * 100) : 0;
+        $bPctUsed = $b['budget'] > 0 ? round($tb->total_spent / $b['budget'] * 100) : 0;
         // "Better" trip = whichever used less of its budget (relative
         // comparison, not just its own over/under status) — a tie means
         // neither card gets a win/lose treatment.
-        $ta = $a['trip']; $tb = $b['trip'];
-        $tie = $ta->pct_used === $tb->pct_used;
-        $aWins = !$tie && $ta->pct_used < $tb->pct_used;
+        $tie = $aPctUsed === $bPctUsed;
+        $aWins = !$tie && $aPctUsed < $bPctUsed;
     @endphp
     <div class="cmp-backdrop" wire:click.self="closeComparison">
         <div class="cmp-modal">
@@ -249,9 +262,11 @@
             <div class="cmp-cards">
                 @foreach ([['data' => $a, 'wins' => $aWins], ['data' => $b, 'wins' => !$tie && !$aWins]] as $entry)
                 @php
-                    $t     = $entry['data']['trip'];
-                    $diff  = (float) $t->budget_limit - $t->total_spent;
-                    $over  = $diff < 0;
+                    $t       = $entry['data']['trip'];
+                    $budgetAmount = $entry['data']['budget'];
+                    $diff    = $budgetAmount - $t->total_spent;
+                    $over    = $diff < 0;
+                    $pctUsed = $budgetAmount > 0 ? min(100, round($t->total_spent / $budgetAmount * 100)) : 0;
                     $verdict = $tie ? 'neutral' : ($entry['wins'] ? 'win' : 'lose');
                 @endphp
                 <div class="cmp-card cmp-card-{{ $verdict }}">
@@ -271,13 +286,13 @@
                         <span>Budget</span><span>Actual Spend</span>
                     </div>
                     <div class="cmp-stat-row cmp-stat-values">
-                        <span>{{ currency_symbol() }}{{ number_format($t->budget_limit, 0) }}</span>
+                        <span>{{ currency_symbol() }}{{ number_format($budgetAmount, 0) }}</span>
                         <span class="cmp-{{ $over ? 'over' : 'under' }}-text">{{ currency_symbol() }}{{ number_format($t->total_spent, 0) }}</span>
                     </div>
                     <div class="cmp-bar-track">
-                        <div class="cmp-bar-fill cmp-bar-{{ $over ? 'over' : 'under' }}" style="width:{{ min(100,$t->pct_used) }}%;"></div>
+                        <div class="cmp-bar-fill cmp-bar-{{ $over ? 'over' : 'under' }}" style="width:{{ $pctUsed }}%;"></div>
                     </div>
-                    <div class="cmp-pct-label">{{ $t->pct_used }}% of budget used</div>
+                    <div class="cmp-pct-label">{{ $pctUsed }}% of budget used</div>
                 </div>
                 @endforeach
             </div>
@@ -299,7 +314,6 @@
                 @php
                     $bVal    = $b['categories'][$cat] ?? 0;
                     $max     = max($aVal, $bVal, 1);
-                    $diffPct = $aVal > 0 ? round((($bVal - $aVal) / $aVal) * 100) : ($bVal > 0 ? 100 : 0);
                     $label   = $cat === 'Tourist Attractions' ? 'Attractions' : $cat;
                     $aCheaper = $aVal < $bVal; $bCheaper = $bVal < $aVal;
                 @endphp
@@ -320,9 +334,6 @@
                         </div>
                         <span class="cmp-cat-value {{ $bCheaper ? 'cmp-under-text' : ($aCheaper ? 'cmp-over-text' : '') }}">
                             {{ currency_symbol() }}{{ number_format($bVal, 0) }}
-                            @if ($diffPct !== 0)
-                            <span class="text-muted">({{ $diffPct > 0 ? '+' : '' }}{{ $diffPct }}%)</span>
-                            @endif
                         </span>
                     </div>
                 </div>
@@ -391,7 +402,7 @@
     .cmp-under-text { color: #16A34A; }
     .cmp-over-text  { color: #E11D48; }
 
-    .cmp-bar-track { height: 7px; background: var(--bg); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; box-sizing: border-box; }
+    .cmp-bar-track { flex: 1; min-width: 0; height: 7px; background: var(--bg); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; box-sizing: border-box; }
     .cmp-bar-fill { height: 100%; border-radius: 99px; min-width: 3px; }
     .cmp-bar-under { background: #4ADE80; }
     .cmp-bar-over  { background: #FF4D6D; }

@@ -2,6 +2,7 @@
 namespace App\Livewire\Traveler;
 
 use App\Models\Expense;
+use App\Models\SavingsGoal;
 use App\Models\Trip;
 use Carbon\Carbon;
 use Livewire\Component;
@@ -98,9 +99,19 @@ class MultiTripHub extends Component
             foreach ($this->compareCategories as $cat) {
                 $categories[$cat] = (float) Expense::where('trip_id', $id)->where('category', $cat)->sum('amount');
             }
+            $trip = $trips->firstWhere('id', $id);
+
+            // "Budget" in the comparison card means what the traveler has
+            // actually saved toward this trip (their Savings Goal deposits),
+            // not the budget_limit set back when the trip was planned —
+            // falls back to budget_limit only when the trip has no savings
+            // goal at all, so older/goal-less trips don't show ₱0.
+            $savedAmount = (float) (SavingsGoal::where('trip_id', $id)->value('current_savings') ?? $trip->budget_limit);
+
             return [
-                'trip'       => $trips->firstWhere('id', $id),
+                'trip'       => $trip,
                 'categories' => $categories,
+                'budget'     => $savedAmount,
             ];
         }, $this->compareIds);
     }

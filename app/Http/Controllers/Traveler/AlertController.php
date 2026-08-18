@@ -20,29 +20,21 @@ class AlertController extends Controller
             ->orderByDesc('start_date')
             ->get();
 
-        // Default to the latest trip if no trip_id specified
-        $tripId     = request('trip_id');
-        $activeTrip = $tripId ? $trips->find($tripId) : $trips->first();
-
-        // Unread notification count per trip, for the badge on each trip pill.
-        $unreadCounts = $user->notifications()
-            ->where('is_read', false)
-            ->whereNotNull('trip_id')
-            ->selectRaw('trip_id, count(*) as count')
-            ->groupBy('trip_id')
-            ->pluck('count', 'trip_id');
-
+        // Every notification the traveler has — trip saved, expense logged,
+        // savings goal, budget warnings and alerts, reminders — across all
+        // their trips. This used to narrow to a single "active" trip (the
+        // most recent one, since no trip_id is ever passed and the view has
+        // no trip picker), which silently hid every notification belonging to
+        // any other trip as well as the ones with no trip_id at all.
         $query = $user->notifications()->with('trip')->latest();
 
         if ($trips->isEmpty()) {
             $query->whereRaw('1=0');
-        } elseif ($activeTrip) {
-            $query->where('trip_id', $activeTrip->id);
         }
 
         $notifications = $query->paginate(20);
 
-        return view('traveler.alerts.index', compact('notifications', 'trips', 'activeTrip', 'unreadCounts'));
+        return view('traveler.alerts.index', compact('notifications', 'trips'));
     }
 
     public function markRead(Notification $notification)

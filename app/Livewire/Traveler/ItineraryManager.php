@@ -517,34 +517,61 @@ class ItineraryManager extends Component
     {
         $tripsById = $this->trips->keyBy('id');
 
-        return Moment::whereIn('trip_id', $tripsById->keys())
+        $moments = Moment::whereIn('trip_id', $tripsById->keys())
             ->with('photos')
             ->orderBy('visited_date')
             ->orderBy('created_at')
-            ->get()
-            ->map(function (Moment $m) use ($tripsById) {
+            ->get();
+
+        // Numbered per trip — "Day N" only means anything within one trip.
+        $dayNumbers = $moments->groupBy('trip_id')
+            ->map(fn ($tripMoments) => $this->dayNumbersFor($tripMoments));
+
+        return $moments
+            ->map(function (Moment $m) use ($tripsById, $dayNumbers) {
                 $pin  = $this->momentService->pinToArray($m);
                 $trip = $tripsById->get($m->trip_id);
 
                 if ($trip) {
-                    $tripStartOfDay     = $trip->start_date->copy()->startOfDay();
-                    $visitedStartOfDay  = $m->visited_date->copy()->startOfDay();
-                    // Not clamped to 1 — a moment logged for a date before the
-                    // trip's start_date is a real, different day and must not
-                    // be lumped into "Day 1" alongside moments actually
-                    // visited on day one.
-                    $pin['day_number']        = (int) floor(($visitedStartOfDay->timestamp - $tripStartOfDay->timestamp) / 86400) + 1;
+                    $pin['day_number']        = $dayNumbers[$m->trip_id][$m->visited_date->toDateString()] ?? 1;
                     $pin['trip_destination']  = $trip->destination;
                 } else {
                     $pin['day_number']       = 1;
                     $pin['trip_destination'] = 'Unknown trip';
                 }
 
-                $pin['posted_at'] = $m->created_at->format('M j, Y g:i A');
+                $pin['posted_at'] = local_time($m->created_at)->format('M j, Y g:i A');
                 return $pin;
             })
             ->values()
             ->toArray();
+    }
+
+    /**
+     * Maps each distinct visited_date in a trip's moments to a day number,
+     * starting at 1 for the earliest.
+     *
+     * Day numbers used to be measured off the trip's start_date, which broke
+     * whenever a moment's date sat outside the planned window — the trip that
+     * starts 2026-08-17 with a moment logged for 2026-08-08 rendered a
+     * "Day -8" badge, and one logged the day before its trip began rendered
+     * "Day 0". Counting the trip's own recorded days instead keeps the first
+     * moment at Day 1 and can never produce a zero or negative label.
+     *
+     * @param  \Illuminate\Support\Collection<int, Moment>  $moments
+     * @return array<string, int>  'Y-m-d' => day number
+     */
+    private function dayNumbersFor($moments): array
+    {
+        return $moments
+            ->pluck('visited_date')
+            ->map(fn ($d) => $d->toDateString())
+            ->unique()
+            ->sort()
+            ->values()
+            ->flip()
+            ->map(fn ($i) => $i + 1)
+            ->all();
     }
 
     public function getInitialPinsProperty(): array
@@ -570,24 +597,19 @@ class ItineraryManager extends Component
     {
         if (!$this->selectedTripId || !$this->selectedTrip) return [];
 
-        $tripStartOfDay = $this->selectedTrip->start_date->copy()->startOfDay();
-
-        return Moment::where('trip_id', $this->selectedTripId)
+        $moments = Moment::where('trip_id', $this->selectedTripId)
             ->with('photos')
             ->orderBy('visited_date')
             ->orderBy('created_at')
-            ->get()
-            ->map(function (Moment $m) use ($tripStartOfDay) {
+            ->get();
+
+        $dayNumbers = $this->dayNumbersFor($moments);
+
+        return $moments
+            ->map(function (Moment $m) use ($dayNumbers) {
                 $pin = $this->momentService->pinToArray($m);
-                $visitedStartOfDay = $m->visited_date->copy()->startOfDay();
-                // Raw timestamp math on purpose — Carbon's diffInDays sign
-                // convention isn't worth relying on here.
-                // Not clamped to 1 — a moment logged for a date before the
-                // trip's start_date is a real, different day and must not be
-                // lumped into "Day 1" alongside moments actually visited on
-                // day one.
-                $pin['day_number'] = (int) floor(($visitedStartOfDay->timestamp - $tripStartOfDay->timestamp) / 86400) + 1;
-                $pin['posted_at']  = $m->created_at->format('M j, Y g:i A');
+                $pin['day_number'] = $dayNumbers[$m->visited_date->toDateString()] ?? 1;
+                $pin['posted_at']  = local_time($m->created_at)->format('M j, Y g:i A');
                 return $pin;
             })
             ->values()
@@ -612,15 +634,12 @@ class ItineraryManager extends Component
         $this->pinLng             = $lng;
         $this->pinPlaceName      = '';
         $this->pinDescription    = '';
-        // Default to today only if today actually falls within the trip's
-        // own dates — otherwise (e.g. a trip manually flagged Ongoing
-        // outside its real date range, or a Moment being backfilled) the
-        // calendar would open on today's month instead of the trip's,
-        // which reads as broken. Clamp to whichever bound is closer.
-        $today = now()->startOfDay();
-        $this->pinVisitedDate = $today->between($trip->start_date, $trip->end_date)
-            ? $today->toDateString()
-            : ($today->lt($trip->start_date) ? $trip->start_date->toDateString() : $trip->end_date->toDateString());
+        // Always today. This used to clamp to the trip's nearest bound when
+        // today fell outside the trip's dates, which meant a trip that had
+        // already ended opened the picker on its end_date — a date the
+        // calendar now blocks as past, so the field would have defaulted to
+        // a value the traveler couldn't re-select.
+        $this->pinVisitedDate = now()->toDateString();
         $this->pinPhotos         = [];
         $this->pinExistingPhotos = [];
         $this->showPinModal       = true;

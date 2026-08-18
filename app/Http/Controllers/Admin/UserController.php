@@ -11,15 +11,16 @@ class UserController extends Controller
 {
     private function filteredQuery(Request $request)
     {
-        $query = User::withCount('trips')->withSum('expenses', 'amount');
+        // Admin accounts aren't travelers and aren't moderated from here, so
+        // they're excluded from the list (and from the CSV export, which runs
+        // through this same query). orWhereNull keeps any role-less row: a
+        // bare "!= 'admin'" would silently drop those too, since NULL != 'admin'
+        // is unknown rather than true.
+        $query = User::withCount('trips')->withSum('expenses', 'amount')
+            ->where(fn ($q) => $q->where('role', '!=', 'admin')->orWhereNull('role'));
         if ($request->filled('search')) {
             $s = '%' . strtolower($request->search) . '%';
             $query->where(fn($q) => $q->whereRaw('LOWER(full_name) LIKE ?', [$s])->orWhereRaw('LOWER(email) LIKE ?', [$s]));
-        }
-        if ($request->filled('status')) {
-            $request->status === 'banned'
-                ? $query->where('role', 'banned')
-                : $query->where('role', '!=', 'banned');
         }
         return $query;
     }
@@ -29,13 +30,16 @@ class UserController extends Controller
         $active = 'users';
         $users = $this->filteredQuery($request)->latest()->paginate(25)->withQueryString();
 
-        $activeUsers  = User::where('role', '!=', 'banned')->count();
+        // Counts the same population the table lists: every non-admin
+        // account, banned ones included, since the list no longer filters
+        // or flags them separately.
+        $totalUsers   = User::where(fn ($q) => $q->where('role', '!=', 'admin')->orWhereNull('role'))->count();
         $bannedUsers  = User::where('role', 'banned')->count();
         $tripsThisMonth = Trip::whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->count();
 
-        return view('admin.users.index', compact('users', 'active', 'activeUsers', 'bannedUsers', 'tripsThisMonth'));
+        return view('admin.users.index', compact('users', 'active', 'totalUsers', 'bannedUsers', 'tripsThisMonth'));
     }
 
     public function export(Request $request): StreamedResponse

@@ -85,6 +85,19 @@ class ReviewController extends Controller
         return redirect()->route('reviews.index')->with('success', 'Review updated!');
     }
 
+    public function destroy(Request $request, Review $review)
+    {
+        abort_if($review->user_id !== auth()->id(), 403, "You can only delete your own review.");
+
+        $review->delete();
+
+        if ($request->filled('attraction_id')) {
+            return redirect()->route('attractions.show', $request->attraction_id)
+                             ->with('success', 'Review deleted.');
+        }
+        return redirect()->route('reviews.index')->with('success', 'Review deleted.');
+    }
+
     public function flag(Request $request, Review $review)
     {
         abort_if($review->user_id === auth()->id(), 403, "You can't flag your own review.");

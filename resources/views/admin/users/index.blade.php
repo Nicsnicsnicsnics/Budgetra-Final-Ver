@@ -6,15 +6,6 @@
         <p>Manage, monitor, and moderate user accounts across the Budgetra platform.</p>
     </div>
     <div class="admin-page-head-actions">
-        <form method="GET" class="admin-inline-filter">
-            @if(request('search'))<input type="hidden" name="search" value="{{ request('search') }}">@endif
-            <select name="status" class="admin-input" onchange="this.form.submit()">
-                <option value="">All Users</option>
-                <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
-                <option value="banned" {{ request('status') === 'banned' ? 'selected' : '' }}>Banned</option>
-            </select>
-            <button type="submit" class="admin-btn admin-btn-outline"><i class="fa-solid fa-filter"></i> Filter</button>
-        </form>
         <a href="{{ route('admin.users.export', request()->query()) }}" class="admin-btn admin-btn-outline"><i class="fa-solid fa-download"></i> Export</a>
     </div>
 </div>
@@ -22,8 +13,8 @@
 
 <div class="admin-stat-row">
     <div class="admin-stat-card">
-        <span class="admin-stat-label">Total Active Users</span>
-        <strong class="admin-stat-value">{{ $activeUsers }}</strong>
+        <span class="admin-stat-label">Total Users</span>
+        <strong class="admin-stat-value">{{ $totalUsers }}</strong>
     </div>
     <div class="admin-stat-card">
         <span class="admin-stat-label">Trips Planned (Month)</span>
@@ -36,7 +27,6 @@
 </div>
 
 <form method="GET" class="admin-search-form" style="margin-bottom:16px;">
-    @if(request('status'))<input type="hidden" name="status" value="{{ request('status') }}">@endif
     <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or email..." class="admin-input">
     <button type="submit" class="admin-btn admin-btn-outline">Search</button>
 </form>
@@ -44,7 +34,7 @@
 <div class="admin-card">
     <table class="admin-table">
         <thead>
-            <tr><th>User</th><th>Trip Count</th><th>Total Travel Cost</th><th>Average Travel Cost</th><th>Status</th><th>Actions</th></tr>
+            <tr><th>User</th><th>Trip Count</th><th>Total Travel Cost</th><th>Average Travel Cost</th><th>Actions</th></tr>
         </thead>
         <tbody>
         @forelse($users as $user)
@@ -62,13 +52,6 @@
                 @php $totalTravelCost = $user->expenses_sum_amount ?? 0; @endphp
                 <td>₱{{ number_format($totalTravelCost, 2) }}</td>
                 <td>{{ $user->trips_count > 0 ? '₱' . number_format($totalTravelCost / $user->trips_count, 2) : '—' }}</td>
-                <td>
-                    @if($user->role === 'banned')
-                        <span class="admin-badge admin-badge-danger">BANNED</span>
-                    @else
-                        <span class="admin-badge admin-badge-success">ACTIVE</span>
-                    @endif
-                </td>
                 <td class="admin-table-actions">
                     @if($user->id !== auth()->id())
                         <button type="button" class="admin-icon-btn admin-icon-btn-danger js-delete-user-btn"
@@ -85,7 +68,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="6" class="admin-table-empty">No users found.</td></tr>
+            <tr><td colspan="5" class="admin-table-empty">No users found.</td></tr>
         @endforelse
         </tbody>
     </table>

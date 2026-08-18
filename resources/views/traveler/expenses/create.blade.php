@@ -26,9 +26,33 @@
     .form-control.is-invalid { border-color: var(--danger); }
     .form-control.is-invalid:focus { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(220,38,38,0.12); }
 
+    /* Upload prompt — matches the profile photo dropzone. These live in a
+       class rather than inline styles because the preview toggle resets
+       promptEl.style.display to '', which would wipe an inline display:flex
+       and leave the prompt stacked as a plain block when a file is cleared. */
+    .dz-prompt {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 16px; text-align: center; cursor: pointer;
+    }
+    .dz-prompt-icon {
+        width: 56px; height: 56px; border-radius: 16px; background: var(--primary-light);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--primary); font-size: 22px; flex-shrink: 0;
+    }
+    /* .dropzone's own background turns --primary-light on hover/drag/scan —
+       the same value as the tile — so the icon square vanished into it. */
+    .dropzone:hover .dz-prompt-icon,
+    .dropzone.drag-over .dz-prompt-icon,
+    .dropzone.ocr-active .dz-prompt-icon { background: var(--bg-white); }
+    .dz-prompt-title { font-size: 15px; font-weight: 700; color: var(--dark); }
+    .dz-prompt-title span { color: var(--primary); }
+    .dz-prompt-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
     .scan-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch; }
     .scan-layout > div:first-child { display: flex; flex-direction: column; }
-    .scan-layout #dropZone { flex: 1; }
+    /* Sets the floor for the whole row — the grid is align-items:stretch, so
+       the form card matches whichever column is taller. */
+    .scan-layout #dropZone { flex: 1; min-height: 540px; }
     @media (max-width: 860px) { .scan-layout { grid-template-columns: 1fr; } }
 </style>
 @endpush
@@ -48,24 +72,23 @@
 </div>
 @else
 
-<div class="mb-24" style="max-width:1400px;margin-left:auto;margin-right:auto;text-align:center;">
-    <h1>Scan Your Receipt</h1>
-    <p class="text-muted">Upload a photo of your receipt to automatically extract and track expenses.</p>
-</div>
-
-<div style="max-width:1400px;margin:0 auto;">
+{{-- margin:auto, not 0 auto — .dash-content is a flex column, so auto block
+     margins split its leftover height evenly above and below instead of
+     letting all the slack pile up underneath the cards. --}}
+<div style="max-width:1180px;width:100%;margin:auto;">
     <div class="scan-layout">
         {{-- Drop zone --}}
         <div>
             <div class="dropzone" id="dropZone">
-                <div id="dropzonePrompt">
-                    <div class="dropzone-icon"><i class="fa-solid fa-camera"></i></div>
-                    <div class="dropzone-title">Drag &amp; Drop Receipt</div>
-                    <div class="dropzone-sub">or click to browse from your computer</div>
-                    <button type="button" class="btn btn-primary" onclick="document.getElementById('receiptFile').click()">
-                        <i class="fa-solid fa-upload"></i> Select File
-                    </button>
-                </div>
+                {{-- A <label for> opens the picker natively, so the whole
+                     prompt is clickable without the extra Select File button. --}}
+                <label for="receiptFile" id="dropzonePrompt" class="dz-prompt">
+                    <div class="dz-prompt-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <div>
+                        <div class="dz-prompt-title"><span>Click to upload</span> a receipt</div>
+                        <div class="dz-prompt-hint">PNG or JPG, up to 10MB</div>
+                    </div>
+                </label>
                 <input type="file" id="receiptFile" accept="image/*,application/pdf" style="display:none;">
 
                 <div class="dropzone-preview" id="dropzonePreview">

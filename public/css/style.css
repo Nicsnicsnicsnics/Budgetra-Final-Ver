@@ -87,6 +87,10 @@
   --shadow-lg: 0 10px 28px rgba(20,30,50,.07);
 }
 [data-theme="nightflight"] {
+  /* The only dark theme, so it's the only one that needs a lighter success
+     green — #16A34A lands around 4.2:1 on this theme's card background,
+     under the 4.5:1 AA floor for the sizes it's used at. */
+  --success: #4ADE80;
   --primary: #7C8CFF;
   --primary-dark: #5F6FE0;
   --primary-hover: #5F6FE0;
@@ -326,7 +330,13 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   margin-bottom: 16px; border: 1px solid transparent;
 }
 .alert-danger { background: #FEF2F2; color: #991B1B; border-color: #FCA5A5; }
-.alert-success { background: #F0FDF4; color: #166534; border-color: #86EFAC; }
+/* Mixed against the page surface rather than fixed pale-green/near-white,
+   which stayed a bright slab on dark themes. */
+.alert-success {
+  background: color-mix(in srgb, var(--success) 12%, var(--bg-white));
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 35%, var(--bg-white));
+}
 .alert-warning { background: #FFFBEB; color: #92400E; border-color: #FCD34D; }
 .alert-info { background: var(--tertiary-light); color: var(--tertiary-dark); border-color: #93C5FD; }
 
@@ -1376,14 +1386,6 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
   border-color: var(--primary); background: var(--primary-light);
 }
 .dropzone input[type=file] { display: none; }
-.dropzone-icon {
-  width: 84px; height: 84px; border-radius: 50%;
-  background: var(--primary-light); margin: 0 auto 20px;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--primary); font-size: 34px;
-}
-.dropzone-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: var(--dark); }
-.dropzone-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
 .dropzone-preview {
   display: none; margin-top: 24px;
   background: var(--bg-white); border-radius: 10px; padding: 14px;
@@ -2123,27 +2125,35 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
   font-size: 14px; transition: background .15s ease, color .15s ease;
 }
 .admin-sidebar-toggle-btn:hover { background: rgba(255,255,255,.08); color: #fff; }
-.admin-sidebar-brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 14px; flex-shrink: 0; }
+.admin-sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 14px; flex-shrink: 0; }
 .admin-sidebar-logo {
-  width: 38px; height: 38px; border-radius: 11px; background: var(--admin-accent);
-  display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 10px; object-fit: contain; flex-shrink: 0;
 }
-.admin-sidebar-name { font-size: 16px; font-weight: 800; line-height: 1.2; }
-.admin-sidebar-tagline { font-size: 11px; color: rgba(255,255,255,.55); }
+.admin-sidebar-name { font-size: 18px; font-weight: 800; line-height: 1.2; letter-spacing: 0.01em; }
 .admin-sidebar-nav { flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-height: 0; }
 .admin-sidebar-primary { display: flex; flex-direction: column; gap: 1px; }
 .admin-sidebar-link {
-  display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 9px;
-  color: rgba(255,255,255,.65); text-decoration: none; font-size: 13.5px; font-weight: 600;
+  display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 8px;
+  color: rgba(255,255,255,.65); text-decoration: none; font-size: 14px; font-weight: 500;
   border: none; background: none; width: 100%; text-align: left; cursor: pointer;
   font-family: inherit; transition: background .15s ease, color .15s ease;
 }
-.admin-sidebar-link i { width: 18px; text-align: center; font-size: 14px; }
+.admin-sidebar-link i { width: 18px; text-align: center; font-size: 15px; }
 .admin-sidebar-link:hover { background: rgba(255,255,255,.08); color: #fff; }
-.admin-sidebar-link.active { background: var(--admin-accent); color: #fff; }
+.admin-sidebar-link.active { background: rgba(255,255,255,.15); color: #fff; }
 .admin-sidebar-link-sub { font-weight: 500; font-size: 12.5px; color: rgba(255,255,255,.5); }
+/* Profile row shows the signed-in admin's own photo, same as the traveler
+   sidebar — sized to sit on the icon column so labels stay aligned. */
+.admin-sidebar-avatar {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  object-fit: cover; display: flex; align-items: center; justify-content: center;
+}
+.admin-sidebar-avatar-initials {
+  background: var(--admin-accent); color: #fff; font-size: 9px; font-weight: 700;
+}
 .admin-sidebar-divider { height: 1px; background: rgba(255,255,255,.1); margin: 6px 8px; }
-.admin-sidebar-foot { display: flex; flex-direction: column; gap: 1px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.1); flex-shrink: 0; }
+.admin-sidebar-divider-brand { margin: 0 16px 10px; }
+.admin-sidebar-foot { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
 .admin-sidebar-logout { color: #E23A4E; }
 .admin-sidebar-logout:hover { background: rgba(226,58,78,0.12); color: #E23A4E; }
 
@@ -2151,42 +2161,53 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
    traveler sidebar's collapsed state. ─────────────────────── */
 .admin-sidebar-collapsed .admin-sidebar { width: 58px; min-width: 58px; padding: 12px 0; overflow-y: hidden; }
 .admin-sidebar-collapsed .admin-sidebar-header { justify-content: center; padding: 0 0 4px; }
-.admin-sidebar-collapsed .admin-sidebar-brand { justify-content: center; padding: 0 0 10px; }
+.admin-sidebar-collapsed .admin-sidebar-brand { justify-content: center; padding: 8px 0 10px; margin-bottom: 6px; }
 .admin-sidebar-collapsed .admin-sidebar-brand-text { display: none; }
-.admin-sidebar-collapsed .admin-sidebar-link { justify-content: center; padding: 9px 0; gap: 0; }
-.admin-sidebar-collapsed .admin-sidebar-link span { display: none; }
+.admin-sidebar-collapsed .admin-sidebar-divider-brand { margin: 0 12px 10px; }
+/* Inset the rail so an active link reads as a rounded square around its
+   icon, the way the traveler sidebar does — without this the highlight
+   stretches the full 58px width and butts against both edges. */
+.admin-sidebar-collapsed .admin-sidebar-nav { padding: 0 12px; }
+.admin-sidebar-collapsed .admin-sidebar-link { justify-content: center; padding: 7px 0; margin-bottom: 0; gap: 0; }
+/* :not() guard — the initials fallback is itself a <span>, so a blanket
+   rule would blank out the avatar along with the labels. */
+.admin-sidebar-collapsed .admin-sidebar-link span:not(.admin-sidebar-avatar) { display: none; }
 .admin-sidebar-collapsed .admin-sidebar-link i { font-size: 16px; }
-.admin-sidebar-collapsed .admin-sidebar-nav { overflow-y: hidden; }
-.admin-sidebar-collapsed .admin-sidebar-foot { align-items: center; padding-top: 8px; gap: 8px; }
+.admin-sidebar-collapsed .admin-sidebar-avatar { width: 26px; height: 26px; }
+.admin-sidebar-collapsed .admin-sidebar-avatar-initials { font-size: 11px; }
+.admin-sidebar-collapsed .admin-sidebar-nav { overflow-y: hidden; padding-bottom: 8px; }
+/* The traveler rail has no gap rule — its links are direct children of a
+   space-between nav, which spreads them ~14px apart. Admin's links live in
+   their own wrapper, so space-between can't reach them; a fixed gap
+   reproduces the same rhythm without depending on how many links there are. */
+.admin-sidebar-collapsed .admin-sidebar-primary { gap: 14px; }
+.admin-sidebar-collapsed .admin-sidebar-foot { align-items: center; gap: 8px; }
 
 /* Light-sidebar themes need dark-on-light overrides here too, same
    reasoning as the traveler sidebar's per-theme block above. */
 [data-theme="terracotta"] .admin-sidebar-name,
 [data-theme="terracotta"] .admin-sidebar-toggle-btn { color: #3B2A1E; }
-[data-theme="terracotta"] .admin-sidebar-tagline { color: rgba(59,42,30,0.55); }
 [data-theme="terracotta"] .admin-sidebar-link { color: rgba(59,42,30,0.65); }
 [data-theme="terracotta"] .admin-sidebar-link:hover { background: rgba(59,42,30,0.08); color: #3B2A1E; }
+[data-theme="terracotta"] .admin-sidebar-link.active { background: rgba(59,42,30,0.15); color: #3B2A1E; }
 [data-theme="terracotta"] .admin-sidebar-toggle-btn:hover { background: rgba(59,42,30,0.08); }
-[data-theme="terracotta"] .admin-sidebar-divider,
-[data-theme="terracotta"] .admin-sidebar-foot { border-color: rgba(59,42,30,0.15); }
+[data-theme="terracotta"] .admin-sidebar-divider { background: rgba(59,42,30,0.15); }
 
 [data-theme="daylight"] .admin-sidebar-name,
 [data-theme="daylight"] .admin-sidebar-toggle-btn { color: #1A2333; }
-[data-theme="daylight"] .admin-sidebar-tagline { color: rgba(26,35,51,0.55); }
 [data-theme="daylight"] .admin-sidebar-link { color: rgba(26,35,51,0.65); }
 [data-theme="daylight"] .admin-sidebar-link:hover { background: rgba(26,35,51,0.08); color: #1A2333; }
+[data-theme="daylight"] .admin-sidebar-link.active { background: rgba(46,111,242,0.12); color: #2E6FF2; }
 [data-theme="daylight"] .admin-sidebar-toggle-btn:hover { background: rgba(26,35,51,0.08); }
-[data-theme="daylight"] .admin-sidebar-divider,
-[data-theme="daylight"] .admin-sidebar-foot { border-color: rgba(26,35,51,0.10); }
+[data-theme="daylight"] .admin-sidebar-divider { background: rgba(26,35,51,0.10); }
 
 [data-theme="sakura-bloom"] .admin-sidebar-name,
 [data-theme="sakura-bloom"] .admin-sidebar-toggle-btn { color: #2E2A2C; }
-[data-theme="sakura-bloom"] .admin-sidebar-tagline { color: rgba(46,42,44,0.55); }
 [data-theme="sakura-bloom"] .admin-sidebar-link { color: rgba(46,42,44,0.65); }
 [data-theme="sakura-bloom"] .admin-sidebar-link:hover { background: rgba(214,92,130,0.10); color: #2E2A2C; }
+[data-theme="sakura-bloom"] .admin-sidebar-link.active { background: rgba(214,92,130,0.15); color: #D65C82; }
 [data-theme="sakura-bloom"] .admin-sidebar-toggle-btn:hover { background: rgba(46,42,44,0.08); }
-[data-theme="sakura-bloom"] .admin-sidebar-divider,
-[data-theme="sakura-bloom"] .admin-sidebar-foot { border-color: rgba(46,42,44,0.10); }
+[data-theme="sakura-bloom"] .admin-sidebar-divider { background: rgba(46,42,44,0.10); }
 
 /* Main / topbar */
 .admin-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -2203,7 +2224,10 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
   width: 38px; height: 38px; border-radius: 50%; background: var(--admin-accent); color: #fff;
   display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; flex-shrink: 0;
 }
-.admin-content { flex: 1; padding: 32px; max-width: 1400px; width: 100%; }
+/* margin-inline auto, not just max-width — .admin-main is a flex column, so
+   a capped item aligns to flex-start and every pixel over 1400px collects on
+   the right, leaving a 32px left gutter against a much wider right one. */
+.admin-content { flex: 1; padding: 32px; max-width: 1400px; width: 100%; margin-left: auto; margin-right: auto; }
 
 /* Page head */
 .admin-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
@@ -2313,7 +2337,14 @@ button:disabled { opacity: 0.65; cursor: not-allowed; }
 
 /* Card grids (destinations / attractions) */
 .admin-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-bottom: 24px; }
-.admin-empty-state { grid-column: 1 / -1; text-align: center; color: var(--admin-muted); padding: 60px 0; }
+/* Centred in the space left below the page header rather than sitting just
+   under it — text-align alone only centred it horizontally, leaving it
+   stranded at the top of an otherwise empty page. */
+.admin-empty-state {
+  grid-column: 1 / -1; text-align: center; color: var(--admin-muted);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 55vh; padding: 40px 0;
+}
 
 .admin-dest-card, .admin-attr-card {
   background: var(--admin-card); border: 1.5px solid var(--admin-border); border-radius: 16px; overflow: hidden;

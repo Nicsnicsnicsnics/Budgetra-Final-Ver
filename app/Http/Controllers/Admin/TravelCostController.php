@@ -7,11 +7,67 @@ use Illuminate\Http\Request;
 
 class TravelCostController extends Controller
 {
-    public function index()
+    /**
+     * Each sortable column's default direction is the one that produces the
+     * order asked for at a glance: priciest tier first, biggest multiplier
+     * first, local before international. 'desc' just flips it.
+     */
+    private const SORT_DEFAULTS = [
+        'cost_level' => 'asc',
+        'multiplier' => 'desc',
+        'category'   => 'asc',
+    ];
+
+    public function index(Request $request)
     {
         $active = 'travel-costs';
-        $destinations = DestinationCost::orderBy('destination')->paginate(25);
-        return view('admin.travel-costs.index', compact('destinations', 'active'));
+
+        $sort = $request->query('sort');
+        $sort = array_key_exists($sort, self::SORT_DEFAULTS) ? $sort : null;
+
+        // Falls back to the column's own default rather than a blanket 'asc',
+        // so a bare ?sort=multiplier still lands highest-first.
+        $dir = $request->query('dir');
+        $dir = in_array($dir, ['asc', 'desc'], true)
+            ? $dir
+            : ($sort ? self::SORT_DEFAULTS[$sort] : 'asc');
+
+        $query = DestinationCost::query();
+
+        // Cost level and category are ranked, not compared as text —
+        // alphabetically 'Budget-friendly' would land above 'Very Expensive'
+        // and 'International' above 'Local', which is the opposite of both
+        // orderings these columns are meant to convey.
+        match ($sort) {
+            'cost_level' => $query->orderByRaw("CASE cost_level
+                    WHEN 'Very Expensive'  THEN 1
+                    WHEN 'Pricey'          THEN 2
+                    WHEN 'Moderate'        THEN 3
+                    WHEN 'Budget-friendly' THEN 4
+                    ELSE 5 END " . ($dir === 'desc' ? 'DESC' : 'ASC')),
+            'category'   => $query->orderByRaw("CASE LOWER(category)
+                    WHEN 'local'         THEN 1
+                    WHEN 'international' THEN 2
+                    ELSE 3 END " . ($dir === 'desc' ? 'DESC' : 'ASC')),
+            'multiplier' => $query->orderBy('multiplier', $dir),
+            default      => $query->orderBy('destination'),
+        };
+
+        // Secondary key so rows that tie on the sorted column keep a stable,
+        // predictable order instead of shuffling between page loads.
+        if ($sort) {
+            $query->orderBy('destination');
+        }
+
+        $destinations = $query->paginate(25)->withQueryString();
+
+        return view('admin.travel-costs.index', [
+            'destinations' => $destinations,
+            'active'       => $active,
+            'sort'         => $sort,
+            'dir'          => $dir,
+            'sortDefaults' => self::SORT_DEFAULTS,
+        ]);
     }
 
     public function create()

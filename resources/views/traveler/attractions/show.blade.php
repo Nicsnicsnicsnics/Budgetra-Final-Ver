@@ -71,25 +71,8 @@
         </div>
         @endfor
     </div>
-    @if ($costAccuracyPct !== null)
-    <div class="atd-rev-accuracy">
-        <div class="atd-rev-accuracy-label">Cost matched estimate</div>
-        <div class="atd-rev-accuracy-value">{{ $costAccuracyPct }}%</div>
-        <div class="atd-rev-accuracy-sub">of {{ $reviewsWithSpend->count() }} {{ \Illuminate\Support\Str::plural('review', $reviewsWithSpend->count()) }} with spend data</div>
-        <div class="atd-rev-tier-badge">Est. ₱{{ number_format($attraction->estimated_cost, 0) }}/person</div>
-    </div>
-    @endif
 </div>
 @endif
-
-{{-- Description — name/location now live in the hero overlay above --}}
-<div class="atd-caption mb-24">
-    @if ($attraction->description)
-    <p class="atd-caption-text">{{ $attraction->description }}</p>
-    @else
-    <p class="atd-caption-text atd-about-empty">No description available yet for this attraction.</p>
-    @endif
-</div>
 
 {{-- Reviews --}}
 <div x-data="{ showReviewForm: false }">
@@ -112,18 +95,12 @@
             </select>
             @endif
             @auth
-            @if (!$hasReviewed)
             <button type="button" class="atd-rev-write-btn" @click="showReviewForm = true">
                 Write a review
             </button>
-            @endif
             @endauth
         </div>
     </div>
-
-    @if (session('success'))
-    <div class="alert alert-success mb-16">{{ session('success') }}</div>
-    @endif
 
     <div class="atd-reviews-list" id="atdReviewsList">
     @forelse ($reviews as $review)
@@ -131,11 +108,13 @@
         $initials = collect(explode(' ', $review->user->full_name ?? 'Traveler'))->filter()->map(fn($p) => mb_substr($p, 0, 1))->take(2)->implode('');
         $isMine = $review->user_id === auth()->id();
         $whoLabel = trim($review->user->full_name ?? 'Traveler');
-        $perPerson = ($review->spent_amount !== null && $review->pax_count) ? (float) $review->spent_amount / max(1, $review->pax_count) : null;
-        $estTotal  = $attraction->estimated_cost ? (float) $attraction->estimated_cost * max(1, $review->pax_count ?? 1) : null;
-        $isUnder   = $perPerson !== null && $attraction->estimated_cost && $perPerson <= (float) $attraction->estimated_cost;
+        // Once a review has actually been edited, show the edit date (not
+        // the original post date frozen forever) — updated_at only differs
+        // from created_at once an update() has actually run.
+        $wasEdited = $review->updated_at->ne($review->created_at);
+        $displayDate = $wasEdited ? $review->updated_at : $review->created_at;
     @endphp
-    <div class="atd-review-row" x-data="{ editing: false, expanded: false }"
+    <div class="atd-review-row" x-data="{ editing: false, expanded: false, deleting: false }"
          data-rating="{{ $review->rating }}" data-time="{{ $review->created_at->timestamp }}" data-trip-type="{{ $review->trip_type }}">
         @if ($review->user?->profile_photo)
         <img src="{{ Illuminate\Support\Facades\Storage::url($review->user->profile_photo) }}" alt="{{ $review->user->full_name }}" class="atd-review-avatar atd-review-avatar-img">
@@ -147,76 +126,82 @@
             <div class="atd-review-row-head">
                 <div>
                     <span class="atd-review-name">{{ $whoLabel }}</span>
-                    @if ($review->trip_type)
-                    <span class="atd-trip-badge">{{ $review->trip_type }}{{ $review->pax_count ? ' · ' . $review->pax_count . ' pax' : '' }}</span>
-                    @endif
                 </div>
-                <span class="atd-review-date">{{ $review->created_at->format('M j, Y') }}</span>
+                <span class="atd-review-date" title="{{ $wasEdited ? 'Edited' : 'Posted' }} {{ $displayDate->format('M j, Y g:i A') }}">
+                    {{ $displayDate->format('M j, Y') }}{{ $wasEdited ? ' (edited)' : '' }}
+                </span>
             </div>
-            <div class="atd-review-stars" x-show="!editing" @if ($isMine) x-cloak @endif style="margin:4px 0 8px;">
+            <div class="atd-review-stars" style="margin:4px 0 8px;">
                 @for ($i = 1; $i <= 5; $i++)
                     <i class="fa-{{ $i <= $review->rating ? 'solid' : 'regular' }} fa-star"></i>
                 @endfor
             </div>
-            @if ($perPerson !== null)
-            <div class="atd-spend-chip {{ $isUnder ? 'is-under' : '' }}">
-                {{ $isUnder ? '✓ ' : '' }}Spent ₱{{ number_format($review->spent_amount, 0) }}
-                @if ($estTotal !== null)
-                · est. ₱{{ number_format($estTotal, 0) }}
-                @endif
-            </div>
-            @endif
+            <p class="atd-review-body" :class="{ 'atd-review-body-clamped': !expanded }">{{ $review->body }}</p>
+            <button type="button" class="atd-review-more" @click="expanded = !expanded" x-text="expanded ? 'Show less' : 'Read more'"></button>
 
             @if ($isMine)
-            <div x-show="!editing">
-                <p class="atd-review-body" :class="{ 'atd-review-body-clamped': !expanded }">{{ $review->body }}</p>
-                <button type="button" class="atd-review-more" @click="expanded = !expanded" x-show="!expanded" x-text="'Read more'"></button>
+            <div class="atd-modal-backdrop" x-show="editing" x-cloak style="display:none;"
+                 @click="if (event.target === $el) editing = false" @keydown.escape.window="editing = false">
+                <div class="atd-modal-card">
+                    <div class="atd-modal-header">
+                        <div class="atd-modal-icon"><i class="fa-solid fa-pen"></i></div>
+                        <span class="atd-modal-title">Edit Your Review</span>
+                    </div>
+                    <form method="POST" action="{{ route('reviews.update', $review) }}">
+                        @csrf
+                        @method('PUT')
+                        <input type="hidden" name="attraction_id" value="{{ $attraction->id }}">
+
+                        <div class="form-group">
+                            <label class="form-label">Your Rating</label>
+                            <div class="atd-star-input">
+                                @for ($i = 5; $i >= 1; $i--)
+                                <input type="radio" name="rating" id="edit-star{{ $review->id }}-{{ $i }}" value="{{ $i }}" {{ $review->rating == $i ? 'checked' : '' }}>
+                                <label for="edit-star{{ $review->id }}-{{ $i }}" title="{{ $i }} star"><i class="fa-solid fa-star"></i></label>
+                                @endfor
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Your Review</label>
+                            <textarea name="body" class="form-control atd-textarea" rows="4" minlength="10" required>{{ $review->body }}</textarea>
+                        </div>
+
+                        <button type="submit" class="atd-submit-btn">Save Changes</button>
+                        <button type="button" class="atd-modal-cancel-btn" @click="editing = false">Close</button>
+                    </form>
+                </div>
             </div>
-            <form method="POST" action="{{ route('reviews.update', $review) }}" x-show="editing" x-cloak class="atd-review-edit-form">
-                @csrf
-                @method('PUT')
-                <input type="hidden" name="attraction_id" value="{{ $attraction->id }}">
-                <div class="atd-star-input atd-star-input-sm">
-                    @for ($i = 5; $i >= 1; $i--)
-                    <input type="radio" name="rating" id="edit-star{{ $review->id }}-{{ $i }}" value="{{ $i }}" {{ $review->rating == $i ? 'checked' : '' }}>
-                    <label for="edit-star{{ $review->id }}-{{ $i }}" title="{{ $i }} star"><i class="fa-solid fa-star"></i></label>
-                    @endfor
+
+            <div class="atd-modal-backdrop" x-show="deleting" x-cloak style="display:none;"
+                 @click="if (event.target === $el) deleting = false" @keydown.escape.window="deleting = false">
+                <div class="atd-modal-card" style="max-width:380px;text-align:center;">
+                    <div style="width:56px;height:56px;border-radius:16px;background:rgba(226,58,78,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                        <i class="fa-solid fa-trash-can" style="font-size:22px;color:#E23A4E;"></i>
+                    </div>
+                    <h2 class="atd-section-title" style="margin:0 0 8px;">Delete Review?</h2>
+                    <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 20px;">This will permanently delete your review. This action cannot be undone.</p>
+                    <form method="POST" action="{{ route('reviews.destroy', $review) }}">
+                        @csrf
+                        @method('DELETE')
+                        <input type="hidden" name="attraction_id" value="{{ $attraction->id }}">
+                        <button type="submit" class="atd-delete-confirm-btn">Delete Review</button>
+                        <button type="button" class="atd-modal-cancel-btn" @click="deleting = false">Cancel</button>
+                    </form>
                 </div>
-                <div class="atd-trip-type-picker">
-                    @foreach (['Solo', 'Couple', 'Family', 'Barkada'] as $type)
-                    <label class="atd-trip-type-option">
-                        <input type="radio" name="trip_type" value="{{ $type }}" {{ $review->trip_type === $type ? 'checked' : '' }}>
-                        <span>{{ $type }}</span>
-                    </label>
-                    @endforeach
-                </div>
-                <div class="atd-form-row-2">
-                    <input type="number" name="pax_count" min="1" max="50" value="{{ $review->pax_count ?? 1 }}" placeholder="Travelers" class="form-control atd-textinput">
-                    <input type="number" step="0.01" min="0" name="spent_amount" value="{{ $review->spent_amount }}" placeholder="Amount spent (₱)" class="form-control atd-textinput">
-                </div>
-                <textarea name="body" class="form-control atd-textarea" rows="3" minlength="10" required>{{ $review->body }}</textarea>
-                <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
-            </form>
-            @else
-            <p class="atd-review-body" :class="{ 'atd-review-body-clamped': !expanded }">{{ $review->body }}</p>
-            <button type="button" class="atd-review-more" @click="expanded = !expanded" x-show="!expanded" x-text="'Read more'"></button>
+            </div>
             @endif
 
             <div class="atd-review-foot">
-                <form method="POST" action="{{ route('reviews.helpful', $review) }}" style="margin:0;">
-                    @csrf
-                    <button type="submit" class="atd-helpful-btn {{ $review->helpfulVotes->contains('user_id', auth()->id()) ? 'is-marked' : '' }}">
-                        <i class="fa-regular fa-thumbs-up"></i> Helpful @if ($review->helpful_count > 0)<span>({{ $review->helpful_count }})</span>@endif
-                    </button>
-                </form>
                 @if ($isMine)
                 <button type="button" class="atd-foot-link" @click="editing = !editing" x-text="editing ? 'Cancel' : 'Edit'"></button>
+                <button type="button" class="atd-foot-link atd-foot-link-danger" @click="deleting = true">Delete</button>
                 @else
                     @if ($review->flagged_by === auth()->id())
                     <span class="atd-review-flagged" title="You flagged this review"><i class="fa-solid fa-flag"></i> Flagged</span>
                     @else
                     <details class="atd-review-flag">
-                        <summary class="atd-foot-link" title="Report this review">Report</summary>
+                        <summary class="atd-foot-link" title="Report this review"><i class="fa-solid fa-flag"></i> Report</summary>
                         <div class="atd-review-flag-menu">
                             <form method="POST" action="{{ route('reviews.flag', $review) }}">
                                 @csrf
@@ -245,16 +230,30 @@
 </div>
 
 {{-- Write-a-review modal — hidden until the button above is clicked --}}
-@if (!$hasReviewed)
+@php
+    // Traveler already has a review for this attraction — reuse the same
+    // "Write a review" button/modal to EDIT it instead of creating a
+    // second, duplicate review (store() has no dupe guard, so silently
+    // letting this hit the store route would let one traveler stack up
+    // multiple reviews on the same attraction).
+    $modalRating = $hasReviewed ? $myReview->rating : old('rating');
+    $modalBody   = $hasReviewed ? $myReview->body   : old('body');
+@endphp
 <div class="atd-modal-backdrop" x-show="showReviewForm" x-cloak style="display:none;"
      @click="if (event.target === $el) showReviewForm = false" @keydown.escape.window="showReviewForm = false">
     <div class="atd-modal-card">
-        <h2 class="atd-section-title mb-16" style="margin:0 0 18px;">Leave a Review</h2>
+        <div class="atd-modal-header">
+            <div class="atd-modal-icon"><i class="fa-solid fa-pen"></i></div>
+            <span class="atd-modal-title">{{ $hasReviewed ? 'Edit Your Review' : 'Leave a Review' }}</span>
+        </div>
         @if ($errors->any())
         <div class="alert alert-danger mb-16">{{ $errors->first() }}</div>
         @endif
-        <form method="POST" action="{{ route('reviews.store') }}">
+        <form method="POST" action="{{ $hasReviewed ? route('reviews.update', $myReview) : route('reviews.store') }}">
             @csrf
+            @if ($hasReviewed)
+            @method('PUT')
+            @endif
             <input type="hidden" name="destination"   value="{{ $attraction->destination }}">
             <input type="hidden" name="attraction_id" value="{{ $attraction->id }}">
 
@@ -263,7 +262,7 @@
                 <div class="atd-star-input">
                     @for ($i = 5; $i >= 1; $i--)
                     <input type="radio" name="rating" id="star{{ $i }}" value="{{ $i }}"
-                           {{ old('rating') == $i ? 'checked' : '' }}>
+                           {{ $modalRating == $i ? 'checked' : '' }}>
                     <label for="star{{ $i }}" title="{{ $i }} star"><i class="fa-solid fa-star"></i></label>
                     @endfor
                 </div>
@@ -271,44 +270,20 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">Trip Type (optional)</label>
-                <div class="atd-trip-type-picker">
-                    @foreach (['Solo', 'Couple', 'Family', 'Barkada'] as $type)
-                    <label class="atd-trip-type-option">
-                        <input type="radio" name="trip_type" value="{{ $type }}" {{ old('trip_type') === $type ? 'checked' : '' }}>
-                        <span>{{ $type }}</span>
-                    </label>
-                    @endforeach
-                </div>
-            </div>
-
-            <div class="form-group atd-form-row-2">
-                <div>
-                    <label class="form-label">Travelers</label>
-                    <input type="number" name="pax_count" min="1" max="50" value="{{ old('pax_count', 1) }}" class="form-control atd-textinput">
-                </div>
-                <div>
-                    <label class="form-label">Amount Spent (optional)</label>
-                    <input type="number" step="0.01" min="0" name="spent_amount" value="{{ old('spent_amount') }}" placeholder="e.g. 450" class="form-control atd-textinput">
-                </div>
-            </div>
-
-            <div class="form-group">
                 <label class="form-label">Your Review</label>
                 <textarea name="body" class="form-control atd-textarea {{ $errors->has('body') ? 'is-invalid' : '' }}"
                           placeholder="Share your experience (min. 10 characters)"
-                          rows="4" required>{{ old('body') }}</textarea>
+                          rows="4" required>{{ $modalBody }}</textarea>
                 @error('body')<div class="error">{{ $message }}</div>@enderror
             </div>
 
             <button type="submit" class="atd-submit-btn">
-                <i class="fa-solid fa-paper-plane"></i> Submit Review
+                <i class="fa-solid fa-paper-plane"></i> {{ $hasReviewed ? 'Save Changes' : 'Submit Review' }}
             </button>
             <button type="button" class="atd-modal-cancel-btn" @click="showReviewForm = false">Close</button>
         </form>
     </div>
 </div>
-@endif
 </div>
 
 <script>
@@ -339,9 +314,7 @@
         display: inline-flex; align-items: center; gap: 6px;
         font-size: 13px; font-weight: 600; color: var(--primary); text-decoration: none;
         background: none; border: none; padding: 0; margin-bottom: 10px;
-        transition: transform .15s ease;
     }
-    .atd-back:hover { transform: translateX(-2px); }
     .atd-back i { font-size: 11px; }
 
     .atd-hero {
@@ -350,7 +323,6 @@
         background: var(--bg);
         box-shadow: 0 12px 32px rgba(0,0,0,0.14);
     }
-    .atd-about-empty { font-style: italic; opacity: .8; }
     .atd-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .atd-hero-noimg {
         position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -385,8 +357,6 @@
         .atd-hero-title { font-size: 28px; }
     }
 
-    .atd-caption-text { font-size: 17px; font-weight: 700; line-height: 1.6; color: var(--dark); margin: 0; max-width: 900px; }
-
     .atd-card {
         background: var(--bg-white); border: 1.5px solid var(--border); border-radius: 18px; padding: 22px 24px;
     }
@@ -412,18 +382,6 @@
     .atd-rev-bar-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
     .atd-rev-bar-fill { height: 100%; background: #F5A623; border-radius: 3px; }
 
-    .atd-rev-accuracy { border-left: 1.5px solid var(--border); padding-left: 28px; min-width: 160px; flex-shrink: 0; }
-    .atd-rev-accuracy-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
-    .atd-rev-accuracy-value { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 24px; color: var(--primary); }
-    .atd-rev-accuracy-sub { font-size: 12px; color: var(--muted); margin-top: 2px; max-width: 160px; }
-    .atd-rev-tier-badge {
-        display: inline-block; margin-top: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
-        background: var(--primary-light); color: var(--primary); padding: 3px 9px; border-radius: 6px;
-    }
-    @media (max-width: 600px) {
-        .atd-rev-accuracy { border-left: none; border-top: 1.5px solid var(--border); padding-left: 0; padding-top: 16px; width: 100%; }
-    }
-
     .atd-rev-controls {
         display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
         margin-bottom: 16px;
@@ -433,11 +391,14 @@
         background: var(--bg-white); border-radius: 8px; padding: 7px 10px; color: var(--dark); cursor: pointer;
     }
     .atd-rev-write-btn {
-        display: inline-flex; align-items: center; font-size: 13px; font-weight: 700; color: #fff;
-        background: var(--primary); border-radius: 10px; padding: 8px 16px; text-decoration: none;
-        transition: background .18s ease;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff;
+        background: var(--primary); border: none; border-radius: 12px; padding: 12px 22px;
+        text-decoration: none; cursor: pointer; font-family: inherit;
+        transition: background .18s ease, transform .15s ease;
     }
-    .atd-rev-write-btn:hover { background: var(--primary-dark); }
+    .atd-rev-write-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .atd-rev-write-btn:active { transform: translateY(0); }
     .atd-reviews-list { display: flex; flex-direction: column; }
     .atd-review-row {
         display: grid; grid-template-columns: 46px 1fr; gap: 14px;
@@ -449,18 +410,6 @@
 
     .atd-review-stars { color: #F5A623; font-size: 14px; letter-spacing: 1.5px; flex-shrink: 0; }
     .atd-review-stars i.fa-regular { color: var(--border); }
-
-    .atd-trip-badge {
-        font-size: 11px; font-weight: 600; color: var(--muted);
-        border: 1.5px solid var(--border); border-radius: 6px; padding: 1px 8px; margin-left: 8px;
-    }
-    .atd-spend-chip {
-        display: inline-flex; align-items: center; gap: 6px; font-family: 'IBM Plex Mono', monospace;
-        font-size: 12px; background: var(--primary-light); color: var(--primary);
-        padding: 3px 10px; border-radius: 6px; margin-bottom: 10px;
-    }
-    .atd-spend-chip.is-under { background: rgba(47,158,91,.12); color: #2F9E5B; }
-
     .atd-review-avatar {
         width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
         background: var(--primary); color: #fff; font-family: 'Fraunces', serif; font-size: 16px; font-weight: 700;
@@ -479,21 +428,45 @@
     }
     .atd-review-more:hover { color: var(--primary); }
 
+    /* Every control in this row — <button>, <summary>, <span> — gets the
+       identical box: same display, same 18px line-height, same padding and
+       border reset. Buttons and summaries each carry their own UA defaults
+       for line-height and box model, which is what left Edit and Delete
+       sitting a pixel or two apart despite looking like the same element. */
     .atd-review-foot { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
-    .atd-helpful-btn {
-        display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);
-        background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer;
-        transition: border-color .15s ease, color .15s ease; font-family: inherit;
+    .atd-foot-link,
+    .atd-review-flagged {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 12px; line-height: 18px; height: 18px;
+        font-family: inherit; font-weight: 400;
+        background: none; border: none; padding: 0; margin: 0;
+        list-style: none; vertical-align: middle; box-sizing: content-box;
     }
-    .atd-helpful-btn:hover, .atd-helpful-btn.is-marked { border-color: var(--primary); color: var(--primary); }
+    /* border-bottom, not text-decoration: underline. Chrome positions an
+       auto underline from font metrics per element, and on these 12px flex
+       controls it rounded to a different pixel for "Edit" than for "Delete"
+       — the boxes measured identical (both top 812.50, height 18.00) while
+       the two underlines sat a pixel apart. A border is placed by the box
+       model, so it lands in the same place for every control in the row.
+       height is 17px + the 1px border = the 18px the shared rule sets. */
     .atd-foot-link {
-        font-size: 12px; color: var(--muted); cursor: pointer; text-decoration: underline;
-        background: none; border: none; padding: 0; font-family: inherit; list-style: none;
+        color: var(--muted); cursor: pointer;
+        border-bottom: 1px solid currentColor; height: 17px;
     }
+    .atd-foot-link i { font-size: 10px; }
     .atd-foot-link:hover { color: var(--primary); }
     .atd-foot-link::-webkit-details-marker { display: none; }
+    .atd-foot-link-danger { color: #E23A4E; }
+    .atd-foot-link-danger:hover { color: #C22B3E; }
 
-    .atd-review-flagged { color: var(--danger); font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+    .atd-delete-confirm-btn {
+        display: block; width: 100%; background: #E23A4E; color: #fff; border: none; border-radius: 12px;
+        padding: 12px 0; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;
+        transition: background .18s ease;
+    }
+    .atd-delete-confirm-btn:hover { background: #C22B3E; }
+
+    .atd-review-flagged { color: var(--danger); }
     .atd-review-flag { position: relative; }
     .atd-review-flag[open] .atd-foot-link { color: var(--danger); }
     .atd-review-flag-menu {
@@ -507,10 +480,6 @@
         font-size: 12.5px; color: var(--dark); cursor: pointer;
     }
     .atd-review-flag-menu button:hover { background: var(--border-light); }
-
-    .atd-review-edit-form { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
-    .atd-star-input-sm label { font-size: 18px; }
-    .atd-review-edit-form .atd-textarea { min-height: 80px; }
 
     .atd-empty {
         text-align: center; padding: 48px 24px; background: var(--bg-white);
@@ -529,61 +498,50 @@
         padding: 16px 18px; font-size: 13.5px; font-weight: 700;
     }
 
-    .atd-form-card {
-        background: var(--bg-white); border: 1.5px solid var(--border); border-radius: 18px;
-        padding: 24px 26px; max-width: 560px;
+    .atd-modal-card .form-label {
+        font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+        color: var(--muted); margin-bottom: 8px; display: block;
     }
-    .atd-form-card .form-label,
-    .atd-modal-card .form-label { font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 8px; display: block; }
-    .atd-form-card .form-group,
     .atd-modal-card .form-group { margin-bottom: 20px; }
-    .atd-form-card .atd-textarea,
-    .atd-form-card .atd-textinput,
     .atd-modal-card .atd-textarea,
     .atd-modal-card .atd-textinput {
         background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px;
         padding: 12px 14px; font-family: inherit; font-size: 14px; color: var(--dark); width: 100%;
         box-sizing: border-box; transition: border-color .18s ease, background .18s ease;
     }
-    .atd-form-card .atd-textarea:focus,
-    .atd-form-card .atd-textinput:focus,
     .atd-modal-card .atd-textarea:focus,
     .atd-modal-card .atd-textinput:focus {
         outline: none; border-color: var(--primary); background: var(--bg-white);
     }
-    .atd-form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
     .atd-modal-backdrop {
         position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
         z-index: 2100; display: flex; align-items: center; justify-content: center; padding: 20px;
     }
     .atd-modal-card {
-        background: var(--bg-white); border: 1.5px solid var(--border); border-radius: 20px;
-        padding: 26px 28px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+        background: var(--bg-white); border: 1.5px solid var(--border); border-radius: 22px;
+        padding: 28px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto;
         box-sizing: border-box; animation: atdModalPop .2s cubic-bezier(.34,1.56,.64,1);
     }
     @keyframes atdModalPop { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: none; } }
+    .atd-modal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    .atd-modal-icon {
+        width: 40px; height: 40px; border-radius: 12px; background: var(--primary); flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px;
+    }
+    .atd-modal-title { font-size: 18px; font-weight: 700; color: var(--dark); }
     .atd-modal-cancel-btn {
-        display: block; width: 100%; margin-top: 10px; background: transparent; color: var(--muted);
-        border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 0; font-size: 13px; font-weight: 700;
-        font-family: inherit; cursor: pointer; transition: background .18s ease, border-color .18s ease;
+        display: block; width: 100%; margin-top: 10px; background: transparent; color: var(--dark);
+        border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 0; font-size: 13px; font-weight: 700;
+        letter-spacing: .06em; text-transform: uppercase; font-family: inherit; cursor: pointer;
+        transition: background .18s ease, border-color .18s ease;
     }
-    .atd-modal-cancel-btn:hover { background: var(--border-light); border-color: var(--border); }
-    .atd-trip-type-picker { display: flex; flex-wrap: wrap; gap: 8px; }
-    .atd-trip-type-option input { position: absolute; opacity: 0; width: 0; height: 0; }
-    .atd-trip-type-option span {
-        display: inline-block; font-size: 13px; font-weight: 600; color: var(--muted);
-        border: 1.5px solid var(--border); border-radius: 20px; padding: 7px 16px; cursor: pointer;
-        transition: border-color .15s ease, color .15s ease, background .15s ease;
-    }
-    .atd-trip-type-option input:checked ~ span {
-        border-color: var(--primary); color: var(--primary); background: var(--primary-light);
-    }
+    .atd-modal-cancel-btn:hover { background: var(--bg); border-color: var(--muted); }
     .atd-submit-btn {
         display: inline-flex; align-items: center; justify-content: center; gap: 8px;
         width: 100%; background: var(--primary); color: #fff; border: none; border-radius: 12px;
-        padding: 13px 20px; font-size: 14px; font-weight: 700; cursor: pointer;
-        transition: background .18s ease, transform .15s ease;
+        padding: 14px 20px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+        cursor: pointer; transition: background .18s ease, transform .15s ease;
     }
     .atd-submit-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
     .atd-submit-btn:active { transform: translateY(0); }

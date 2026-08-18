@@ -74,7 +74,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
             <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">Progress</span>
             @if($cardDone)
-            <span style="font-size:13px;font-weight:700;color:#16A34A;">Completed</span>
+            <span style="font-size:13px;font-weight:700;color:var(--success);">Completed</span>
             @else
             <span style="font-size:15px;font-weight:700;color:var(--dark);">{{ $cardPct }}%</span>
             @endif
@@ -82,7 +82,7 @@
 
         {{-- Progress bar --}}
         <div style="height:6px;background:var(--border-light);border-radius:99px;overflow:hidden;margin-bottom:18px;">
-            <div style="height:100%;width:{{ $cardPct }}%;background:{{ $cardDone ? '#16A34A' : 'var(--primary)' }};border-radius:99px;transition:width 0.3s;"></div>
+            <div style="height:100%;width:{{ $cardPct }}%;background:{{ $cardDone ? 'var(--success)' : 'var(--primary)' }};border-radius:99px;transition:width 0.3s;"></div>
         </div>
 
         {{-- Saved / Target --}}
@@ -100,7 +100,10 @@
         {{-- Button --}}
         <div style="margin-top:auto;">
             @if($cardDone)
-            <div style="width:100%;padding:14px;border-radius:12px;background:#F0FDF4;color:#16A34A;font-size:14px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;">
+            {{-- Same neutral, non-actionable treatment as the Trip Finished
+                 state below — both are terminal states where there's nothing
+                 left to click, so they read the same. --}}
+            <div style="width:100%;background:var(--border-light);color:var(--muted);border-radius:12px;padding:14px;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px;font-family:'Hanken Grotesk',sans-serif;">
                 <i class="fa-solid fa-check"></i> Goal Reached!
             </div>
             @elseif($isPastGoal)

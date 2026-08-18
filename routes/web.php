@@ -79,6 +79,7 @@ Route::middleware(['auth', 'not-admin'])->group(function () {
     Route::get('/reviews',               [Traveler\ReviewController::class, 'index'])->name('reviews.index');
     Route::post('/reviews',              [Traveler\ReviewController::class, 'store'])->name('reviews.store');
     Route::put('/reviews/{review}',      [Traveler\ReviewController::class, 'update'])->name('reviews.update');
+    Route::delete('/reviews/{review}',   [Traveler\ReviewController::class, 'destroy'])->name('reviews.destroy');
     Route::post('/reviews/{review}/flag', [Traveler\ReviewController::class, 'flag'])->name('reviews.flag');
     Route::post('/reviews/{review}/helpful', [Traveler\ReviewController::class, 'markHelpful'])->name('reviews.helpful');
 
@@ -129,6 +130,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/backup',            [Admin\BackupController::class, 'index'])->name('backup.index');
     Route::post('/backup/download',  [Admin\BackupController::class, 'download'])->name('backup.download');
     Route::post('/backup/restore',   [Admin\BackupController::class, 'restore'])->name('backup.restore');
+
+    Route::get('/profile',           [Admin\ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile',           [Admin\ProfileController::class, 'update'])->name('profile.update');
 
     Route::get('/settings',          [Admin\SettingsController::class, 'edit'])->name('settings.index');
 });

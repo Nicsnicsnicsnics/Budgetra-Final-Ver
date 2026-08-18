@@ -3,7 +3,7 @@
 <div class="admin-page-head">
     <div>
         <h1>User Reviews</h1>
-        <p>Moderate reviews travelers have left on attractions and destinations.</p>
+        <p>Moderate reviews travelers have left on attractions.</p>
     </div>
 </div>
 @if(session('success'))<div class="admin-alert-success">{{ session('success') }}</div>@endif
@@ -41,17 +41,6 @@
                     <form method="POST" action="{{ route('admin.reviews.unflag', $review) }}">
                         @csrf @method('PATCH')
                         <button type="submit" class="admin-btn admin-btn-outline admin-btn-sm"><i class="fa-solid fa-flag"></i> Unflag</button>
-                    </form>
-                @endif
-                @if($review->status === 'active')
-                    <form method="POST" action="{{ route('admin.reviews.hide', $review) }}">
-                        @csrf @method('PATCH')
-                        <button type="submit" class="admin-btn admin-btn-outline admin-btn-sm"><i class="fa-solid fa-eye-slash"></i> Hide</button>
-                    </form>
-                @else
-                    <form method="POST" action="{{ route('admin.reviews.show', $review) }}">
-                        @csrf @method('PATCH')
-                        <button type="submit" class="admin-btn admin-btn-primary admin-btn-sm"><i class="fa-solid fa-eye"></i> Show</button>
                     </form>
                 @endif
                 <button type="button" class="admin-icon-btn admin-icon-btn-danger js-delete-review-btn"

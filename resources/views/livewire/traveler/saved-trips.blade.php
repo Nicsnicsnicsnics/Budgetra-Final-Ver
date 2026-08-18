@@ -109,7 +109,6 @@
                 'upcoming' => '#3B82F6',
                 default    => 'var(--muted)',
             };
-            $spendColor = $trip->spend_pct >= 80 ? '#DC2626' : ($trip->spend_pct >= 50 ? '#D97706' : 'var(--dark)');
             $isDraft = $trip->status === 'draft';
         @endphp
         <div wire:key="trip-{{ $trip->id }}" style="position:relative;background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;width:100%;">
@@ -187,16 +186,9 @@
 
             <div style="padding:20px;">
                 <div @if(!$isDraft) style="margin-bottom:16px;" @endif>
-                    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px;">
-                        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Spent</div>
-                        <div style="font-size:12px;font-weight:700;color:{{ $spendColor }};">{{ $trip->spend_pct }}%</div>
-                    </div>
-                    <div style="height:7px;background:var(--border-light);border-radius:99px;overflow:hidden;margin-bottom:9px;">
-                        <div style="height:100%;border-radius:99px;background:{{ $spendColor }};width:{{ $trip->spend_pct }}%;transition:width .4s ease;"></div>
-                    </div>
+                    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Trip Cost</div>
                     <div style="font-size:23px;font-weight:700;color:#C8874A;">
-                        {{ currency_code() }} {{ number_format($trip->actual_spent, 0) }}
-                        <span style="font-size:13px;font-weight:500;color:var(--muted);">/ {{ number_format($displayCost, 0) }}</span>
+                        {{ currency_code() }} {{ number_format($displayCost, 0) }}
                     </div>
                 </div>
 
@@ -275,9 +267,13 @@
                     $rowExtra  = $rowData['extra'] ?? 0;
                     if (!$rowCost && !$rowDetail) continue;
                 @endphp
-                <div class="st-sum-row" style="padding:12px 13px;background:var(--bg-white);border-radius:14px;display:flex;align-items:stretch;gap:11px;">
-                    <div style="width:42px;min-height:32px;border-radius:10px;background:{{ $meta['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:stretch;">
-                        <i class="{{ $meta['icon'] }}" style="color:{{ $meta['color'] }};font-size:13px;"></i>
+                {{-- Fixed square tile, not align-self:stretch — stretching made
+                     the tile height follow each row's text, so a 3-line row got
+                     a tall box with the same tiny icon rattling around inside it
+                     while a 1-line row got a short one. --}}
+                <div class="st-sum-row" style="padding:12px 13px;background:var(--bg-white);border-radius:14px;display:flex;align-items:flex-start;gap:11px;">
+                    <div style="width:42px;height:42px;border-radius:12px;background:{{ $meta['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="{{ $meta['icon'] }}" style="color:{{ $meta['color'] }};font-size:17px;"></i>
                     </div>
                     <div style="flex:1;min-width:0;">
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">

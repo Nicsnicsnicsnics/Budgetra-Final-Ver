@@ -7,6 +7,11 @@ class SettingsController extends Controller
 {
     public function edit()
     {
-        return view('admin.settings.index', ['user' => auth()->user()]);
+        // Without 'active' the sidebar gets '' and no link highlights while
+        // you're actually sitting on the settings page.
+        return view('admin.settings.index', [
+            'user'   => auth()->user(),
+            'active' => 'settings',
+        ]);
     }
 }

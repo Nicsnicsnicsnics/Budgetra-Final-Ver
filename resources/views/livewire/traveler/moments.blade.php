@@ -175,11 +175,8 @@
 @else
 <button wire:click="backToOverview" type="button" class="moments-back-btn"
         style="display:flex;align-items:center;gap:8px;background:none;border:none;padding:0 0 16px;font-size:13px;font-weight:600;color:var(--primary);cursor:pointer;">
-    <i class="fa-solid fa-arrow-left" style="font-size:11px;transition:transform .15s ease;"></i> All Destinations
+    <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> All Destinations
 </button>
-<style>
-    .moments-back-btn:hover i { transform: translateX(-3px); }
-</style>
 
 @if ($selectedTripId && $this->selectedTrip)
 @php
@@ -391,7 +388,33 @@
     .moments-btn-outline:hover:not(:disabled) { background: var(--border-light); border-color: var(--muted); color: var(--dark); }
     .moments-btn-danger { transition: background .15s ease, transform .12s ease, box-shadow .15s ease; }
     .moments-btn-danger:hover:not(:disabled) { background: #B91C1C; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(220,38,38,.25); }
-    .moments-photo-dropzone:hover { border-color: var(--primary); background: var(--primary-light); }
+    /* Layout lives here, not in an inline style attribute: the drag-over
+       state used an Alpine :style string binding, and Alpine sets the whole
+       style attribute for string values — so the moment it evaluated to ''
+       (not dragging, i.e. always) it wiped the dashed border, padding and
+       centering along with it. :class can't clobber anything. */
+    .moments-photo-dropzone {
+        width: 100%; box-sizing: border-box;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 12px; text-align: center;
+        border: 1.5px dashed var(--border); border-radius: 14px; padding: 28px 16px;
+        cursor: pointer; transition: border-color .15s ease, background .15s ease;
+    }
+    .moments-photo-dropzone:hover,
+    .moments-photo-dropzone.is-dragover { border-color: var(--primary); background: var(--primary-light); }
+    .moments-dropzone-prompt {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    }
+    /* min-height matches the prompt's own height (52px tile + 12px gap + two
+       text lines) so swapping to the spinner doesn't collapse the dropzone. */
+    /* wire:loading.flex, not plain wire:loading — Livewire shows a loading
+       element as display:inline-block by default, and that inline style beats
+       this rule, leaving align-items/justify-content inert and the spinner
+       stuck at the top of the box. */
+    .moments-dropzone-loading {
+        align-items: center; justify-content: center; width: 100%;
+        min-height: 106px; color: var(--primary); font-size: 26px;
+    }
 
     /* Leaflet's default popup bubble is a fixed white card regardless of
        page theme — without this, the pin popups' var(--dark)/var(--muted)
@@ -451,7 +474,7 @@
                  in the Timeline View and the day_number comments below).
                  The calendar still opens on the right month via the default
                  value ItineraryManager::openAddPinModal() sets. --}}
-            <div style="position:relative;" x-data='momentDateCal(@json($pinVisitedDate ?: ""))'>
+            <div style="position:relative;" x-data='momentDateCal(@json($pinVisitedDate ?: ""), @json($pinModalMode === "add"))'>
                 <div class="moments-input" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:9px 14px;box-sizing:border-box;" @click="open=!open">
                     <span x-text="val ? fmtLabel(val) : 'Select date'" :style="val ? 'font-size:13px;font-weight:400;color:var(--dark);' : 'font-size:13px;color:var(--muted);'"></span>
                     <i class="fa-regular fa-calendar" style="font-size:12px;color:var(--muted);flex-shrink:0;"></i>
@@ -466,8 +489,8 @@
                     <div class="exp-cal-grid">
                         <template x-for="d in ['Su','Mo','Tu','We','Th','Fr','Sa']"><div class="exp-cal-day-name" x-text="d"></div></template>
                         <template x-for="cell in cells" :key="cell.key">
-                            <div class="exp-cal-day" :class="{'selected': cell.d && cell.val===val, 'empty': !cell.d}"
-                                 @click.stop="cell.d && pick(cell.val)" x-text="cell.d||''"></div>
+                            <div class="exp-cal-day" :class="{'selected': cell.d && cell.val===val, 'past': cell.past, 'empty': !cell.d}"
+                                 @click.stop="cell.d && !cell.past && pick(cell.val)" x-text="cell.d||''"></div>
                         </template>
                     </div>
                 </div>
@@ -516,18 +539,26 @@
                         $refs.pinPhotosInput.files = $event.dataTransfer.files;
                         $refs.pinPhotosInput.dispatchEvent(new Event('change'));
                    "
-                   :style="over ? 'border-color:var(--primary);background:var(--primary-light);' : ''"
-                   style="width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;border:1.5px dashed var(--border);border-radius:14px;padding:28px 16px;cursor:pointer;transition:border-color .15s ease,background .15s ease;">
-                <div style="width:52px;height:52px;border-radius:14px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;">
-                    <i class="fa-solid fa-cloud-arrow-up" style="color:var(--primary);font-size:20px;"></i>
+                   :class="{ 'is-dragover': over }">
+                {{-- Prompt and spinner swap in place inside the dropzone, so the
+                     box keeps its size instead of a separate line appearing
+                     underneath it while an upload is in flight. --}}
+                <div wire:loading.remove wire:target="pinPhotos" class="moments-dropzone-prompt">
+                    <div style="width:52px;height:52px;border-radius:14px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fa-solid fa-cloud-arrow-up" style="color:var(--primary);font-size:20px;"></i>
+                    </div>
+                    <div style="min-width:0;">
+                        <div style="font-size:14px;font-weight:700;color:var(--dark);">
+                            <span style="color:var(--primary);">Click to upload</span> or drag photos
+                        </div>
+                        <div style="font-size:12px;color:var(--muted);margin-top:4px;">PNG or JPG, up to 6 photos (5MB each)</div>
+                    </div>
                 </div>
-                <div style="font-size:14px;font-weight:700;color:var(--dark);">
-                    <span style="color:var(--primary);">Click to upload</span> or drag photos
+                <div wire:loading.flex wire:target="pinPhotos" class="moments-dropzone-loading" role="status" aria-label="Uploading photos">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
                 </div>
-                <div style="font-size:12px;color:var(--muted);margin-top:-6px;">PNG or JPG, up to 6 photos (5MB each)</div>
                 <input id="pinPhotosInput" x-ref="pinPhotosInput" type="file" wire:model="pinPhotos" accept="image/*" multiple style="display:none;">
             </label>
-            <div wire:loading wire:target="pinPhotos" style="font-size:11px;color:var(--muted);margin-top:6px;"><i class="fa-solid fa-spinner fa-spin"></i> Uploading…</div>
             @error('pinPhotos') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
             @error('pinPhotos.*') <span style="display:block;font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</span> @enderror
         </div>
@@ -746,25 +777,6 @@
             return wrap;
         }
 
-        var routeLine = null;
-
-        function rebuildPolyline() {
-            var ordered = Object.values(pinsById).sort(function (a, b) {
-                return a.visited_date_sort < b.visited_date_sort ? -1 : (a.visited_date_sort > b.visited_date_sort ? 1 : 0);
-            });
-            var latlngs = ordered.map(function (p) { return [p.lat, p.lng]; });
-
-            if (latlngs.length < 2) {
-                if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
-                return;
-            }
-            if (routeLine) {
-                routeLine.setLatLngs(latlngs);
-            } else {
-                routeLine = L.polyline(latlngs, { color: 'var(--primary)', weight: 3, opacity: 0.7, dashArray: '4,6' }).addTo(map);
-            }
-        }
-
         function renderPin(pin) {
             pinsById[pin.id] = pin;
             var marker = markersById[pin.id];
@@ -780,14 +792,12 @@
                     if (window.focusTimelineOnMoment) window.focusTimelineOnMoment(pin.id);
                 });
             }
-            rebuildPolyline();
         }
 
         function removePin(pinId) {
             var marker = markersById[pinId];
             if (marker) { map.removeLayer(marker); delete markersById[pinId]; }
             delete pinsById[pinId];
-            rebuildPolyline();
         }
 
         L.marker([lat, lng]).addTo(map).bindPopup(label).openPopup();
@@ -945,30 +955,6 @@
 
         var memoryMarkersById = {};
         var momentsById = {};
-        var routeLines = [];
-
-        // One dashed line per trip, connecting that trip's own memory markers
-        // in visited-date order — mirrors initMomentsMap's rebuildPolyline,
-        // just grouped by trip_id since this map spans every destination.
-        function rebuildOverviewRoutes() {
-            routeLines.forEach(function (line) { map.removeLayer(line); });
-            routeLines = [];
-
-            var byTrip = {};
-            Object.values(momentsById).forEach(function (p) {
-                (byTrip[p.trip_id] = byTrip[p.trip_id] || []).push(p);
-            });
-
-            Object.keys(byTrip).forEach(function (tripId) {
-                var ordered = byTrip[tripId].sort(function (a, b) {
-                    return a.visited_date_sort < b.visited_date_sort ? -1 : (a.visited_date_sort > b.visited_date_sort ? 1 : 0);
-                });
-                if (ordered.length < 2) return;
-                var latlngs = ordered.map(function (p) { return [p.lat, p.lng]; });
-                routeLines.push(L.polyline(latlngs, { color: 'var(--primary)', weight: 3, opacity: 0.7, dashArray: '4,6' }).addTo(map));
-            });
-        }
-
         function renderMemory(pin) {
             momentsById[pin.id] = pin;
             var marker = memoryMarkersById[pin.id];
@@ -980,14 +966,12 @@
                     .bindPopup(buildMemoryPopup(pin));
                 memoryMarkersById[pin.id] = marker;
             }
-            rebuildOverviewRoutes();
         }
 
         function removeMemory(pinId) {
             var marker = memoryMarkersById[pinId];
             if (marker) { map.removeLayer(marker); delete memoryMarkersById[pinId]; }
             delete momentsById[pinId];
-            rebuildOverviewRoutes();
         }
 
         var bounds = L.latLngBounds([]);
@@ -1054,7 +1038,7 @@
     // widget style as the Expenses page's From/To calendars, but for one
     // date instead of a range, and syncing straight to Livewire via
     // $wire.set() instead of a form-submitted hidden input.
-    window.momentDateCal = function (initialVal) {
+    window.momentDateCal = function (initialVal, isAdd) {
         var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
         var seed = initialVal ? new Date(initialVal + 'T00:00:00') : new Date();
 
@@ -1064,16 +1048,41 @@
             year: seed.getFullYear(), month: seed.getMonth() + 1,
             cells: [],
 
-            init() { this.rebuild(); },
+            init() {
+                // The server runs on UTC, so its "today" can be a day behind
+                // the traveler's own clock (UTC+8 here) — the field would open
+                // showing yesterday, and on a past trip it could even open on
+                // a date the calendar now blocks. Correct it to the browser's
+                // local today, which is what "the system date" means to the
+                // person looking at the screen. Add mode only: an existing
+                // moment's recorded date must never be silently rewritten.
+                if (isAdd) {
+                    var n = new Date();
+                    var todayStr = n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0');
+                    if (!this.val || this.val < todayStr) {
+                        this.val   = todayStr;
+                        this.year  = n.getFullYear();
+                        this.month = n.getMonth() + 1;
+                        this.$wire.set('pinVisitedDate', todayStr);
+                    }
+                }
+                this.rebuild();
+            },
 
             rebuild() {
                 var y = this.year, m = this.month;
                 var first = new Date(y, m - 1, 1).getDay();
                 var days  = new Date(y, m, 0).getDate();
+                // Built from the browser's local date, matching the trip
+                // planner's calendars — a UTC-based comparison would mark
+                // today itself as past for anyone ahead of UTC.
+                var now = new Date();
+                var todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
                 var cells = [];
-                for (var i = 0; i < first; i++) cells.push({ d: null, key: 'e'+y+m+i, val: '' });
+                for (var i = 0; i < first; i++) cells.push({ d: null, key: 'e'+y+m+i, val: '', past: false });
                 for (var d = 1; d <= days; d++) {
-                    cells.push({ d: d, key: 'd'+y+m+d, val: y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0') });
+                    var val = y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+                    cells.push({ d: d, key: 'd'+y+m+d, val: val, past: val < todayStr });
                 }
                 this.cells = cells;
             },
@@ -1110,7 +1119,8 @@
     .exp-cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; text-align: center; }
     .exp-cal-day-name { font-size: 10px; font-weight: 700; color: var(--muted); padding: 4px 0; }
     .exp-cal-day { font-size: 12px; font-weight: 500; padding: 6px 4px; border-radius: 6px; cursor: pointer; color: var(--dark); }
-    .exp-cal-day:hover:not(.empty) { background: var(--bg); }
+    .exp-cal-day:hover:not(.empty):not(.past) { background: var(--bg); }
+    .exp-cal-day.past { color: var(--muted); opacity: .4; cursor: not-allowed; }
     .exp-cal-day.selected { background: var(--primary); color: #fff; }
     .exp-cal-day.empty { cursor: default; }
 </style>

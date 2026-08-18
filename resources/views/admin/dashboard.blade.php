@@ -1,18 +1,10 @@
 @extends('layouts.admin')
 @section('content')
-<div class="admin-page-head">
-    <div>
-        <h1>Analytics Overview</h1>
-        <p><i class="fa-regular fa-calendar"></i> {{ now()->format('d M, Y') }}</p>
-    </div>
-</div>
-
 @php
     $statCards = [
         ['label' => 'Trips',        'icon' => 'fa-solid fa-suitcase-rolling', 'data' => $stats['trips'],       'format' => 'int'],
         ['label' => 'Attractions',  'icon' => 'fa-solid fa-mountain-sun',     'data' => $stats['attractions'], 'format' => 'int'],
         ['label' => 'Users',        'icon' => 'fa-solid fa-users',            'data' => $stats['users'],       'format' => 'int'],
-        ['label' => 'Travel Cost',  'icon' => 'fa-solid fa-sack-dollar',      'data' => $stats['travelCost'],  'format' => 'money'],
     ];
 @endphp
 <div class="admin-stat-row">

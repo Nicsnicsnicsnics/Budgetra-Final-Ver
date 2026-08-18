@@ -1647,7 +1647,7 @@ window.sortVenues = function(dir) {
             </div>
             <div class="venue-action">
                 <button wire:click="toggleVenue({{ $vi }})" wire:loading.attr="disabled" wire:target="toggleVenue({{ $vi }})"
-                        style="background:{{ $venueSelected ? '#fff' : 'var(--primary)' }};color:{{ $venueSelected ? 'var(--primary)' : '#fff' }};border:1.5px solid var(--primary);border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;">
+                        style="background:{{ $venueSelected ? 'var(--bg-white)' : 'var(--primary)' }};color:{{ $venueSelected ? 'var(--primary)' : '#fff' }};border:1.5px solid var(--primary);border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;">
                     <span wire:loading.remove wire:target="toggleVenue({{ $vi }})">
                         @if($venueSelected)
                             <i class="fa-solid fa-check"></i> Selected
@@ -1721,7 +1721,7 @@ window.sortVenues = function(dir) {
             </div>
             <div class="venue-action">
                 <button wire:click="toggleVenue({{ $vi }})" wire:loading.attr="disabled" wire:target="toggleVenue({{ $vi }})"
-                        style="background:{{ $mcVenueSelected ? '#fff' : 'var(--primary)' }};color:{{ $mcVenueSelected ? 'var(--primary)' : '#fff' }};border:1.5px solid var(--primary);border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;">
+                        style="background:{{ $mcVenueSelected ? 'var(--bg-white)' : 'var(--primary)' }};color:{{ $mcVenueSelected ? 'var(--primary)' : '#fff' }};border:1.5px solid var(--primary);border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;">
                     <span wire:loading.remove wire:target="toggleVenue({{ $vi }})">
                         @if($mcVenueSelected)
                             <i class="fa-solid fa-check"></i> Selected
@@ -1946,7 +1946,7 @@ window.sortVenues = function(dir) {
             </div>
             <div class="attr-action">
                 <button wire:click="toggleAttraction({{ $ai }})" wire:loading.attr="disabled" wire:target="toggleAttraction({{ $ai }})"
-                        style="background:{{ $attrSelected ? '#fff' : 'var(--primary)' }};color:{{ $attrSelected ? 'var(--primary)' : '#fff' }};border:1.5px solid var(--primary);border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;">
+                        style="background:{{ $attrSelected ? 'var(--bg-white)' : 'var(--primary)' }};color:{{ $attrSelected ? 'var(--primary)' : '#fff' }};border:1.5px solid var(--primary);border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .18s,gap .18s;">
                     <span wire:loading.remove wire:target="toggleAttraction({{ $ai }})">
                         @if($attrSelected)
                             <i class="fa-solid fa-check"></i> Selected

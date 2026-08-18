@@ -40,11 +40,7 @@
     </div>
     <h2 style="font-weight:700;font-size:22px;margin-bottom:10px;color:var(--dark);">All caught up!</h2>
     <p style="color:var(--muted);font-size:14px;max-width:320px;line-height:1.6;">
-        @if ($activeTrip)
-            No notifications for <strong>{{ $activeTrip->destination }}</strong> yet.
-        @else
-            No notifications yet. We'll alert you when your budget needs attention.
-        @endif
+        No notifications yet. We'll alert you when your budget needs attention.
     </p>
 </div>
 
@@ -135,9 +131,6 @@
                     <span style="display:block;font-size:14px;font-weight:700;color:var(--dark);line-height:1.3;">{{ $meta['title'] }}</span>
                     <span style="display:block;margin-top:3px;font-size:12.5px;color:var(--muted);line-height:1.4;">
                         {{ $notif->message }}
-                        @if (!$activeTrip && $notif->trip)
-                        <span style="white-space:nowrap;"><i class="fa-solid fa-location-dot" style="font-size:9px;"></i> {{ $notif->trip->destination }}</span>
-                        @endif
                     </span>
                     <span style="display:block;margin-top:5px;font-size:11.5px;color:var(--muted);opacity:.75;">{{ $notif->created_at->diffForHumans() }}</span>
                 </span>
@@ -152,9 +145,6 @@
                 <p style="margin:0;font-size:14px;font-weight:700;color:var(--dark);line-height:1.3;">{{ $meta['title'] }}</p>
                 <p style="margin:3px 0 0;font-size:12.5px;color:var(--muted);line-height:1.4;">
                     {{ $notif->message }}
-                    @if (!$activeTrip && $notif->trip)
-                    <span style="white-space:nowrap;"><i class="fa-solid fa-location-dot" style="font-size:9px;"></i> {{ $notif->trip->destination }}</span>
-                    @endif
                 </p>
                 <p style="margin:5px 0 0;font-size:11.5px;color:var(--muted);opacity:.75;">{{ $notif->created_at->diffForHumans() }}</p>
             </div>

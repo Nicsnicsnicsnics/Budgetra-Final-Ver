@@ -1,4 +1,11 @@
 @props(['active' => ''])
+@php
+    $profileInitials = collect(explode(' ', auth()->user()->full_name ?? ''))
+        ->filter()
+        ->map(fn ($p) => mb_substr($p, 0, 1))
+        ->take(2)
+        ->implode('');
+@endphp
 <aside class="admin-sidebar" id="adminSidebar">
 
     <div class="admin-sidebar-header">
@@ -8,17 +15,17 @@
     </div>
 
     <div class="admin-sidebar-brand">
-        <div class="admin-sidebar-logo"><i class="fa-solid fa-compass"></i></div>
+        <img src="{{ asset('systemicons/budgetraicon-modified.png') }}" alt="Budgetra" class="admin-sidebar-logo">
         <div class="admin-sidebar-brand-text">
             <div class="admin-sidebar-name">Budgetra</div>
-            <div class="admin-sidebar-tagline">Travel Admin</div>
         </div>
     </div>
+    <div class="admin-sidebar-divider admin-sidebar-divider-brand"></div>
 
     <nav class="admin-sidebar-nav">
         @php
         $primaryLinks = [
-            ['href' => route('admin.dashboard'),          'icon' => 'fa-solid fa-table-cells-large', 'label' => 'Dashboard',      'key' => 'dashboard'],
+            ['href' => route('admin.dashboard'),          'icon' => 'fa-solid fa-house',              'label' => 'Dashboard',      'key' => 'dashboard'],
             ['href' => route('admin.users.index'),         'icon' => 'fa-solid fa-users',              'label' => 'User Accounts',  'key' => 'users'],
             ['href' => route('admin.destinations.index'),  'icon' => 'fa-solid fa-compass',            'label' => 'Destinations',   'key' => 'destinations'],
             ['href' => route('admin.attractions.index'),   'icon' => 'fa-solid fa-map-location-dot',   'label' => 'Attractions',    'key' => 'attractions'],
@@ -36,8 +43,17 @@
         </div>
 
         <div class="admin-sidebar-foot">
-            <a href="{{ route('profile.edit') }}" class="admin-sidebar-link {{ $active === 'profile' ? 'active' : '' }}" title="Profile">
-                <i class="fa-regular fa-user-circle"></i>
+            <div class="admin-sidebar-divider"></div>
+            {{-- Not route('profile.edit') — that one is inside the traveler
+                 group, gated by the not-admin middleware, so an admin
+                 clicking it got bounced straight back to the overview. --}}
+            <a href="{{ route('admin.profile.edit') }}" class="admin-sidebar-link {{ $active === 'profile' ? 'active' : '' }}" title="Profile">
+                @if (auth()->user()?->profile_photo)
+                <img src="{{ Illuminate\Support\Facades\Storage::url(auth()->user()->profile_photo) }}"
+                     alt="Profile" class="admin-sidebar-avatar">
+                @else
+                <span class="admin-sidebar-avatar admin-sidebar-avatar-initials">{{ $profileInitials }}</span>
+                @endif
                 <span>Profile</span>
             </a>
             <a href="{{ route('admin.settings.index') }}" class="admin-sidebar-link {{ $active === 'settings' ? 'active' : '' }}" title="Settings">
