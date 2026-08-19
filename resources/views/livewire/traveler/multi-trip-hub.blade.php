@@ -33,7 +33,7 @@
     @endphp
     <div x-data="{ tab: 'active' }" style="display:flex;flex-direction:column;">
         {{-- Browser-tab-style switcher --}}
-        <div style="display:flex;align-items:flex-end;gap:4px;flex-shrink:0;">
+        <div style="display:flex;align-items:flex-end;gap:4px;flex-shrink:0;flex-wrap:wrap;">
             @foreach ($mthGroups as $mthGroup)
             @php $mthCount = $mthGroup['items']->count(); @endphp
             <button @click="tab = '{{ $mthGroup['key'] }}'" type="button"
@@ -45,6 +45,21 @@
                 <span style="font-size:11px;font-weight:800;{{ $mthCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:var(--muted);background:var(--bg);' }}border-radius:99px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $mthCount }}</span>
             </button>
             @endforeach
+
+            {{-- Right-aligned via margin-left:auto on .page-search --}}
+            <label class="page-search">
+                {{-- The icon doubles as the in-flight indicator: the round trip
+                     to the DB runs ~0.5s, so without it the box looks frozen
+                     between keystroke and result. 500ms debounce (not 300)
+                     keeps a fast typist from queueing overlapping requests
+                     that then resolve one behind the other. --}}
+                <i class="fa-solid fa-magnifying-glass" wire:loading.remove wire:target="search"></i>
+                <i class="fa-solid fa-spinner fa-spin" wire:loading wire:target="search" style="color:var(--primary);"></i>
+                <input type="text" wire:model.live.debounce.500ms="search" placeholder="Search trips">
+                <button type="button" wire:click="$set('search', '')" x-show="$wire.search" x-cloak title="Clear search">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </label>
         </div>
 
         {{-- Tab panels --}}

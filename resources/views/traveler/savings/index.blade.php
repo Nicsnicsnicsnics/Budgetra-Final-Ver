@@ -46,11 +46,30 @@
         ['key' => 'active', 'label' => 'Active Goals', 'icon' => 'fa-solid fa-piggy-bank',        'items' => $activeGoals, 'noun' => 'active goals'],
         ['key' => 'past',   'label' => 'Past Goals',   'icon' => 'fa-solid fa-clock-rotate-left', 'items' => $pastGoals,   'noun' => 'past goals'],
     ];
+
+    // One lowercased haystack per goal — its own name plus the trip's
+    // destination and name — so a goal is findable by any of them.
+    $sgHay = fn ($g) => mb_strtolower(trim(
+        ($g->goal_name ?? '') . ' ' . ($g->trip->destination ?? '') . ' ' . ($g->trip->trip_name ?? '')
+    ));
+    $sgIndex = collect($sgGroups)->mapWithKeys(fn ($g) => [
+        $g['key'] => $g['items']->map($sgHay)->values()->all(),
+    ])->all();
 @endphp
 
-<div x-data="{ tab: 'active' }" style="display:flex;flex-direction:column;">
+{{-- Filtering runs in Alpine rather than on the server: this page is plain
+     Blade whose cards each mount their own Livewire component, so there is no
+     wire:model to bind to, and every goal is already on the page. --}}
+<div x-data="{
+        tab: 'active',
+        q: '',
+        get needle() { return this.q.trim().toLowerCase(); },
+        matches(hay) { return this.needle === '' || hay.includes(this.needle); },
+        countFor(key) { return this.index[key].filter(h => this.matches(h)).length; },
+        index: @js($sgIndex),
+     }" style="display:flex;flex-direction:column;">
     {{-- Browser-tab-style switcher --}}
-    <div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:0;flex-shrink:0;">
+    <div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:0;flex-shrink:0;flex-wrap:wrap;">
         @foreach ($sgGroups as $sgGroup)
         @php $sgCount = $sgGroup['items']->count(); @endphp
         <button @click="tab = '{{ $sgGroup['key'] }}'" type="button"
@@ -59,9 +78,18 @@
                 <i class="{{ $sgGroup['icon'] }}" style="color:#fff;font-size:11px;"></i>
             </div>
             <span style="font-size:14px;font-weight:700;">{{ $sgGroup['label'] }}</span>
-            <span style="font-size:11px;font-weight:800;{{ $sgCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:#B3A69A;background:#F3EEE8;' }}border-radius:99px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $sgCount }}</span>
+            <span x-text="countFor('{{ $sgGroup['key'] }}')"
+                  :style="'font-size:11px;font-weight:800;border-radius:99px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;line-height:1;' + (countFor('{{ $sgGroup['key'] }}') > 0 ? 'color:#fff;background:var(--primary);' : 'color:var(--muted);background:var(--bg);')"></span>
         </button>
         @endforeach
+
+        <label class="page-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" x-model="q" placeholder="Search goals">
+            <button type="button" x-show="q" x-cloak @click="q = ''" title="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </label>
     </div>
 
     {{-- Tab panels --}}
@@ -79,10 +107,25 @@
             @else
             <div style="width:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:20px;align-items:flex-start;">
                 @foreach ($sgGroup['items'] as $goal)
-                <div style="flex:1 1 360px;max-width:420px;">
+                {{-- x-show, not a wrapper that unmounts the card: the goal
+                     card is a Livewire component, and tearing it out of the
+                     DOM on every keystroke would remount it (and drop any
+                     open deposit modal) instead of just hiding it. --}}
+                <div x-show="matches(@js($sgHay($goal)))" style="flex:1 1 360px;max-width:420px;">
                     @livewire('traveler.savings-goal-manager', ['goal' => $goal], key($goal->id))
                 </div>
                 @endforeach
+            </div>
+            {{-- Shown only while a search is filtering everything out. --}}
+            <div x-show="q.trim() !== '' && countFor('{{ $sgGroup['key'] }}') === 0" x-cloak
+                 style="min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
+                <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+                    <i class="fa-solid fa-magnifying-glass" style="font-size:22px;color:#fff;"></i>
+                </div>
+                <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No goals match your search</h3>
+                <p style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">
+                    Nothing in {{ strtolower($sgGroup['label']) }} matches &ldquo;<span x-text="q"></span>&rdquo;.
+                </p>
             </div>
             @endif
         </div>

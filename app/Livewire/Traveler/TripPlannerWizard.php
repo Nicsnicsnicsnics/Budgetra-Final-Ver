@@ -3,9 +3,12 @@ namespace App\Livewire\Traveler;
 
 use App\Models\AiConversationDraft;
 use App\Models\Destination;
+use App\Models\GroupMember;
+use App\Models\Notification;
 use App\Models\SavingsGoal;
 use App\Models\Trip;
 use App\Models\TripBudget;
+use App\Models\User;
 use App\Services\SerpApiService;
 use App\Services\SerperService;
 use App\Services\TripImportService;
@@ -345,10 +348,24 @@ class TripPlannerWizard extends Component
         ],
     ];
 
+    /** Emails from the traveller's profile, prefilled onto a Group trip. */
+    public array $groupMemberEmails = [];
+
     public function mount(): void
     {
         $this->calYear  = (int) date('Y');
         $this->calMonth = (int) date('n');
+
+        // A traveller whose profile says they travel in a group shouldn't have
+        // to re-pick "Group" and re-enter the same people on every trip — seed
+        // step 6 from the profile instead. Still fully changeable in the step.
+        $profile = auth()->user()?->userProfile;
+        if ($profile && $profile->travel_style === 'Group') {
+            $this->groupMemberEmails = array_values(array_filter((array) ($profile->group_member_emails ?? [])));
+            $this->groupType = 'Group';
+            // The traveller themself plus everyone listed.
+            $this->travelers = max(2, count($this->groupMemberEmails) + 1);
+        }
         // /trips/plan always starts the wizard fresh; /trips shows list or empty state
         $hasTrips = auth()->user()->trips()->exists();
         $isPlanRoute = request()->routeIs('trips.plan');
@@ -2699,6 +2716,27 @@ class TripPlannerWizard extends Component
                 'estimated_cost' => $amount,
                 'actual_spent'   => 0,
             ]);
+        }
+
+        // Group trips carry their members across, so each of them sees the
+        // trip in their own Saved Trips. Only registered accounts can be
+        // linked; an email with no account is simply skipped rather than
+        // failing the save.
+        if ($this->groupType === 'Group' && $this->groupMemberEmails) {
+            $memberIds = User::whereIn('email', $this->groupMemberEmails)
+                ->where('id', '!=', auth()->id())
+                ->pluck('id');
+            $inviter = auth()->user()->full_name ?: 'A fellow traveler';
+            foreach ($memberIds as $memberId) {
+                GroupMember::firstOrCreate(['trip_id' => $trip->id, 'user_id' => $memberId]);
+                Notification::create([
+                    'user_id' => $memberId,
+                    'trip_id' => $trip->id,
+                    'type'    => 'trip_shared',
+                    'message' => "{$inviter} added you to their trip to {$this->destinationName}. It's now in your Saved Trips.",
+                    'is_read' => false,
+                ]);
+            }
         }
 
         SavingsGoal::create([

@@ -3168,6 +3168,19 @@ window.sortAttractions = function(dir) {
                     {{ $s9over ? 'Over '.currency_symbol().number_format($s9budget).' budget' : 'Within '.currency_symbol().number_format($s9budget).' budget' }}
                 </div>
                 @endif
+
+                {{-- Split bill. Hidden on a solo trip, where "÷ 1" says nothing. --}}
+                @if($travelers > 1)
+                <div style="margin-top:14px;padding-top:14px;border-top:1px dashed #E5E0D8;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:14px;font-weight:700;color:var(--dark);">Per Person</span>
+                        <span style="font-size:18px;font-weight:800;color:#C8874A;">{{ currency_code() }} {{ number_format($s9total / $travelers) }}</span>
+                    </div>
+                    <div style="margin-top:4px;font-size:12px;color:var(--muted);text-align:right;">
+                        Split between {{ $travelers }} travelers
+                    </div>
+                </div>
+                @endif
             </div>
 
             <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bg);font-size:12px;color:var(--muted);line-height:1.6;">

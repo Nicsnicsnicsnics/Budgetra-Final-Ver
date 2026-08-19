@@ -19,9 +19,30 @@
 .st-thin-scroll::-webkit-scrollbar{width:0;height:0;background:transparent;}
 .st-sum-row{transition:background .15s;}
 .st-sum-row:hover{background:#FBF6F1;}
+
+/* Member chips. These were hardcoded light values (#FDF3EB chip, #FEE2E2
+   button, #c3b3a6 avatar) paired with var(--dark) text, so on a dark theme
+   the name turned light against a cream chip and vanished. Tints are mixed
+   against the surface instead, so they follow whatever theme is active. */
+.st-member-row{display:flex;align-items:center;gap:10px;border-radius:12px;padding:9px 12px;margin-bottom:7px;}
+.st-member-row-saved{background:var(--bg);}
+.st-member-row-pending{background:color-mix(in srgb, var(--primary) 10%, var(--bg-white));border:1px solid var(--border);}
+.st-member-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#fff;}
+.st-member-avatar-saved{background:var(--muted);}
+.st-member-avatar-pending{background:var(--primary);}
+.st-member-name{font-size:13px;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.st-member-email{font-size:11px;color:var(--muted);}
+.st-member-remove{
+    flex-shrink:0;width:28px;height:28px;border:none;border-radius:8px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    background:color-mix(in srgb, #DC2626 14%, var(--bg-white));color:#DC2626;transition:background .18s;
+}
+.st-member-remove:hover{background:color-mix(in srgb, #DC2626 26%, var(--bg-white));}
 </style>
 
-    @if ($trips->isEmpty())
+    {{-- && !$search — a search that matches nothing is not the same as having
+         no trips at all, and must not offer "Plan Your First Trip". --}}
+    @if ($trips->isEmpty() && !$search)
     <div class="empty-state-center" style="min-height:80vh;">
         <div style="width:64px;height:64px;border-radius:18px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
             <i class="fa-solid fa-suitcase-rolling" style="font-size:28px;color:#fff;"></i>
@@ -56,7 +77,7 @@
 
     <div x-data="{ tab: 'active' }" style="display:flex;flex-direction:column;">
         {{-- Browser-tab-style switcher --}}
-        <div style="display:flex;align-items:flex-end;gap:4px;flex-shrink:0;">
+        <div style="display:flex;align-items:flex-end;gap:4px;flex-shrink:0;flex-wrap:wrap;">
             @foreach ($stGroups as $stGroup)
             @php $stCount = $stGroup['items']->count(); @endphp
             <button @click="tab = '{{ $stGroup['key'] }}'" type="button"
@@ -68,6 +89,21 @@
                 <span style="font-size:11px;font-weight:800;{{ $stCount > 0 ? 'color:#fff;background:var(--primary);' : 'color:#B3A69A;background:#F3EEE8;' }}border-radius:99px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">{{ $stCount }}</span>
             </button>
             @endforeach
+
+            {{-- Right-aligned via margin-left:auto on .page-search --}}
+            <label class="page-search">
+                {{-- The icon doubles as the in-flight indicator: the round trip
+                     to the DB runs ~0.5s, so without it the box looks frozen
+                     between keystroke and result. 500ms debounce (not 300)
+                     keeps a fast typist from queueing overlapping requests
+                     that then resolve one behind the other. --}}
+                <i class="fa-solid fa-magnifying-glass" wire:loading.remove wire:target="search"></i>
+                <i class="fa-solid fa-spinner fa-spin" wire:loading wire:target="search" style="color:var(--primary);"></i>
+                <input type="text" wire:model.live.debounce.500ms="search" placeholder="Search trips">
+                <button type="button" wire:click="$set('search', '')" x-show="$wire.search" x-cloak title="Clear search">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </label>
         </div>
 
         {{-- Tab panels --}}
@@ -190,6 +226,12 @@
                     <div style="font-size:23px;font-weight:700;color:#C8874A;">
                         {{ currency_code() }} {{ number_format($displayCost, 0) }}
                     </div>
+                    @if ($trip->shared_with_me)
+                    <div style="font-size:11px;color:var(--primary);font-weight:600;margin-top:6px;display:flex;align-items:center;gap:5px;">
+                        <i class="fa-solid fa-user-group" style="font-size:10px;"></i>
+                        Shared by {{ $trip->user->full_name ?? 'a fellow traveler' }}
+                    </div>
+                    @endif
                 </div>
 
                 @if (!$isDraft)
@@ -296,6 +338,28 @@
             <div style="margin:0 16px 18px;padding:14px 16px;background:var(--primary-light);border-radius:14px;">
                 <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;">Total Cost</div>
                 <div style="font-size:23px;font-weight:800;color:var(--primary);">{{ currency_code() }} {{ number_format($dtTotal, 0) }}</div>
+
+                {{-- Split bill — only meaningful once more than one person
+                     is on the trip, so a solo trip doesn't show "÷ 1". --}}
+                @if ($dt->head_count > 1)
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);display:flex;align-items:flex-end;justify-content:space-between;gap:10px;">
+                    <div>
+                        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px;">Per Person</div>
+                        <div style="font-size:11px;color:var(--muted);">Split between {{ $dt->head_count }} travelers</div>
+                    </div>
+                    <div style="font-size:19px;font-weight:800;color:#C8874A;white-space:nowrap;">
+                        {{ currency_code() }} {{ number_format($dtTotal / $dt->head_count, 0) }}
+                    </div>
+                </div>
+                @if ($dt->actual_spent > 0)
+                <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                    <span style="font-size:11px;color:var(--muted);">Spent so far, per person</span>
+                    <span style="font-size:13px;font-weight:700;color:var(--dark);white-space:nowrap;">
+                        {{ currency_code() }} {{ number_format($dt->spent_per_person, 0) }}
+                    </span>
+                </div>
+                @endif
+                @endif
             </div>
         </div>
         @endif
@@ -417,15 +481,13 @@
 
                 {{-- Already-saved members --}}
                 @foreach($savedMembers as $sm)
-                <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:12px;padding:9px 12px;margin-bottom:7px;">
-                    <div style="width:30px;height:30px;border-radius:50%;background:#c3b3a6;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#fff;">{{ strtoupper(substr($sm['name'],0,1)) }}</div>
+                <div class="st-member-row st-member-row-saved">
+                    <div class="st-member-avatar st-member-avatar-saved">{{ strtoupper(substr($sm['name'],0,1)) }}</div>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:13px;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $sm['name'] }}</div>
-                        <div style="font-size:11px;color:var(--muted);">{{ $sm['email'] }}</div>
+                        <div class="st-member-name">{{ $sm['name'] }}</div>
+                        <div class="st-member-email">{{ $sm['email'] }}</div>
                     </div>
-                    <button wire:click="removeSavedMember({{ $sm['id'] }})" type="button"
-                            style="flex-shrink:0;width:28px;height:28px;border:none;background:#FEE2E2;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#DC2626;transition:background .18s;"
-                            onmouseenter="this.style.background='#FECACA'" onmouseleave="this.style.background='#FEE2E2'">
+                    <button wire:click="removeSavedMember({{ $sm['id'] }})" type="button" class="st-member-remove" title="Remove member">
                         <i class="fa-solid fa-xmark" style="font-size:11px;"></i>
                     </button>
                 </div>
@@ -433,15 +495,13 @@
 
                 {{-- Pending (newly added) members --}}
                 @foreach($pendingMembers as $pi => $pm)
-                <div style="display:flex;align-items:center;gap:10px;background:#FDF3EB;border-radius:12px;padding:9px 12px;margin-bottom:7px;border:1px solid var(--border);">
-                    <div style="width:30px;height:30px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#fff;">{{ strtoupper(substr($pm['name'],0,1)) }}</div>
+                <div class="st-member-row st-member-row-pending">
+                    <div class="st-member-avatar st-member-avatar-pending">{{ strtoupper(substr($pm['name'],0,1)) }}</div>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:13px;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $pm['name'] }}</div>
-                        <div style="font-size:11px;color:var(--muted);">{{ $pm['email'] }}</div>
+                        <div class="st-member-name">{{ $pm['name'] }}</div>
+                        <div class="st-member-email">{{ $pm['email'] }}</div>
                     </div>
-                    <button wire:click="removePendingMember({{ $pi }})" type="button"
-                            style="flex-shrink:0;width:28px;height:28px;border:none;background:#FEE2E2;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#DC2626;transition:background .18s;"
-                            onmouseenter="this.style.background='#FECACA'" onmouseleave="this.style.background='#FEE2E2'">
+                    <button wire:click="removePendingMember({{ $pi }})" type="button" class="st-member-remove" title="Remove member">
                         <i class="fa-solid fa-xmark" style="font-size:11px;"></i>
                     </button>
                 </div>
@@ -502,7 +562,7 @@
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
         <div style="background:var(--bg-white);border-radius:20px;width:100%;max-width:380px;overflow:hidden;">
             <div style="padding:28px 24px 20px;text-align:center;">
-                <div style="width:52px;height:52px;border-radius:50%;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                <div style="width:52px;height:52px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
                     <i class="fa-solid fa-share-nodes" style="font-size:20px;color:var(--primary);"></i>
                 </div>
 

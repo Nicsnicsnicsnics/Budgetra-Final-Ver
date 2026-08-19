@@ -3,6 +3,8 @@
 namespace App\Livewire\Traveler;
 
 use Livewire\Component;
+use App\Models\Notification;
+use App\Models\User;
 use App\Models\UserProfile;
 
 class ProfileBuilder extends Component
@@ -279,6 +281,14 @@ class ProfileBuilder extends Component
 
     private function persistProfile(): void
     {
+        // Captured before the write so only genuinely new companions get a
+        // notification — re-saving the profile must not re-notify everyone.
+        // Read straight from the table rather than auth()->user()->userProfile:
+        // that relation is cached on the User instance, so a second save in
+        // the same request would still see the pre-save list and notify twice.
+        $previousEmails = (array) (UserProfile::where('user_id', auth()->id())
+            ->value('group_member_emails') ?? []);
+
         UserProfile::updateOrCreate(
             ['user_id' => auth()->id()],
             [
@@ -292,6 +302,34 @@ class ProfileBuilder extends Component
                 'preferred_accommodation'  => $this->preferredAccommodation,
             ]
         );
+
+        if ($this->travelStyle === 'Group') {
+            $this->notifyNewCompanions($previousEmails);
+        }
+    }
+
+    /**
+     * Tells anyone newly listed as a travel companion. Only registered
+     * accounts can be notified; an unknown email is simply skipped, matching
+     * how the group-member picker already behaves.
+     */
+    private function notifyNewCompanions(array $previousEmails): void
+    {
+        $added = array_diff($this->groupMemberEmails, $previousEmails);
+        if (!$added) return;
+
+        $inviter = auth()->user()->full_name ?: 'A fellow traveler';
+
+        User::whereIn('email', $added)
+            ->where('id', '!=', auth()->id())
+            ->get()
+            ->each(fn (User $u) => Notification::create([
+                'user_id' => $u->id,
+                'trip_id' => null,
+                'type'    => 'group_member_added',
+                'message' => "{$inviter} added you as a travel companion. You'll be included on their group trips.",
+                'is_read' => false,
+            ]));
     }
 
     public function confirmProfile(): void

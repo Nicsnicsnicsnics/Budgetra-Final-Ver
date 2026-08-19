@@ -2,6 +2,7 @@
 namespace App\Livewire\Traveler;
 
 use App\Models\GroupMember;
+use App\Models\Notification;
 use App\Models\Trip;
 use App\Models\User;
 use App\Services\TripImportService;
@@ -12,6 +13,7 @@ use Livewire\Component;
 #[Layout('layouts.app', ['active' => 'saved-trips'])]
 class SavedTrips extends Component
 {
+    public string $search       = '';
     public ?int $detailTripId   = null;
     public ?int $deleteTripId   = null;
     public string $deleteTripName = '';
@@ -48,7 +50,9 @@ class SavedTrips extends Component
     public function openEditName(int $id): void
     {
         $trip = Trip::find($id);
-        if (!$trip) return;
+        // Owner-only: saveEditName() already refuses to write someone else's
+        // trip, so opening the modal would only ever dead-end.
+        if (!$trip || $trip->user_id !== auth()->id()) return;
         $this->editNameTripId = $id;
         $this->editNameValue = $trip->trip_name ?? $trip->destination ?? '';
         $this->editType      = strcasecmp($trip->travel_type ?? 'Solo', 'Solo') === 0 ? 'Solo' : 'Group';
@@ -115,9 +119,23 @@ class SavedTrips extends Component
             $newName = trim($this->editNameValue) ?: $trip->destination;
             $trip->savingsGoals()->update(['goal_name' => $newName]);
 
+            // Back to Solo means back to one traveller: drop the members and
+            // reset the head count, otherwise the trip keeps splitting the
+            // bill N ways and stays in those members' Saved Trips.
+            if ($this->editType === 'Solo') {
+                GroupMember::where('trip_id', $trip->id)->delete();
+                $trip->update(['num_travelers' => 1]);
+            }
+
             if ($this->editType === 'Group') {
                 foreach ($this->pendingMembers as $m) {
-                    GroupMember::firstOrCreate(['trip_id' => $trip->id, 'user_id' => $m['id']]);
+                    $link = GroupMember::firstOrCreate(['trip_id' => $trip->id, 'user_id' => $m['id']]);
+                    // Only on a genuinely new link — firstOrCreate returns the
+                    // existing row when the member was already on the trip, and
+                    // re-saving the modal shouldn't re-notify them.
+                    if ($link->wasRecentlyCreated) {
+                        $this->notifyAddedToTrip($trip, $m['id']);
+                    }
                 }
             }
         }
@@ -192,10 +210,50 @@ class SavedTrips extends Component
         $this->deleteTripName = '';
     }
 
+    /**
+     * Tells a traveller they were added to someone else's trip. The trip then
+     * shows up in their own Saved Trips, so the notification links to it.
+     */
+    private function notifyAddedToTrip(Trip $trip, int $memberId): void
+    {
+        $inviter = auth()->user()->full_name ?: 'A fellow traveler';
+        $where   = $trip->trip_name ?: $trip->destination;
+
+        Notification::create([
+            'user_id' => $memberId,
+            'trip_id' => $trip->id,
+            'type'    => 'trip_shared',
+            'message' => "{$inviter} added you to their trip to {$where}. It's now in your Saved Trips.",
+            'is_read' => false,
+        ]);
+    }
+
     private function fetchTrips()
     {
-        return Trip::where('user_id', auth()->id())
+        $uid = auth()->id();
+
+        // Trips the traveller owns, plus any they were added to as a group
+        // member. A shared trip is only surfaced once it is a real plan —
+        // someone else's unfinished draft is not something a member should
+        // see in their list.
+        return Trip::where(function ($q) use ($uid) {
+                $q->where('user_id', $uid)
+                  ->orWhere(fn ($m) => $m
+                      ->whereHas('groupMembers', fn ($g) => $g->where('user_id', $uid))
+                      ->where(fn ($d) => $d->whereNull('status')->orWhere('status', '!=', 'draft')));
+            })
+            // Matches either the traveller's own trip name or the destination,
+            // since a renamed trip ("Barkada Getaway") no longer contains the
+            // place it goes to, and searching for the place should still find it.
+            ->when($this->search !== '', function ($q) {
+                $term = '%' . str_replace('%', '\%', $this->search) . '%';
+                $q->where(fn ($w) => $w->where('destination', 'ilike', $term)
+                                       ->orWhere('trip_name', 'ilike', $term)
+                                       ->orWhere('leg2_destination', 'ilike', $term));
+            })
             ->withSum('expenses', 'amount')
+            ->withCount('groupMembers')
+            ->with('user:id,full_name')
             ->latest('created_at')
             ->get()
             ->map(function (Trip $trip) {
@@ -213,6 +271,23 @@ class SavedTrips extends Component
                 $budget      = (float) ($trip->total_cost ?? $trip->budget_limit ?? 0);
                 $trip->setAttribute('actual_spent', $actualSpent);
                 $trip->setAttribute('spend_pct', $budget > 0 ? min(100, round($actualSpent / $budget * 100)) : 0);
+
+                // Split-bill figures. Head count is the trip's own
+                // num_travelers, floored at 1 so a malformed row can't divide
+                // by zero and at the real member count when more people were
+                // added than the planner originally allowed for.
+                // Solo trips are always one head no matter what num_travelers
+                // happens to hold — a trip switched Group→Solo can be left
+                // carrying the old count.
+                $isGroup = strcasecmp($trip->travel_type ?? 'Solo', 'Group') === 0;
+                $heads   = $isGroup
+                    ? max(1, (int) $trip->num_travelers, $trip->group_members_count + 1)
+                    : 1;
+                $trip->setAttribute('head_count', $heads);
+                $trip->setAttribute('cost_per_person',  $budget      / $heads);
+                $trip->setAttribute('spent_per_person', $actualSpent / $heads);
+
+                $trip->setAttribute('shared_with_me', $trip->user_id !== auth()->id());
 
                 return $trip;
             })

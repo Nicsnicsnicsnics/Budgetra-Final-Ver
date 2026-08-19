@@ -56,6 +56,8 @@
             $type === 'trip_created'                                  => ['style' => 'success', 'icon' => 'fa-circle-check',        'title' => 'Trip saved'],
             $type === 'savings_goal_reached'                          => ['style' => 'success', 'icon' => 'fa-piggy-bank',          'title' => 'Savings goal reached'],
             $type === 'expense_added'                                 => ['style' => 'neutral', 'icon' => 'fa-receipt',             'title' => 'Receipt scanned and added'],
+            $type === 'trip_shared'                                   => ['style' => 'success', 'icon' => 'fa-user-group',         'title' => 'Added to a trip'],
+            $type === 'group_member_added'                            => ['style' => 'neutral', 'icon' => 'fa-user-plus',          'title' => 'Added as a travel companion'],
             $type === 'trip_reminder'                                 => ['style' => 'neutral', 'icon' => 'fa-plane',               'title' => 'Trip reminder'],
             $type === 'itinerary_reminder'                            => ['style' => 'neutral', 'icon' => 'fa-calendar',            'title' => 'Itinerary reminder'],
             default                                                    => ['style' => 'neutral', 'icon' => 'fa-bell',               'title' => 'Notification'],
