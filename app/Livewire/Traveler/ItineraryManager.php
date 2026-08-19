@@ -148,7 +148,10 @@ class ItineraryManager extends Component
 
     public function selectTrip(int $tripId): void
     {
-        $trip = Trip::where('id', $tripId)->where('user_id', auth()->id())->firstOrFail();
+        // Scoped to trips the traveller may open — their own plus any they
+        // were added to — rather than owner-only, which locked a group member
+        // out of the shared trip's itinerary and moments entirely.
+        $trip = auth()->user()->accessibleTrips()->whereKey($tripId)->firstOrFail();
         $this->selectedTripId    = $trip->id;
         $this->selectedDate      = null;
         $this->showGenerateModal = false;
@@ -214,7 +217,7 @@ class ItineraryManager extends Component
         $moment = Moment::find($momentId);
         if (!$moment) return false;
 
-        $trip = Trip::where('id', $moment->trip_id)->where('user_id', auth()->id())->first();
+        $trip = auth()->user()->accessibleTrips()->whereKey($moment->trip_id)->first();
         if (!$trip) return false;
 
         $this->selectedTripId = $trip->id;
@@ -376,7 +379,7 @@ class ItineraryManager extends Component
 
     public function getTripsProperty()
     {
-        return auth()->user()->trips()->orderByDesc('start_date')->get()
+        return auth()->user()->accessibleTrips()->orderByDesc('start_date')->get()
             ->filter(fn (Trip $t) => in_array($t->resolved_status, ['active', 'upcoming', 'past'], true))
             ->values();
     }
@@ -402,8 +405,8 @@ class ItineraryManager extends Component
     public function getSelectedTripProperty(): ?Trip
     {
         if (!$this->selectedTripId) return null;
-        return Trip::where('id', $this->selectedTripId)
-                   ->where('user_id', auth()->id())
+        return auth()->user()->accessibleTrips()
+                   ->whereKey($this->selectedTripId)
                    ->first();
     }
 

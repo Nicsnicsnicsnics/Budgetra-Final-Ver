@@ -72,7 +72,7 @@ class MultiTripHub extends Component
         // overridden from Saved Trips) — `!= 'draft'` alone would silently
         // exclude every one of those NULL rows too, so NULL has to be
         // allowed through explicitly.
-        $query = auth()->user()->trips()
+        $query = auth()->user()->accessibleTrips()
             ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'draft'))
             ->withSum('expenses', 'amount')->latest('start_date');
         if ($this->search !== '') {

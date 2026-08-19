@@ -11,8 +11,10 @@
 <div class="alert alert-success mb-16">{{ session('success') }}</div>
 @endif
 
-{{-- No trips at all --}}
-@if ($trips->isEmpty())
+{{-- No trips *and* nothing to read. A traveller with notifications but no
+     trips of their own (e.g. just added to someone's group trip) sees the
+     notifications, not the "plan your first trip" prompt. --}}
+@if ($trips->isEmpty() && !$hasAny)
 <div class="empty-state-center" style="min-height:80vh;">
     <div style="width:64px;height:64px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
         <i class="fa-solid fa-bell" style="font-size:28px;color:#fff;"></i>

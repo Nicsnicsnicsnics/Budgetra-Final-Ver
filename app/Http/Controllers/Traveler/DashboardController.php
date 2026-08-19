@@ -59,7 +59,7 @@ class DashboardController extends Controller
         // "!= 'draft'" alone silently drops any trip with a NULL status too
         // (SQL: NULL != 'draft' is unknown, not true) — explicitly keep
         // NULL-status trips since they're real trips, not drafts.
-        $trips = $user->trips()->where(fn ($q) => $q->where('status', '!=', 'draft')->orWhereNull('status'))->withSum('expenses', 'amount')->latest()->get()->map(function (Trip $trip) {
+        $trips = $user->accessibleTrips()->where(fn ($q) => $q->where('status', '!=', 'draft')->orWhereNull('status'))->withSum('expenses', 'amount')->latest()->get()->map(function (Trip $trip) {
             $spent = $trip->expenses_sum_amount ?? 0;
             $today = Carbon::today();
             $trip->setAttribute('total_spent', $spent);

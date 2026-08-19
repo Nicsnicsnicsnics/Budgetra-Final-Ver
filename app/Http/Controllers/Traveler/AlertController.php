@@ -20,19 +20,13 @@ class AlertController extends Controller
             ->orderByDesc('start_date')
             ->get();
 
-        // Every notification the traveler has — trip saved, expense logged,
-        // savings goal, budget warnings and alerts, reminders — across all
-        // their trips. This used to narrow to a single "active" trip (the
-        // most recent one, since no trip_id is ever passed and the view has
-        // no trip picker), which silently hid every notification belonging to
-        // any other trip as well as the ones with no trip_id at all.
-        $query = $user->notifications()->with('trip')->latest();
-
-        if ($trips->isEmpty()) {
-            $query->whereRaw('1=0');
-        }
-
-        $notifications = $query->paginate(20);
+        // Every notification the traveler has, across every trip and including
+        // the ones with no trip at all. Two things used to hide notifications
+        // here: narrowing to a single "active" trip (the view has no trip
+        // picker, so that filter was invisible and permanently on), and
+        // blanking the list for anyone who owned no trips — which hid the very
+        // notification telling a new traveller they'd been added to one.
+        $notifications = $user->notifications()->with('trip')->latest()->paginate(20);
 
         return view('traveler.alerts.index', compact('notifications', 'trips'));
     }

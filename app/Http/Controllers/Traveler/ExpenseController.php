@@ -13,7 +13,11 @@ class ExpenseController extends Controller
     public function index(Request $request)
     {
         $user  = auth()->user();
-        $trips = $user->trips()->latest()->get()
+        // accessibleTrips(): a group member logs their own spending against
+        // the shared trip, so it has to appear in this selector. The expense
+        // list itself stays $user->expenses() — everyone sees what they spent,
+        // not what the whole group did.
+        $trips = $user->accessibleTrips()->latest()->get()
             ->filter(fn ($t) => in_array($t->resolved_status, ['active', 'upcoming', 'past'], true))
             ->values();
         $query = $user->expenses()->with('trip')->latest('expense_date');
@@ -47,7 +51,7 @@ class ExpenseController extends Controller
 
     public function create()
     {
-        $trips      = auth()->user()->trips()->latest()->get()
+        $trips      = auth()->user()->accessibleTrips()->latest()->get()
             ->filter(fn ($t) => in_array($t->resolved_status, ['active', 'upcoming', 'past'], true))
             ->values();
         $categories = self::CATEGORIES;
@@ -66,7 +70,7 @@ class ExpenseController extends Controller
         ]);
 
         abort_if(
-            !auth()->user()->trips()->where('id', $validated['trip_id'])->exists(),
+            !auth()->user()->canAccessTrip((int) $validated['trip_id']),
             403
         );
 
@@ -99,7 +103,7 @@ class ExpenseController extends Controller
     public function edit(Expense $expense)
     {
         abort_if($expense->user_id !== auth()->id(), 403);
-        $trips      = auth()->user()->trips()->latest()->get();
+        $trips      = auth()->user()->accessibleTrips()->latest()->get();
         $categories = self::CATEGORIES;
         return view('traveler.expenses.edit', compact('expense', 'trips', 'categories'));
     }
@@ -121,7 +125,7 @@ class ExpenseController extends Controller
         // this traveler's — same check store() already applies, needed here
         // too since trip_id can be changed on edit, not just set once.
         abort_if(
-            !auth()->user()->trips()->where('id', $validated['trip_id'])->exists(),
+            !auth()->user()->canAccessTrip((int) $validated['trip_id']),
             403
         );
 

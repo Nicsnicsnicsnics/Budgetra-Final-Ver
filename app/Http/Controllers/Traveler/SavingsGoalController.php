@@ -10,17 +10,29 @@ class SavingsGoalController extends Controller
 {
     public function index()
     {
-        // Auto-create a savings goal for any trip that doesn't have one yet
-        $tripsWithoutGoals = auth()->user()->trips()
-            ->whereDoesntHave('savingsGoals')
+        // A goal per trip the traveller can see — theirs, and any they were
+        // added to. Scoped by user_id as well as trip_id: on a group trip each
+        // member saves toward their own share, so the owner's goal is not the
+        // member's goal and "already has a goal" has to be asked per person.
+        $tripsWithoutGoals = auth()->user()->accessibleTrips()
+            ->whereDoesntHave('savingsGoals', fn ($q) => $q->where('user_id', auth()->id()))
+            ->withCount('groupMembers')
             ->get();
 
         foreach ($tripsWithoutGoals as $trip) {
+            $isGroup = strcasecmp($trip->travel_type ?? 'Solo', 'Group') === 0;
+            $heads   = $isGroup
+                ? max(1, (int) $trip->num_travelers, $trip->group_members_count + 1)
+                : 1;
+            $total   = (float) ($trip->total_cost ?: $trip->budget_limit ?: 0);
+
             SavingsGoal::create([
                 'user_id'         => auth()->id(),
                 'trip_id'         => $trip->id,
                 'goal_name'       => $trip->destination . ' Trip',
-                'target_amount'   => $trip->budget_limit ?: 1,
+                // A member's target is their share of the bill, not the whole
+                // trip — matching the per-person figure Saved Trips shows.
+                'target_amount'   => max(1, round($total / $heads, 2)),
                 'current_savings' => 0,
                 'deadline'        => $trip->start_date,
             ]);
@@ -42,7 +54,7 @@ class SavingsGoalController extends Controller
 
     public function create()
     {
-        $trips = auth()->user()->trips()->orderBy('destination')->get();
+        $trips = auth()->user()->accessibleTrips()->orderBy('destination')->get();
         return view('traveler.savings.create', compact('trips'));
     }
 
@@ -72,7 +84,7 @@ class SavingsGoalController extends Controller
     public function edit(SavingsGoal $goal)
     {
         abort_if($goal->user_id !== auth()->id(), 403);
-        $trips = auth()->user()->trips()->orderBy('destination')->get();
+        $trips = auth()->user()->accessibleTrips()->orderBy('destination')->get();
         return view('traveler.savings.edit', compact('goal', 'trips'));
     }
 

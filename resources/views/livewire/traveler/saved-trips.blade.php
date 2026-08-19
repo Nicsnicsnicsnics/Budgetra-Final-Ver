@@ -351,14 +351,6 @@
                         {{ currency_code() }} {{ number_format($dtTotal / $dt->head_count, 0) }}
                     </div>
                 </div>
-                @if ($dt->actual_spent > 0)
-                <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
-                    <span style="font-size:11px;color:var(--muted);">Spent so far, per person</span>
-                    <span style="font-size:13px;font-weight:700;color:var(--dark);white-space:nowrap;">
-                        {{ currency_code() }} {{ number_format($dt->spent_per_person, 0) }}
-                    </span>
-                </div>
-                @endif
                 @endif
             </div>
         </div>
