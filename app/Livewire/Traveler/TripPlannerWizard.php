@@ -30,19 +30,29 @@ class TripPlannerWizard extends Component
     public int    $step     = 0;
     public string $planningMode = ''; // 'manual' | 'ai'
 
-    // ── "Have a trip code?" gate — shown right after picking Manual
-    // Planning, before Trip Details. Skippable; imports and redirects away
-    // on success so it never needs to hand control back to Trip Details.
-    public bool   $manualCodeGateDone = false;
+    // ── "Have a trip code?" — an optional inline field under the Manual/AI
+    // cards on the mode-select screen. It used to be a mandatory step wedged
+    // between Manual Planning and Trip Details, so every manual planner had
+    // to dismiss a screen most of them had no code for. Imports and redirects
+    // away on success, so it never has to hand control back to the wizard.
     public string $importCodeInput   = '';
     public string $importCodeError   = '';
+
+    // Sets the message and tells the browser to shake the field. Alpine also
+    // handles the empty-input case on its own without a round trip; this
+    // covers every rejection that can only be decided server-side.
+    private function reject(string $message): void
+    {
+        $this->importCodeError = $message;
+        $this->dispatch('code-rejected');
+    }
 
     public function importCode(): void
     {
         $this->importCodeError = '';
         $code = trim($this->importCodeInput);
         if ($code === '') {
-            $this->importCodeError = 'Enter a share code.';
+            $this->reject('Enter a share code.');
             return;
         }
 
@@ -50,15 +60,19 @@ class TripPlannerWizard extends Component
         $sourceTrip = $importer->findByCode($code);
 
         if (!$sourceTrip) {
-            $this->importCodeError = 'No trip found with that code.';
+            $this->reject('No trip found with that code.');
             return;
         }
         if ($sourceTrip->user_id === auth()->id()) {
-            // Still blocked — just no error message shown for it.
+            // Used to bail silently. Now that every other rejection shakes the
+            // field, silence here would read as a dead button rather than a
+            // refusal — and it's the traveler's own code, so saying so leaks
+            // nothing.
+            $this->reject("That's your own trip's code.");
             return;
         }
         if (!$importer->isShareable($sourceTrip)) {
-            $this->importCodeError = 'This trip has nothing shareable saved on it.';
+            $this->reject('This trip has nothing shareable saved on it.');
             return;
         }
 
@@ -79,11 +93,6 @@ class TripPlannerWizard extends Component
         $this->redirect(route('saved-trips'), navigate: true);
     }
 
-    public function skipCode(): void
-    {
-        $this->manualCodeGateDone = true;
-    }
-
     // ── Step 1: trip details form (new) ───────────────────
     // Bumped every time we land back on step 1 from a later step, so the
     // Alpine card's wire:key always changes and Livewire is forced to fully
@@ -98,10 +107,6 @@ class TripPlannerWizard extends Component
     public string $manualBudgetMax = '';
     public string $travelWith      = ''; // 'solo' | 'group'
 
-    // Shown when "Next" is clicked from the trip-details form with one or
-    // more of From/To/Budget/Start Date/End Date still empty.
-    public bool  $showTripDetailsModal = false;
-    public array $missingTripFields    = [];
 
     // ── Step 2: flight selection ───────────────────────────
     public array  $flightResults     = [];
@@ -153,6 +158,53 @@ class TripPlannerWizard extends Component
     public bool   $mcAttractionStep       = false;
     public array  $mcAttractionResults    = [];
     public bool   $mcAttractionLoading    = false;
+
+    // ── Result search (accommodation / dining / attractions) ───────────
+    // Narrows what's already on screen rather than firing a fresh provider
+    // query: SerpAPI is capped at 80 calls/day shared across the whole app
+    // (see SerpApiService), and this step's round trip already happened when
+    // it opened. "Applied" is only synced on the Search click, so typing
+    // doesn't churn the list underneath the traveler.
+    public string $hotelSearch             = '';
+    public string $hotelSearchApplied      = '';
+    public string $venueSearch             = '';
+    public string $venueSearchApplied      = '';
+    public string $attractionSearch        = '';
+    public string $attractionSearchApplied = '';
+
+    public function searchHotelResults(): void      { $this->hotelSearchApplied      = trim($this->hotelSearch); }
+    public function searchVenueResults(): void      { $this->venueSearchApplied      = trim($this->venueSearch); }
+    public function searchAttractionResults(): void { $this->attractionSearchApplied = trim($this->attractionSearch); }
+
+    public function clearHotelSearch(): void      { $this->hotelSearch      = ''; $this->hotelSearchApplied      = ''; }
+    public function clearVenueSearch(): void      { $this->venueSearch      = ''; $this->venueSearchApplied      = ''; }
+    public function clearAttractionSearch(): void { $this->attractionSearch = ''; $this->attractionSearchApplied = ''; }
+
+    /**
+     * Narrow a result set by free text across whichever descriptive fields a
+     * row happens to carry (providers aren't consistent about which are set).
+     *
+     * Keys are deliberately preserved: selectAccommodation()/toggleVenue()/
+     * toggleAttraction() all index back into the ORIGINAL unfiltered array,
+     * so reindexing here would silently select the wrong row.
+     */
+    public function filterResults(array $rows, string $needle): array
+    {
+        $needle = trim(mb_strtolower($needle));
+        if ($needle === '') return $rows;
+
+        return array_filter($rows, function ($row) use ($needle) {
+            foreach (['name', 'address', 'location', 'city', 'category', 'type',
+                      'cuisine', 'detail', 'description', 'price'] as $key) {
+                $value = $row[$key] ?? null;
+                if (is_string($value) && $value !== ''
+                    && str_contains(mb_strtolower($value), $needle)) {
+                    return true;
+                }
+            }
+            return false;
+        });
+    }
 
     public function selectedVenuesFlat(): array
     {
@@ -692,21 +744,26 @@ class TripPlannerWizard extends Component
 
     public function proceedFromTripDetails(): void
     {
+        // Alpine already gates the obvious empties before this ever runs; this
+        // stays as the backstop for anything the client and server disagree
+        // on, and shakes the same fields instead of opening a modal.
         $missing = [];
-        if (trim($this->manualFrom) === '')                          $missing[] = 'From (Leaving from?)';
-        if (trim($this->manualTo) === '')                            $missing[] = 'To (Going to?)';
-        if (trim(preg_replace('/[^\d]/', '', $this->manualBudgetMin)) === '') $missing[] = 'Preferred Budget Range';
-        if ($this->startDate === '')                                 $missing[] = 'Start Date';
-        if ($this->endDate === '')                                   $missing[] = 'End Date';
+        if (trim($this->manualFrom) === '')                                  $missing[] = 'from';
+        if (trim($this->manualTo) === '')                                    $missing[] = 'to';
+        if (trim(preg_replace('/[^\d]/', '', $this->manualBudgetMin)) === '') $missing[] = 'budget';
+        if ($this->startDate === '')                                         $missing[] = 'start';
+        if ($this->endDate === '')                                           $missing[] = 'end';
 
         if ($missing) {
-            $this->missingTripFields    = $missing;
-            $this->showTripDetailsModal = true;
+            $this->dispatch('trip-details-missing', fields: $missing);
             return;
         }
 
         if (strtolower(trim($this->manualFrom)) === strtolower(trim($this->manualTo))) {
-            $this->addError('manualTo', 'Destination must be different from your origin city.');
+            // addError() had nowhere to render — this view has no @error slot
+            // anywhere, so clicking Next with matching cities used to do
+            // nothing at all. Shake the destination field instead.
+            $this->dispatch('trip-details-missing', fields: ['to']);
             return;
         }
 
@@ -965,6 +1022,9 @@ class TripPlannerWizard extends Component
 
         $this->hotelLoading    = true;
         $this->hotelResults    = [];
+        // A filter left over from the previous result set would hide the new
+        // one and read as "search returned nothing".
+        $this->clearHotelSearch();
         $this->mcHotelResults  = [];
         $this->selectedHotel   = null;
         $this->selectedMcHotel = null;
@@ -1151,6 +1211,7 @@ class TripPlannerWizard extends Component
         set_time_limit(60);
         $this->venueLoading        = true;
         $this->venueResults        = [];
+        $this->clearVenueSearch();
         $this->venueError          = '';
         $this->mcVenueStep         = false;
         $this->mcVenueResults      = [];
@@ -1296,6 +1357,7 @@ class TripPlannerWizard extends Component
         if ($this->mcAttractionStep) {
             $this->mcAttractionLoading = true;
             $this->mcAttractionResults = [];
+            $this->clearAttractionSearch();
             try {
                 $this->mcAttractionResults = $serp->searchAttractionsRaw($this->mcTo, $this->attractionType) ?? [];
                 if (empty($this->mcAttractionResults)) {
@@ -1319,6 +1381,7 @@ class TripPlannerWizard extends Component
 
         $this->attractionLoading      = true;
         $this->attractionResults      = [];
+        $this->clearAttractionSearch();
         $this->mcAttractionResults    = [];
         $dest = $this->manualTo ?: $this->mcTo ?: '';
         if (!$dest) { $this->attractionLoading = false; return; }

@@ -33,20 +33,6 @@
     .tc-modal-btn-cancel  { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
     .tc-modal-btn-primary { background: var(--primary); color: #fff; border: none; }
     .tc-modal-btn-danger  { background: #DC2626; color: #fff; border: none; }
-
-    /* Sortable column headers — inherit the <th> type styling so they read as
-       headers, not links, with only the caret signalling they're clickable. */
-    .tc-sort {
-        display: inline-flex; align-items: center; gap: 6px;
-        color: inherit; text-decoration: none; font: inherit;
-        letter-spacing: inherit; text-transform: inherit; cursor: pointer;
-    }
-    .tc-sort i { font-size: 12px; opacity: .6; transition: transform .15s ease, opacity .15s ease; }
-    .tc-sort:hover i { opacity: 1; }
-    .tc-sort i.is-reversed { transform: rotate(180deg); }
-    /* Brief dim while the sorted rows are being fetched, so a click on a
-       slow connection still reads as "working" without a page flash. */
-    #tcTableWrap.is-loading { opacity: .55; pointer-events: none; transition: opacity .1s ease; }
 </style>
 
 <div class="admin-page-head">
@@ -59,7 +45,7 @@
 @if(session('success'))<div class="admin-alert-success">{{ session('success') }}</div>@endif
 {{-- Everything the sort affects lives in one wrapper so a sort click can
      swap it in place instead of navigating. --}}
-<div id="tcTableWrap">
+<div id="tcTableWrap" class="admin-sort-target">
 <div class="admin-card">
     <table class="admin-table">
         @php
@@ -83,7 +69,7 @@
             @foreach (['cost_level' => 'Cost Level', 'multiplier' => 'Multiplier', 'category' => 'Category'] as $key => $label)
             @php $s = $sortLink($key); @endphp
             <th>
-                        <a href="{{ $s['url'] }}" class="tc-sort">
+                        <a href="{{ $s['url'] }}" class="admin-sort">
                     {{ $label }}
                     {{-- circle-chevron-down, not circle-caret-down: the latter
                          is Font Awesome Pro and renders as nothing against the
@@ -278,7 +264,7 @@
     }
 
     document.addEventListener('click', function (e) {
-        const link = e.target.closest('#tcTableWrap .tc-sort, #tcTableWrap .admin-pagination a');
+        const link = e.target.closest('#tcTableWrap .admin-sort, #tcTableWrap .admin-pagination a');
         if (!link || !link.href) return;
         // Leave modified clicks to the browser (new tab, download, etc).
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;

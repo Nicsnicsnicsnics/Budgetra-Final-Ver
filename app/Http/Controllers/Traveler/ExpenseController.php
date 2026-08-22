@@ -14,13 +14,21 @@ class ExpenseController extends Controller
     {
         $user  = auth()->user();
         // accessibleTrips(): a group member logs their own spending against
-        // the shared trip, so it has to appear in this selector. The expense
-        // list itself stays $user->expenses() — everyone sees what they spent,
-        // not what the whole group did.
+        // the shared trip, so it has to appear in this selector.
         $trips = $user->accessibleTrips()->latest()->get()
             ->filter(fn ($t) => in_array($t->resolved_status, ['active', 'upcoming', 'past'], true))
             ->values();
-        $query = $user->expenses()->with('trip')->latest('expense_date');
+
+        // Scoped by trip, not by who logged it. On a group trip everyone needs
+        // to see the whole group's spending — the trip's own totals (and the
+        // per-person split) already count every member's expenses, so listing
+        // only your own here contradicted the numbers shown beside it.
+        // Restricted to trips the traveller may open, so a stray ?trip_id
+        // can't expose someone else's expenses.
+        $accessibleIds = $user->accessibleTrips()->pluck('id');
+        $query = Expense::with(['trip', 'user:id,full_name'])
+            ->whereIn('trip_id', $accessibleIds)
+            ->latest('expense_date');
 
         // The page is built around viewing one trip's expenses at a time
         // (destination selector, single-trip "Add Expense" link) — default

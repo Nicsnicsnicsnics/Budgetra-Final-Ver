@@ -1,39 +1,12 @@
 <div style="width:100%;display:flex;flex-direction:column;flex:1;">
 
 {{-- ═══════════════════════════════════════════════════════════════
-     STEP 1a — Have a trip code? (Manual Planning only, skippable)
-═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode === 'manual' && $step === 1 && !$manualCodeGateDone)
-<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;flex:1;padding:20px;box-sizing:border-box;">
-    <div style="width:100%;max-width:520px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:26px;padding:48px 44px;text-align:center;">
-        <div style="width:72px;height:72px;border-radius:20px;background:#FDF3EB;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
-            <i class="fa-solid fa-key" style="font-size:28px;color:var(--primary);"></i>
-        </div>
-        <h2 style="font-size:26px;font-weight:800;color:var(--dark);margin:0 0 10px;">Have a trip code?</h2>
-        <p style="font-size:15px;color:var(--muted);line-height:1.6;margin:0 0 28px;">
-            Enter it here to copy another traveler's flight, accommodation, food & dining, and attraction picks into your own trip.
-        </p>
-        <input type="text" wire:model="importCodeInput" wire:keydown.enter="importCode" maxlength="8" placeholder="e.g. AB1C2D3E"
-               style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:12px;padding:16px 18px;font-size:18px;font-family:inherit;text-align:center;margin-bottom:16px;">
-        @if($importCodeError)
-        <div style="font-size:13px;color:#ba1a1a;margin-bottom:16px;">{{ $importCodeError }}</div>
-        @endif
-        <button wire:click="importCode" wire:loading.attr="disabled" wire:target="importCode"
-                style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:16px 0;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px;">
-            <span wire:loading.remove wire:target="importCode">Import Trip</span>
-            <span wire:loading wire:target="importCode"><i class="fa-solid fa-spinner fa-spin"></i></span>
-        </button>
-        <a href="#" wire:click.prevent="skipCode" style="font-size:14px;color:var(--muted);text-decoration:underline;">
-            Skip, I don't have a code
-        </a>
-    </div>
-</div>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════
      STEP 1 — Plan Your Trip (manual)
+     Picking Manual Planning lands here directly. The "Have a trip code?"
+     screen that used to sit in front of this step is now an optional
+     shortcut under the mode-select cards.
 ═══════════════════════════════════════════════════════════════ --}}
-@if ($planningMode !== '' && $step === 1 && ($planningMode !== 'manual' || $manualCodeGateDone))
+@if ($planningMode !== '' && $step === 1)
 @php
 $localCities = [
     ['name'=>'Manila','code'=>'MNL'],['name'=>'Cebu City','code'=>'CEB'],['name'=>'Davao City','code'=>'DVO'],
@@ -68,6 +41,19 @@ $allCities = array_merge(
 .pyt-field{background:var(--bg-white);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:border-color .18s,background .18s,box-shadow .18s;}
 .pyt-field:hover{border-color:#D9C4AE;}
 .pyt-field:focus-within{border-color:var(--primary);background:var(--bg-white);box-shadow:0 0 0 4px rgba(147,75,25,0.08);}
+/* Required-but-empty. Beats :hover and :focus-within so the red survives the
+   pointer landing on the field. The dropdown/calendar popovers are siblings
+   of .pyt-field, not children, so the transform can't drag them along. */
+.pyt-field.is-bad,.pyt-field.is-bad:hover,.pyt-field.is-bad:focus-within{
+    border-color:#FF3B3B;box-shadow:0 0 0 3px rgba(255,59,59,.20);
+    animation:pyt-shake .48s cubic-bezier(.36,.07,.19,.97) both;}
+@keyframes pyt-shake{
+  10%,90%{transform:translateX(-2px);}
+  20%,80%{transform:translateX(3px);}
+  30%,50%,70%{transform:translateX(-6px);}
+  40%,60%{transform:translateX(6px);}
+}
+@media (prefers-reduced-motion:reduce){.pyt-field.is-bad{animation:none;}}
 .pyt-icon{width:32px;height:32px;border-radius:9px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pyt-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:8px;}
 .pyt-value{font-size:16px;font-weight:600;color:var(--dark);}
@@ -103,6 +89,7 @@ $allCities = array_merge(
          x-init — which is what actually re-seeds fromLabel/toLabel/dates/
          budget from the still-intact server-side values. --}}
     <div wire:key="pyt-manual-card-{{ $step1VisitToken }}" x-data="pytManual()" x-init="init()"
+         @trip-details-missing.window="flagBad($event.detail.fields)"
          style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:24px;width:100%;max-width:720px;box-shadow:0 8px 36px rgba(45,27,20,.08);">
 
         <div style="padding:36px 36px 0;">
@@ -113,7 +100,7 @@ $allCities = array_merge(
                 {{-- FROM --}}
                 <div style="position:relative;flex:1;" x-ref="fromWrap" @click.stop>
                     <div class="pyt-label">From</div>
-                    <div class="pyt-field" @click="toggleDrop('from')"
+                    <div class="pyt-field" :class="{ 'is-bad': bad.from }" @click="toggleDrop('from'); bad.from = false"
                          style="display:flex;align-items:center;gap:12px;">
                         <div class="pyt-icon" style="background:#FEF3E2;"><i class="fa-solid fa-plane-departure" style="color:#F1A53D;font-size:14px;"></i></div>
                         <span x-show="!fromLabel" class="pyt-placeholder" style="font-size:16px;">Leaving from?</span>
@@ -148,7 +135,7 @@ $allCities = array_merge(
                 {{-- TO --}}
                 <div style="position:relative;flex:1;" x-ref="toWrap" @click.stop>
                     <div class="pyt-label">To</div>
-                    <div class="pyt-field" @click="toggleDrop('to')"
+                    <div class="pyt-field" :class="{ 'is-bad': bad.to }" @click="toggleDrop('to'); bad.to = false"
                          style="display:flex;align-items:center;gap:12px;">
                         <div class="pyt-icon" style="background:#FEF3E2;"><i class="fa-solid fa-plane-arrival" style="color:#F1A53D;font-size:14px;"></i></div>
                         <span x-show="!toLabel" class="pyt-placeholder" style="font-size:16px;">Going to?</span>
@@ -175,7 +162,7 @@ $allCities = array_merge(
             {{-- BUDGET --}}
             <div style="margin-bottom:18px;">
                 <div class="pyt-label">Preferred Budget Range (must not exceed 7 digits)</div>
-                <div class="pyt-field" style="cursor:default;display:flex;align-items:center;gap:12px;">
+                <div class="pyt-field" :class="{ 'is-bad': bad.budget }" style="cursor:default;display:flex;align-items:center;gap:12px;">
                     <div class="pyt-icon" style="background:#E6F5EC;"><i class="fa-solid fa-money-bill-wave" style="color:#22A06B;font-size:14px;"></i></div>
                     <input type="text"
                            placeholder="Please input your budget"
@@ -186,6 +173,7 @@ $allCities = array_merge(
                                const fmt = p => { const n = p.trim().replace(/[^0-9]/g,'').slice(0,7); return n ? parseInt(n).toLocaleString('en-PH') : ''; };
                                const raw = $el.value; const parts = raw.split('-');
                                $el.value = parts.length===2 ? fmt(parts[0])+' - '+fmt(parts[1]) : fmt(parts[0]);
+                               if ($el.value) bad.budget = false;
                            "
                            @change="$wire.set('manualBudgetMin', $el.value)"
                            x-init="$el.value = '{{ $manualBudgetMin }}'">
@@ -199,7 +187,7 @@ $allCities = array_merge(
                 <div>
                     <div class="pyt-label">Start Date</div>
                     <div style="position:relative;">
-                        <div class="pyt-field" @click.stop="toggleCal('start')" style="display:flex;align-items:center;gap:12px;">
+                        <div class="pyt-field" :class="{ 'is-bad': bad.start }" @click.stop="toggleCal('start'); bad.start = false" style="display:flex;align-items:center;gap:12px;">
                             <div class="pyt-icon"><i class="fa-regular fa-calendar" style="color:var(--primary);font-size:14px;"></i></div>
                             <span x-show="!startLabel" class="pyt-placeholder" style="font-size:16px;">Select date</span>
                             <span x-show="startLabel" x-text="startLabel" class="pyt-value" style="font-size:16px;"></span>
@@ -228,7 +216,7 @@ $allCities = array_merge(
                 <div>
                     <div class="pyt-label">End Date</div>
                     <div style="position:relative;">
-                        <div class="pyt-field" @click.stop="toggleCal('end')" style="display:flex;align-items:center;gap:12px;">
+                        <div class="pyt-field" :class="{ 'is-bad': bad.end }" @click.stop="toggleCal('end'); bad.end = false" style="display:flex;align-items:center;gap:12px;">
                             <div class="pyt-icon"><i class="fa-regular fa-calendar" style="color:var(--primary);font-size:14px;"></i></div>
                             <span x-show="!endLabel" class="pyt-placeholder" style="font-size:16px;">Select date</span>
                             <span x-show="endLabel" x-text="endLabel" class="pyt-value" style="font-size:16px;"></span>
@@ -263,7 +251,7 @@ $allCities = array_merge(
                 <i class="fa-solid fa-circle-info" style="color:var(--muted);font-size:13px;flex-shrink:0;"></i>
                 <span style="font-size:13px;color:var(--muted);">Fill the required details for your trip estimates.</span>
             </div>
-            <button wire:click="proceedFromTripDetails" wire:loading.attr="disabled" wire:target="proceedFromTripDetails"
+            <button x-on:click="submitTripDetails()" wire:loading.attr="disabled" wire:target="proceedFromTripDetails"
                     style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px 30px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;transition:background .18s,gap .18s;"
                     onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='11px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='8px'">
                 <span wire:loading.remove wire:target="proceedFromTripDetails" style="display:inline-flex;align-items:center;gap:8px;">Next <i class="fa-solid fa-arrow-right" style="font-size:12px;"></i></span>
@@ -273,66 +261,6 @@ $allCities = array_merge(
 
     </div>
 
-    {{-- Missing required fields modal --}}
-    @if ($showTripDetailsModal)
-    @php
-        $missingFieldMeta = [
-            'From'                     => ['icon' => 'fa-plane-departure', 'color' => '#F1A53D'],
-            'To'                       => ['icon' => 'fa-plane-arrival',   'color' => '#F1A53D'],
-            'Preferred Budget Range'   => ['icon' => 'fa-money-bill-wave', 'color' => '#22A06B'],
-            'Start Date'               => ['icon' => 'fa-calendar-days',  'color' => 'var(--primary)'],
-            'End Date'                 => ['icon' => 'fa-calendar-days',  'color' => 'var(--primary)'],
-        ];
-        $fieldMeta = function (string $field) use ($missingFieldMeta) {
-            foreach ($missingFieldMeta as $prefix => $meta) {
-                if (str_starts_with($field, $prefix)) return $meta;
-            }
-            return ['icon' => 'fa-circle-exclamation', 'color' => 'var(--primary)'];
-        };
-    @endphp
-    <div x-data="{ show: false }" x-init="requestAnimationFrame(() => show = true)"
-         style="position:fixed;inset:0;background:rgba(26,10,0,0.55);backdrop-filter:blur(2px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div x-show="show" x-transition.scale.95
-             style="background:var(--bg-white);border-radius:24px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(26,10,0,0.35);overflow:hidden;">
-
-            {{-- Header --}}
-            <div style="position:relative;padding:36px 28px 28px;text-align:center;background:linear-gradient(160deg,var(--bg-white) 0%,var(--bg) 100%);overflow:hidden;">
-                <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:var(--primary-light);opacity:.6;"></div>
-                <div style="position:absolute;bottom:-40px;left:-20px;width:100px;height:100px;border-radius:50%;background:var(--primary-light);opacity:.4;"></div>
-                <div style="position:relative;width:64px;height:64px;border-radius:50%;background:var(--bg-white);box-shadow:0 8px 20px rgba(220,38,38,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-                    <i class="fa-solid fa-triangle-exclamation" style="font-size:26px;color:var(--danger);"></i>
-                </div>
-                <div style="position:relative;font-size:19px;font-weight:800;color:var(--dark);letter-spacing:-.01em;">Missing Trip Details</div>
-                <div style="position:relative;font-size:13px;color:var(--muted);margin-top:4px;">A few things need your attention</div>
-            </div>
-
-            {{-- Field list --}}
-            <div style="padding:20px 20px 4px;">
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 6px 10px;">Please fill up the following</div>
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                    @foreach ($missingTripFields as $field)
-                    @php $meta = $fieldMeta($field); @endphp
-                    <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg-white);border:1px solid #F0E8DF;border-radius:14px;">
-                        <div style="width:34px;height:34px;border-radius:10px;background:{{ $meta['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fa-solid {{ $meta['icon'] }}" style="font-size:14px;color:{{ $meta['color'] }};"></i>
-                        </div>
-                        <span style="font-size:13.5px;font-weight:600;color:var(--dark);">{{ $field }}</span>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-
-            {{-- Action --}}
-            <div style="padding:22px 20px 24px;">
-                <button type="button" wire:click="$set('showTripDetailsModal', false)"
-                        style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#A85A20,var(--primary-dark));color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 16px rgba(106,53,0,0.3);transition:transform .12s ease;"
-                        onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform='translateY(0)'">
-                    Got It
-                </button>
-            </div>
-        </div>
-    </div>
-    @endif
 </div>
 
 @script
@@ -357,6 +285,41 @@ window.pytManual = function() {
         endYear:   now.getFullYear(), endMonth:   now.getMonth()+1,
         startCells: [],
         endCells: [],
+
+        // Which required fields are currently flagged empty. Replaces the old
+        // "Missing Trip Details" modal — the fields say it themselves now.
+        bad: { from: false, to: false, budget: false, start: false, end: false },
+
+        flagBad(keys) {
+            // Drop then re-set on the next frame, otherwise clicking Next a
+            // second time on an already-red field wouldn't restart the shake.
+            keys.forEach(k => this.bad[k] = false);
+            requestAnimationFrame(() => keys.forEach(k => { if (k in this.bad) this.bad[k] = true; }));
+        },
+
+        budgetDigits() {
+            return String(this.$refs.budgetInput?.value ?? '').replace(/[^0-9]/g, '');
+        },
+
+        submitTripDetails() {
+            // Checked here rather than on the server: the answer is already
+            // known client-side, and a Livewire round trip would put ~500ms
+            // between the click and the shake.
+            const missing = [];
+            if (!this.fromLabel)     missing.push('from');
+            if (!this.toLabel)       missing.push('to');
+            if (!this.budgetDigits()) missing.push('budget');
+            if (!this.startVal)      missing.push('start');
+            if (!this.endVal)        missing.push('end');
+            if (missing.length) { this.flagBad(missing); return; }
+
+            // The budget input only syncs on 'change'. Set it deferred (live
+            // = false) so it rides along on proceedFromTripDetails' own
+            // request — an immediate set would be a second round trip racing
+            // the first.
+            this.$wire.set('manualBudgetMin', this.$refs.budgetInput.value, false);
+            this.$wire.proceedFromTripDetails();
+        },
 
         init() {
             this.rebuildCells();
@@ -1369,6 +1332,19 @@ window.sortVenues = function(dir) {
         @endforeach
         </div>
 
+        <div class="tp-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" wire:model="hotelSearch" wire:keydown.enter.prevent="searchHotelResults"
+                   placeholder="Search stays">
+            @if ($hotelSearchApplied !== '')
+            <button type="button" class="tp-search-clear" wire:click="clearHotelSearch" title="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            @endif
+            <button type="button" class="tp-search-go" wire:click="searchHotelResults"
+                    wire:loading.attr="disabled" wire:target="searchHotelResults">Search</button>
+        </div>
+
         <button wire:click="skipAccommodation" wire:loading.attr="disabled" wire:target="skipAccommodation"
                 style="background:none;border:none;padding:0;font-size:14px;color:var(--muted);text-decoration:underline;cursor:pointer;">
             <span wire:loading.remove wire:target="skipAccommodation">Skip this step</span>
@@ -1386,9 +1362,11 @@ window.sortVenues = function(dir) {
     </div>
     @else
     @php
-        $activeHotels   = $mcHotelStep ? $mcHotelResults : $hotelResults;
+        $allHotels      = $mcHotelStep ? $mcHotelResults : $hotelResults;
+        $activeHotels   = $this->filterResults($allHotels, $hotelSearchApplied);
         $isMcHotel      = $mcHotelStep;
         $hasHotels      = !empty($activeHotels);
+        $hotelsFiltered = $hotelSearchApplied !== '' && count($activeHotels) !== count($allHotels);
     @endphp
 
     @if (!$hasHotels)
@@ -1396,7 +1374,12 @@ window.sortVenues = function(dir) {
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-hotel" style="font-size:22px;color:var(--primary);"></i>
         </div>
-        <p style="color:var(--muted);font-size:15px;margin:0;">No stays found. Try searching above.</p>
+        @if ($hotelSearchApplied !== '' && !empty($allHotels))
+        <p style="color:var(--muted);font-size:15px;margin:0 0 14px;">No stays match &ldquo;{{ $hotelSearchApplied }}&rdquo;.</p>
+        <button type="button" class="tp-search-go" wire:click="clearHotelSearch">Clear search</button>
+        @else
+        <p style="color:var(--muted);font-size:15px;margin:0;">{{ $hotelError ?: 'No stays found. Try searching above.' }}</p>
+        @endif
     </div>
     @else
     <div id="acc-list" style="display:flex;flex-direction:column;gap:12px;">
@@ -1590,6 +1573,19 @@ window.sortVenues = function(dir) {
             </div>
         </div>
 
+        <div class="tp-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" wire:model="venueSearch" wire:keydown.enter.prevent="searchVenueResults"
+                   placeholder="Search dining">
+            @if ($venueSearchApplied !== '')
+            <button type="button" class="tp-search-clear" wire:click="clearVenueSearch" title="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            @endif
+            <button type="button" class="tp-search-go" wire:click="searchVenueResults"
+                    wire:loading.attr="disabled" wire:target="searchVenueResults">Search</button>
+        </div>
+
         <button wire:click="skipVenue" wire:loading.attr="disabled" wire:target="skipVenue"
                 style="background:none;border:none;padding:0;font-size:14px;color:var(--muted);text-decoration:underline;cursor:pointer;">
             <span wire:loading.remove wire:target="skipVenue">Skip this step</span>
@@ -1607,16 +1603,21 @@ window.sortVenues = function(dir) {
         </div>
         <p style="color:var(--dark);font-size:15px;font-weight:600;margin:0;">Searching for dining options…</p>
     </div>
-    @elseif(empty($venueResults))
+    @elseif(empty($this->filterResults($venueResults, $venueSearchApplied)))
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-utensils" style="font-size:22px;color:var(--primary);"></i>
         </div>
+        @if ($venueSearchApplied !== '' && !empty($venueResults))
+        <p style="color:var(--muted);font-size:15px;margin:0 0 14px;">No dining spots match &ldquo;{{ $venueSearchApplied }}&rdquo;.</p>
+        <button type="button" class="tp-search-go" wire:click="clearVenueSearch">Clear search</button>
+        @else
         <p style="color:var(--muted);font-size:15px;margin:0;">{{ $venueError ?: 'No venues found. Try searching above.' }}</p>
+        @endif
     </div>
     @else
     <div id="venue-list" style="display:flex;flex-direction:column;gap:12px;">
-        @foreach($venueResults as $vi => $venue)
+        @foreach($this->filterResults($venueResults, $venueSearchApplied) as $vi => $venue)
         @php $venueSelected = isset($selectedVenues[$venue['name']]); @endphp
         <div class="venue-card" data-price="{{ $venue['priceMin'] ?? 0 }}"
              style="{{ $venueSelected ? 'border-color:var(--primary);box-shadow:0 0 0 1.5px var(--primary);' : '' }}">
@@ -1691,7 +1692,7 @@ window.sortVenues = function(dir) {
     </div>
     @else
     <div id="mc-venue-list" style="display:flex;flex-direction:column;gap:12px;">
-        @foreach($mcVenueResults as $vi => $venue)
+        @foreach($this->filterResults($mcVenueResults, $venueSearchApplied) as $vi => $venue)
         @php $mcVenueSelected = isset($selectedMcVenues[$venue['name']]); @endphp
         <div class="venue-card" style="{{ $mcVenueSelected ? 'border-color:var(--primary);box-shadow:0 0 0 1.5px var(--primary);' : '' }}">
             @if(!empty($venue['image']))
@@ -1873,6 +1874,19 @@ window.sortVenues = function(dir) {
             </div>
         </div>
 
+        <div class="tp-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" wire:model="attractionSearch" wire:keydown.enter.prevent="searchAttractionResults"
+                   placeholder="Search attractions">
+            @if ($attractionSearchApplied !== '')
+            <button type="button" class="tp-search-clear" wire:click="clearAttractionSearch" title="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            @endif
+            <button type="button" class="tp-search-go" wire:click="searchAttractionResults"
+                    wire:loading.attr="disabled" wire:target="searchAttractionResults">Search</button>
+        </div>
+
         <button wire:click="skipAttraction" wire:loading.attr="disabled" wire:target="skipAttraction"
                 style="background:none;border:none;padding:0;font-size:14px;color:var(--muted);text-decoration:underline;cursor:pointer;">
             <span wire:loading.remove wire:target="skipAttraction">Skip this step</span>
@@ -1881,7 +1895,10 @@ window.sortVenues = function(dir) {
     </div>
 
     {{-- Results --}}
-    @php $activeAttractions = $mcAttractionStep ? $mcAttractionResults : $attractionResults; @endphp
+    @php
+        $allAttractions    = $mcAttractionStep ? $mcAttractionResults : $attractionResults;
+        $activeAttractions = $this->filterResults($allAttractions, $attractionSearchApplied);
+    @endphp
     @if($attractionLoading || ($mcAttractionStep && $mcAttractionLoading))
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
@@ -1894,7 +1911,12 @@ window.sortVenues = function(dir) {
         <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-binoculars" style="font-size:22px;color:var(--primary);"></i>
         </div>
+        @if ($attractionSearchApplied !== '' && !empty($allAttractions))
+        <p style="color:var(--muted);font-size:15px;margin:0 0 14px;">No attractions match &ldquo;{{ $attractionSearchApplied }}&rdquo;.</p>
+        <button type="button" class="tp-search-go" wire:click="clearAttractionSearch">Clear search</button>
+        @else
         <p style="color:var(--muted);font-size:15px;margin:0;">{{ $attractionError ?: 'No attractions found. Try searching above.' }}</p>
+        @endif
     </div>
     @else
     @php $activeSelectedAttractions = $mcAttractionStep ? $selectedMcAttractions : $selectedAttractions; @endphp
@@ -3227,6 +3249,30 @@ window.sortAttractions = function(dir) {
 .mode-tag{font-size:11px;font-weight:600;color:#fff;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.35);backdrop-filter:blur(3px);border-radius:20px;padding:4px 11px;}
 .mode-cta{font-size:13px;font-weight:800;letter-spacing:0.4px;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--primary);border-radius:12px;padding:13px 22px;width:100%;box-sizing:border-box;transition:background .2s,gap .2s;}
 .mode-card:hover .mode-cta{background:var(--primary-dark);gap:11px;}
+/* padding + clip so the shake's ±6px can never spill out and nudge the page
+   into a horizontal scroll. clip (not hidden) keeps it from becoming a
+   scroll container. */
+.mode-code{margin-top:26px;display:flex;flex-direction:column;align-items:center;gap:9px;padding-inline:12px;overflow-x:clip;}
+.mode-code-label{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--muted);}
+.mode-code-label i{font-size:11px;}
+.mode-code-row{display:flex;align-items:stretch;gap:9px;}
+.mode-code-input{width:190px;box-sizing:border-box;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.08em;text-align:center;text-transform:uppercase;background:var(--bg-white);color:var(--dark);outline:none;transition:border-color .18s,box-shadow .18s;}
+.mode-code-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(124,140,255,.16);}
+/* Codes are stored uppercase, so the field uppercases as you type — but the
+   placeholder is prose and shouldn't be shouted back in caps. */
+.mode-code-input::placeholder{text-transform:none;letter-spacing:.02em;font-weight:500;opacity:.7;}
+.mode-code-btn{border:none;border-radius:12px;padding:11px 20px;background:var(--primary);color:#fff;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .18s;}
+.mode-code-btn:hover{background:var(--primary-dark);}
+/* Rejected: candy-red ring plus a short shake. Driven by a class rather than
+   an inline style so re-adding it restarts the animation on a repeat click. */
+.mode-code-input.is-bad,.mode-code-input.is-bad:focus{border-color:#FF3B3B;box-shadow:0 0 0 3px rgba(255,59,59,.20);animation:mode-code-shake .48s cubic-bezier(.36,.07,.19,.97) both;}
+@keyframes mode-code-shake{
+  10%,90%{transform:translateX(-2px);}
+  20%,80%{transform:translateX(3px);}
+  30%,50%,70%{transform:translateX(-6px);}
+  40%,60%{transform:translateX(6px);}
+}
+@media (prefers-reduced-motion:reduce){.mode-code-input.is-bad{animation:none;}}
 </style>
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 32px 20px;height:100%;box-sizing:border-box;position:relative;">
 
@@ -3279,6 +3325,40 @@ window.sortAttractions = function(dir) {
             </div>
         </a>
 
+    </div>
+
+    {{-- Optional shortcut, offered to either planning mode. Centred by the
+         wrapper's align-items:center.
+
+         An empty field is caught here in Alpine rather than on the server:
+         the answer is already known client-side, and a Livewire round trip
+         to Supabase would put ~500ms between the click and the shake, which
+         reads as a dropped click rather than a rejection. Server-side
+         rejections (unknown code) dispatch 'code-rejected' so they land on
+         the same treatment. --}}
+    <div class="mode-code"
+         x-data="{
+             bad: false,
+             reject() { this.bad = false; requestAnimationFrame(() => this.bad = true); },
+             submit() {
+                 if (!(($wire.importCodeInput ?? '').trim())) { this.reject(); return; }
+                 $wire.importCode();
+             }
+         }"
+         @code-rejected.window="reject()">
+
+        <span class="mode-code-label"><i class="fa-solid fa-key"></i> Have a trip code?</span>
+
+        <div class="mode-code-row">
+            <input type="text" class="mode-code-input" :class="{ 'is-bad': bad }"
+                   wire:model="importCodeInput" maxlength="8" placeholder="e.g. AB1C2D3E"
+                   x-on:input="bad = false" x-on:keydown.enter.prevent="submit()">
+            <button type="button" class="mode-code-btn" x-on:click="submit()"
+                    wire:loading.attr="disabled" wire:target="importCode">
+                <span wire:loading.remove wire:target="importCode">Import Trip</span>
+                <span wire:loading wire:target="importCode"><i class="fa-solid fa-spinner fa-spin"></i></span>
+            </button>
+        </div>
     </div>
 </div>
 @endif

@@ -336,14 +336,24 @@
                     <i class="fa-solid {{ $categoryIcons[$expense->category] ?? 'fa-circle' }}"></i>
                 </div>
                 @endif
+                @php $isMine = $expense->user_id === auth()->id(); @endphp
                 <div class="txn-main">
                     <div class="txn-desc">{{ $expense->description ?? $expense->category }}</div>
                     <div class="txn-meta">
                         <span>{{ $expense->category }}</span> · <span>{{ $expense->expense_date->format('M j, Y') }}</span>
+                        {{-- Only on a group trip's shared expenses — on your own
+                             trips every row is yours and the name is noise. --}}
+                        @unless ($isMine)
+                        · <span style="color:var(--primary);font-weight:600;">{{ $expense->user->full_name ?? 'A fellow traveler' }}</span>
+                        @endunless
                     </div>
                 </div>
                 <div class="txn-amount">{{ currency_symbol() }}{{ number_format($expense->amount, 0) }}</div>
                 <div class="txn-actions">
+                    {{-- Edit/Delete are owner-only server-side (403 otherwise),
+                         so showing them on someone else's expense would only
+                         ever dead-end. --}}
+                    @if ($isMine)
                     <a href="{{ route('expenses.edit', $expense) }}" class="txn-action-btn" title="Edit">
                         <i class="fa-solid fa-pen"></i>
                     </a>
@@ -354,6 +364,7 @@
                             @click="confirmDeleteId = {{ $expense->id }}; confirmDeleteDesc = @js($expense->description ?? $expense->category)">
                         <i class="fa-solid fa-trash"></i>
                     </button>
+                    @endif
                 </div>
             </div>
             @endforeach

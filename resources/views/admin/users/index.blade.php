@@ -31,10 +31,43 @@
     <button type="submit" class="admin-btn admin-btn-outline">Search</button>
 </form>
 
+{{-- Everything the sort affects lives in one wrapper so a sort click can
+     swap it in place instead of navigating. --}}
+<div id="usersTableWrap" class="admin-sort-target">
 <div class="admin-card">
     <table class="admin-table">
+        @php
+            // Each column opens "most first"; clicking the one already sorted
+            // flips it, and the chevron rotates to match.
+            $sortLink = function (string $key) use ($sort, $dir, $sortDefaults) {
+                $isActive = $sort === $key;
+                $next     = $isActive && $dir === $sortDefaults[$key]
+                    ? ($sortDefaults[$key] === 'asc' ? 'desc' : 'asc')
+                    : $sortDefaults[$key];
+                return [
+                    'url'      => route('admin.users.index', array_filter([
+                                      'sort'   => $key,
+                                      'dir'    => $next,
+                                      'search' => request('search'),
+                                  ])),
+                    'reversed' => $isActive && $dir !== $sortDefaults[$key],
+                ];
+            };
+        @endphp
         <thead>
-            <tr><th>User</th><th>Trip Count</th><th>Total Travel Cost</th><th>Average Travel Cost</th><th>Actions</th></tr>
+            <tr>
+                <th>User</th>
+                @foreach (['trips' => 'Trip Count', 'total' => 'Total Travel Cost', 'average' => 'Average Travel Cost'] as $key => $label)
+                @php $sl = $sortLink($key); @endphp
+                <th>
+                    <a href="{{ $sl['url'] }}" class="admin-sort">
+                        {{ $label }}
+                        <i class="fa-solid fa-circle-chevron-down {{ $sl['reversed'] ? 'is-reversed' : '' }}"></i>
+                    </a>
+                </th>
+                @endforeach
+                <th>Actions</th>
+            </tr>
         </thead>
         <tbody>
         @forelse($users as $user)
@@ -74,6 +107,7 @@
     </table>
 </div>
 <div class="admin-pagination">{{ $users->links() }}</div>
+</div>{{-- /#usersTableWrap --}}
 
 <div id="deleteUserModal" class="admin-modal-backdrop" style="display:none;" onclick="if(event.target===this)closeDeleteUserModal();">
     <div class="admin-modal-card">
@@ -97,13 +131,43 @@
 </div>
 
 <script>
+    // Sorting without a page reload. The sort still runs on the server (it has
+    // to — ordering the full set and re-paginating can't be done from the 25
+    // rows in the DOM), but the response is fetched and the table swapped in
+    // place. The headers stay real hrefs so middle-click still works.
+    function swapUsersTable(url, push) {
+        const wrap = document.getElementById('usersTableWrap');
+        wrap.classList.add('is-loading');
+        return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+            .then(r => { if (!r.ok) throw new Error('sort failed'); return r.text(); })
+            .then(html => {
+                const fresh = new DOMParser().parseFromString(html, 'text/html')
+                                             .getElementById('usersTableWrap');
+                if (!fresh) throw new Error('table missing');
+                wrap.innerHTML = fresh.innerHTML;
+                if (push) history.pushState({ usersUrl: url }, '', url);
+            })
+            // Never strand the admin on a half-updated table.
+            .catch(() => { window.location.href = url; })
+            .finally(() => wrap.classList.remove('is-loading'));
+    }
+
     document.addEventListener('click', function (e) {
+        const link = e.target.closest('#usersTableWrap .admin-sort, #usersTableWrap .admin-pagination a');
+        if (link && link.href && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+            e.preventDefault();
+            swapUsersTable(link.href, true);
+            return;
+        }
+
         const btn = e.target.closest('.js-delete-user-btn');
         if (!btn) return;
         document.getElementById('deleteUserName').textContent = btn.dataset.name || 'this user';
         document.getElementById('deleteUserForm').action = btn.dataset.action;
         document.getElementById('deleteUserModal').style.display = 'flex';
     });
+    window.addEventListener('popstate', function () { swapUsersTable(window.location.href, false); });
+
     function closeDeleteUserModal() {
         document.getElementById('deleteUserModal').style.display = 'none';
     }

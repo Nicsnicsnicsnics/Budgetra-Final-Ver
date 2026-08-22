@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Database\ResilientLostConnectionDetector;
+use Illuminate\Contracts\Database\LostConnectionDetector as LostConnectionDetectorContract;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -11,7 +13,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Overrides the framework's own binding (DatabaseServiceProvider registers
+        // first, so this one wins) to teach Laravel that Supabase's pooled-backend
+        // terminations are retryable rather than fatal. See the detector class.
+        $this->app->singleton(
+            LostConnectionDetectorContract::class,
+            ResilientLostConnectionDetector::class
+        );
     }
 
     /**

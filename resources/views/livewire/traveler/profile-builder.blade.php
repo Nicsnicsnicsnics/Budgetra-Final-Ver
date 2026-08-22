@@ -33,6 +33,25 @@
 .pb-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px;}
 .pb-input-wrap{display:flex;align-items:center;gap:10px;border:1.5px solid var(--border);border-radius:10px;padding:13px 16px;background:var(--bg-white);}
 .pb-input-wrap:focus-within{border-color:var(--primary);}
+/* Required-but-empty. Replaces the old "missing fields" modal — the field
+   itself says what's wrong. Beats :focus-within so the red survives a click. */
+.pb-input-wrap.is-bad,.pb-input-wrap.is-bad:focus-within{
+    border-color:#FF3B3B;box-shadow:0 0 0 3px rgba(255,59,59,.20);
+    animation:pb-shake .48s cubic-bezier(.36,.07,.19,.97) both;}
+/* Card pickers shake the cards themselves rather than their scroll container:
+   .int-scroll is overflow-x:auto and holds the absolutely-tracked side panel,
+   so transforming it would drag that along. */
+.int-card-img.is-bad{box-shadow:0 0 0 2px #FF3B3B;
+    animation:pb-shake .48s cubic-bezier(.36,.07,.19,.97) both;}
+@keyframes pb-shake{
+  10%,90%{transform:translateX(-2px);}
+  20%,80%{transform:translateX(3px);}
+  30%,50%,70%{transform:translateX(-6px);}
+  40%,60%{transform:translateX(6px);}
+}
+@media (prefers-reduced-motion:reduce){
+  .pb-input-wrap.is-bad,.int-card-img.is-bad{animation:none;}
+}
 .pb-input{border:none;background:transparent;font-size:14px;font-weight:700;color:var(--dark);outline:none;width:100%;}
 .pb-input::placeholder{color:var(--muted);font-weight:400;}
 .pb-suggest{font-size:12px;color:var(--muted);margin-top:8px;}
@@ -172,7 +191,7 @@
 
         <div class="pb-label" style="font-size:12px;">Home Location / Starting Point</div>
         <div style="position:relative;" x-on:click.away="open = false">
-            <div class="pb-input-wrap" style="padding:18px 20px;cursor:pointer;" x-on:click="open = !open">
+            <div class="pb-input-wrap" :class="{ 'is-bad': $store.pbBad.home }" style="padding:18px 20px;cursor:pointer;" x-on:click="open = !open; $store.pbBad.home = false">
                 <i class="fa-solid fa-location-dot" style="color:var(--primary);font-size:16px;flex-shrink:0;"></i>
                 <span x-text="query ? (code ? query + ' (' + code + ')' : query) : 'Where are you from?'"
                       :style="query ? 'font-size:16px;font-weight:700;color:var(--dark);' : 'font-size:17px;font-weight:400;color:var(--muted);'"></span>
@@ -229,7 +248,7 @@
     <p class="pb-sub" style="font-size:16px;">Enter the budget that best fits your travel style.</p>
 
     <div class="pb-label" style="font-size:12px;">Budget Level</div>
-    <div class="pb-input-wrap" style="padding:20px 22px;" x-data="{ display: '{{ $dailyBudgetDisplay }}' }" x-init="$nextTick(() => { $el.querySelector('input').value = display; })">
+    <div class="pb-input-wrap" :class="{ 'is-bad': $store.pbBad.budget }" style="padding:20px 22px;" x-data="{ display: '{{ $dailyBudgetDisplay }}' }" x-init="$nextTick(() => { $el.querySelector('input').value = display; })">
         <i class="fa-solid fa-wallet" style="color:var(--muted);font-size:18px;flex-shrink:0;"></i>
         <input type="text" class="pb-input" style="font-size:19px;" placeholder="Please enter your desired budget"
                x-ref="budgetInput"
@@ -239,6 +258,7 @@
                    let fmt = raw ? Number(raw).toLocaleString('en-PH') : '';
                    $event.target.value = fmt;
                    display = fmt;
+                   if (fmt) $store.pbBad.budget = false;
                "
                @change="
                    let raw = $event.target.value.replace(/[^\d]/g, '');
@@ -347,9 +367,9 @@
     <div class="int-scroll" x-data="{ style: '{{ $travelStyle }}' }" style="display:flex;gap:20px;justify-content:center;align-items:stretch;overflow-x:auto;padding-bottom:6px;">
         @foreach($travelStyles as $name => $meta)
         <div class="int-card-img"
-             :class="style === '{{ $name }}' ? 'active' : ''"
+             :class="{ 'active': style === '{{ $name }}', 'is-bad': $store.pbBad.style }"
              style="flex:0 0 340px;height:420px;"
-             x-on:click="style = (style === '{{ $name }}' ? '' : '{{ $name }}')"
+             x-on:click="style = (style === '{{ $name }}' ? '' : '{{ $name }}'); $store.pbBad.style = false"
              wire:click="selectTravelStyle('{{ $name }}')"
              wire:ignore>
             <div class="int-card-img-bg" style="background-image:url('{{ asset('stockimages/' . $meta['image']) }}');">
@@ -373,7 +393,7 @@
 
             @foreach($memberEmailInputs as $i => $value)
             <div style="display:flex;gap:8px;{{ $i > 0 ? 'margin-top:10px;' : '' }}" wire:key="member-row-{{ $i }}">
-                <div class="pb-input-wrap" style="flex:1;padding:10px 14px;">
+                <div class="pb-input-wrap" :class="{ 'is-bad': $store.pbBad.members }" style="flex:1;padding:10px 14px;" x-on:input="$store.pbBad.members = false">
                     <i class="fa-solid fa-envelope" style="color:var(--muted);font-size:12px;flex-shrink:0;"></i>
                     <input type="email" wire:model="memberEmailInputs.{{ $i }}" wire:keydown.enter.prevent="addGroupMember({{ $i }})"
                            class="pb-input" style="font-size:13px;" placeholder="Enter member's email address">
@@ -424,9 +444,9 @@
     <div class="int-scroll" style="display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;margin-bottom:24px;">
         @foreach($transportationOptions as $name => $icon)
         <div class="int-card-img"
-             :class="transport === '{{ $name }}' ? 'active' : ''"
+             :class="{ 'active': transport === '{{ $name }}', 'is-bad': $store.pbBad.transportation }"
              style="flex:0 0 220px;height:220px;"
-             x-on:click="transport = (transport === '{{ $name }}' ? '' : '{{ $name }}')"
+             x-on:click="transport = (transport === '{{ $name }}' ? '' : '{{ $name }}'); $store.pbBad.transportation = false"
              wire:click="selectTransportation('{{ $name }}')"
              wire:ignore>
             <div class="int-card-img-bg" style="background-image:url('{{ asset('stockimages/' . ($transportationImages[$name] ?? '')) }}');">
@@ -444,9 +464,9 @@
     <div class="int-scroll" style="display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;">
         @foreach($accommodationOptions as $name => $icon)
         <div class="int-card-img"
-             :class="stay === '{{ $name }}' ? 'active' : ''"
+             :class="{ 'active': stay === '{{ $name }}', 'is-bad': $store.pbBad.accommodation }"
              style="flex:0 0 220px;height:220px;"
-             x-on:click="stay = (stay === '{{ $name }}' ? '' : '{{ $name }}')"
+             x-on:click="stay = (stay === '{{ $name }}' ? '' : '{{ $name }}'); $store.pbBad.accommodation = false"
              wire:click="selectAccommodation('{{ $name }}')"
              wire:ignore>
             <div class="int-card-img-bg" style="background-image:url('{{ asset('stockimages/' . ($accommodationImages[$name] ?? '')) }}');">
@@ -504,9 +524,9 @@
          style="display:flex;gap:16px;align-items:stretch;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;">
         @foreach($interests as $name => $subs)
         <div class="int-card-img"
-             :class="selected.includes('{{ $name }}') ? 'active' : ''"
+             :class="{ 'active': selected.includes('{{ $name }}'), 'is-bad': $store.pbBad.interests }"
              style="flex:0 0 260px;height:300px;"
-             x-on:click="toggleInterest('{{ $name }}')">
+             x-on:click="toggleInterest('{{ $name }}'); $store.pbBad.interests = false">
             <div class="int-card-img-bg" style="background-image:url('{{ asset('stockimages/' . ($images[$name] ?? '')) }}');">
                 <div class="int-icon-img" style="width:64px;height:64px;">
                     <i class="fa-solid {{ $icons[$name] ?? 'fa-star' }}" style="font-size:28px;color:var(--primary);"></i>
@@ -567,69 +587,34 @@
     @endif
 </div>
 
-{{-- Missing fields modal — mirrors the trip planner's "Missing Trip Details" modal --}}
-@if ($showMissingFieldsModal)
-@php
-    $missingFieldMeta = [
-        'Home Location'  => ['icon' => 'fa-location-dot',  'color' => '#F1A53D'],
-        'Preferred Budget Range' => ['icon' => 'fa-money-bill-wave', 'color' => '#22A06B'],
-        'Travel Style'   => ['icon' => 'fa-people-group',  'color' => '#6D5DD3'],
-        'At least one Group Member' => ['icon' => 'fa-user-group', 'color' => '#6D5DD3'],
-        'Travel Interests' => ['icon' => 'fa-heart', 'color' => '#E0607E'],
-        'Preferred Transportation' => ['icon' => 'fa-plane', 'color' => '#3B82F6'],
-        'Preferred Accommodation'  => ['icon' => 'fa-bed', 'color' => '#0D9488'],
-    ];
-    $pbFieldMeta = function (string $field) use ($missingFieldMeta) {
-        foreach ($missingFieldMeta as $prefix => $meta) {
-            if (str_starts_with($field, $prefix)) return $meta;
+
+</div>
+
+</div>
+
+{{-- Required-field flags live in an Alpine STORE rather than x-data on this
+     component's root: Livewire re-renders that root on every step change and
+     would re-initialise (and silently wipe) any x-data sitting on it. A store
+     lives outside the DOM, so morphs can't touch it. --}}
+@script
+<script>
+    const PB_BAD_KEYS = ['home','budget','style','members','interests','transportation','accommodation'];
+
+    Alpine.store('pbBad', Object.assign(
+        Object.fromEntries(PB_BAD_KEYS.map(k => [k, false])),
+        {
+            clear() { PB_BAD_KEYS.forEach(k => this[k] = false); },
+            flag(keys) {
+                // Drop then re-set on the next frame, otherwise clicking Next
+                // again on an already-red field wouldn't restart the shake.
+                this.clear();
+                requestAnimationFrame(() => (keys || []).forEach(k => {
+                    if (PB_BAD_KEYS.includes(k)) this[k] = true;
+                }));
+            },
         }
-        return ['icon' => 'fa-circle-exclamation', 'color' => 'var(--primary)'];
-    };
-@endphp
-<div x-data="{ show: false }" x-init="requestAnimationFrame(() => show = true)"
-     style="position:fixed;inset:0;background:rgba(26,10,0,0.55);backdrop-filter:blur(2px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
-    <div x-show="show" x-transition.scale.95
-         style="background:var(--bg-white);border-radius:24px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(26,10,0,0.35);overflow:hidden;">
+    ));
 
-        {{-- Header --}}
-        <div style="position:relative;padding:36px 28px 28px;text-align:center;background:linear-gradient(160deg,var(--bg-white) 0%,var(--bg) 100%);overflow:hidden;">
-            <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:var(--primary-light);opacity:.6;"></div>
-            <div style="position:absolute;bottom:-40px;left:-20px;width:100px;height:100px;border-radius:50%;background:var(--primary-light);opacity:.4;"></div>
-            <div style="position:relative;width:64px;height:64px;border-radius:50%;background:var(--bg-white);box-shadow:0 8px 20px rgba(220,38,38,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-                <i class="fa-solid fa-triangle-exclamation" style="font-size:26px;color:var(--danger);"></i>
-            </div>
-            <div style="position:relative;font-size:19px;font-weight:800;color:var(--dark);letter-spacing:-.01em;">Missing Information</div>
-            <div style="position:relative;font-size:13px;color:var(--muted);margin-top:4px;">A few things need your attention</div>
-        </div>
-
-        {{-- Field list --}}
-        <div style="padding:20px 20px 4px;">
-            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 6px 10px;">Please fill up the following</div>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-                @foreach ($missingProfileFields as $field)
-                @php $meta = $pbFieldMeta($field); @endphp
-                <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg-white);border:1px solid #F0E8DF;border-radius:14px;">
-                    <div style="width:34px;height:34px;border-radius:10px;background:{{ $meta['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="fa-solid {{ $meta['icon'] }}" style="font-size:14px;color:{{ $meta['color'] }};"></i>
-                    </div>
-                    <span style="font-size:13.5px;font-weight:600;color:var(--dark);">{{ $field }}</span>
-                </div>
-                @endforeach
-            </div>
-        </div>
-
-        {{-- Action --}}
-        <div style="padding:22px 20px 24px;">
-            <button type="button" wire:click="$set('showMissingFieldsModal', false)"
-                    style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#A85A20,var(--primary-dark));color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 16px rgba(106,53,0,0.3);transition:transform .12s ease;"
-                    onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform='translateY(0)'">
-                Got It
-            </button>
-        </div>
-    </div>
-</div>
-@endif
-
-</div>
-
-</div>
+    window.addEventListener('profile-missing', e => Alpine.store('pbBad').flag(e.detail?.fields));
+</script>
+@endscript
