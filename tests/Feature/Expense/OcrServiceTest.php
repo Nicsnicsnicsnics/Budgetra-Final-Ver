@@ -123,6 +123,34 @@ class OcrServiceTest extends TestCase
         $response->assertJson(['amount' => 336.0]);
     }
 
+    // The exact bug reported live: a real receipt's total (₱627.00) got
+    // extracted as ₱59.00 instead — an individual item's unit price. Real
+    // OCR text isn't always read in clean top-to-bottom order (column
+    // layouts, keyword misreads, etc.), so grabbing the LAST matched
+    // number is fragile whenever the raw text order doesn't line up with
+    // the receipt's visual layout. Taking the LARGEST match instead does
+    // not depend on order at all — the total is always the biggest single
+    // figure printed on a receipt, item prices included.
+    public function test_ocr_picks_the_largest_amount_when_matches_are_out_of_order(): void
+    {
+        Storage::fake('public');
+        Http::fake([
+            'api.ocr.space/*' => Http::response([
+                'ParsedResults' => [['ParsedText' =>
+                    "T0TAL ₱627.00\nShrimp Roll ₱189.00\nPho Bo Large ₱379.00\nCanned Mountain Dew ₱59.00"
+                ]],
+                'OCRExitCode' => 1,
+            ], 200),
+        ]);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('expenses.ocr'), [
+            'receipt' => UploadedFile::fake()->image('receipt.jpg'),
+        ]);
+
+        $response->assertJson(['amount' => 627.0]);
+    }
+
     // Amount parsing only recognized ₱ and $ — receipts from any of this
     // app's other destinations (Tokyo, Seoul, Paris, Bangkok, ...) using
     // ¥/€/£/₩/₫/฿ fell through to no amount at all. Confirms each is now
@@ -143,6 +171,58 @@ class OcrServiceTest extends TestCase
         ]);
 
         $response->assertJson(['amount' => 1200.0]);
+    }
+
+    // When the local regex genuinely can't find any recognizable
+    // TOTAL-style keyword or currency symbol at all (a receipt phrased
+    // unusually, or OCR noise wiping out every label), it now falls back
+    // to asking an AI provider to read the total from context instead of
+    // silently giving up with a null amount.
+    public function test_ocr_falls_back_to_ai_when_regex_finds_no_amount_at_all(): void
+    {
+        Storage::fake('public');
+        Http::fake([
+            'api.ocr.space/*' => Http::response([
+                'ParsedResults' => [['ParsedText' =>
+                    "Phat Pho Restaurant\nCanned Mountain Dew ... 59\nShrimp Roll ... 185\nPho Bo Large ... 379\nGrand sum for this bill: 627"
+                ]],
+                'OCRExitCode' => 1,
+            ], 200),
+            'api.mistral.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => json_encode(['total' => 627])]]],
+            ], 200),
+        ]);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('expenses.ocr'), [
+            'receipt' => UploadedFile::fake()->image('receipt.jpg'),
+        ]);
+
+        $response->assertJson(['amount' => 627.0]);
+    }
+
+    // The AI fallback must only run when regex found NOTHING — it's an
+    // extra API call, so a receipt regex can already parse fine (a plain
+    // "Total: ₱350.00") shouldn't pay that latency/cost. No AI provider
+    // is faked here at all — if the code tried calling one anyway, this
+    // test would hang/fail on a real network call instead of passing fast.
+    public function test_ocr_does_not_call_ai_when_regex_already_found_an_amount(): void
+    {
+        Storage::fake('public');
+        Http::fake([
+            'api.ocr.space/*' => Http::response([
+                'ParsedResults' => [['ParsedText' => "Restaurant ABC\nTotal: ₱350.00"]],
+                'OCRExitCode' => 1,
+            ], 200),
+        ]);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('expenses.ocr'), [
+            'receipt' => UploadedFile::fake()->image('receipt.jpg'),
+        ]);
+
+        $response->assertJson(['amount' => 350.0]);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'mistral.ai'));
     }
 
     // The scan request now asks OCR.space to auto-detect the receipt's

@@ -54,6 +54,8 @@ class Llm extends Component
 
     public ?string $pendingPlaceSuggestionSlot = null;
 
+    public bool $pendingProfileOffer = false;
+
     public string $pendingEditSlot = '';
 
     public array $rejectedDestinations = [];
@@ -144,7 +146,10 @@ class Llm extends Component
         $this->aiCurrency = currency_code();
 
         $draft = AiConversationDraft::where('user_id', auth()->id())->first();
-        if (!$draft) return;
+        if (!$draft) {
+            $this->offerSavedPreferencesIfAny();
+            return;
+        }
 
         $this->messages     = $draft->messages ?? [];
         $this->aiFrom        = $draft->ai_from;
@@ -161,10 +166,51 @@ class Llm extends Component
         $this->aiStep        = $draft->ai_step;
         $this->aiPackage     = $draft->ai_package ?? [];
         $this->aiGenCount    = $draft->ai_gen_count;
+        $this->pendingProfileOffer = (bool) $draft->pending_profile_offer;
 
         if ($this->aiStep === 'loading') {
             $this->processAiTrip();
         }
+    }
+
+    private function offerSavedPreferencesIfAny(): void
+    {
+        $profile = auth()->user()?->userProfile;
+        if (!$profile) return;
+
+        $hasHomeCity = trim((string) $profile->home_city) !== '';
+        $hasBudget   = (float) $profile->daily_budget > 0;
+
+        if (!$hasHomeCity && !$hasBudget) return;
+
+        $clauses = [];
+        if ($hasHomeCity) {
+            $clauses[] = trim($profile->home_city) . ' as your starting point';
+        }
+        if ($hasBudget) {
+            $clauses[] = '₱' . number_format($profile->daily_budget) . ' as your budget';
+        }
+        if (!empty($profile->interests)) {
+            $word = count($profile->interests) === 1 ? 'a travel interest' : 'travel interests';
+            $clauses[] = $this->joinNaturally($profile->interests) . " as {$word}";
+        }
+
+        $this->messages[] = ['role' => 'assistant', 'text' =>
+            "Would you like me to use your saved travel preferences for this trip? "
+            . "I see you've set " . $this->joinNaturally($clauses) . " — want me to use these details?"];
+
+        $this->pendingProfileOffer = true;
+    }
+
+    private function joinNaturally(array $items): string
+    {
+        $items = array_values($items);
+        $count = count($items);
+        if ($count === 0) return '';
+        if ($count === 1) return $items[0];
+        if ($count === 2) return "{$items[0]} and {$items[1]}";
+        $last = array_pop($items);
+        return implode(', ', $items) . ", and {$last}";
     }
 
     public function dehydrate(): void
@@ -192,6 +238,7 @@ class Llm extends Component
                 'ai_step'       => $this->aiStep,
                 'ai_package'    => $this->aiPackage,
                 'ai_gen_count'  => $this->aiGenCount,
+                'pending_profile_offer' => $this->pendingProfileOffer,
             ]
         );
     }
@@ -247,6 +294,35 @@ class Llm extends Component
 
         $this->messages[] = ['role' => 'user', 'text' => $userText];
 
+        if ($this->pendingProfileOffer) {
+            $this->pendingProfileOffer = false;
+            $trimmedReply = trim($userText);
+
+            if (preg_match('/^(?:yes|yeah|yep|yup|correct|right|sure|thats right|that\'s right)\b/i', $trimmedReply)) {
+                $profile = auth()->user()?->userProfile;
+
+                if ($profile) {
+                    if ($this->aiFrom === '' && trim((string) $profile->home_city) !== '') {
+                        $this->aiFrom = trim($profile->home_city);
+                    }
+                    if ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0 && (float) $profile->daily_budget > 0) {
+                        $this->aiBudgetMin = $this->aiBudgetMax = (int) round($profile->daily_budget);
+                    }
+                }
+
+                $this->aiPrompt = '';
+
+            } elseif (preg_match('/^(?:no|nope|nah|not|negative|wrong|incorrect)\b/i', $trimmedReply)
+                || preg_match('/\bnot interested\b|\bdon\'?t want\b|\bno thanks\b|\bnot (?:that|this) one\b/i', $trimmedReply)) {
+
+                $this->aiPrompt   = '';
+                $this->messages[] = ['role' => 'assistant', 'text' =>
+                    "No worries! Tell me about the trip you'd like to plan — where would you like to go, and when?"];
+                $this->dispatch('message-added');
+                return;
+            }
+        }
+
         if (!empty($this->aiDestinationChoices)) {
             $index = null;
             if (preg_match('/^(\d{1,2})$/', $userText, $m)) {
@@ -273,14 +349,7 @@ class Llm extends Component
             } elseif (($optionsCount = $this->parseOptionsCount($userText)) !== null
                 || preg_match('/^(?:more|others?|different|another|something else)\b/i', trim($userText))
             ) {
-                // Same bug as the single-suggestion "more" fix, one level
-                // up: replying to an ALREADY-shown list of alternatives
-                // with "other"/"more" instead of a number or name used to
-                // just silently clear the list and fall through, landing
-                // on "I didn't quite catch a destination there" — as
-                // confusing here as it was for a single suggestion.
-                // Regenerates a fresh batch, filtering out whatever was
-                // already shown so it's not just the same list again.
+
                 $previousChoices = $this->aiDestinationChoices;
                 $choices = $this->suggestDestinations($userText, $optionsCount ?? count($previousChoices));
                 $choices = array_values(array_diff($choices, $previousChoices));
@@ -341,14 +410,7 @@ class Llm extends Component
                 && (($optionsCount = $this->parseOptionsCount($trimmedReply)) !== null
                     || preg_match('/^(?:more|others?|different|another|something else)\b/i', $trimmedReply))
             ) {
-                // A bare "more" right after a single suggestion unambiguously
-                // means "show me other destinations" — safe to recognize
-                // here specifically, unlike broadening parseOptionsCount()
-                // itself (checked in unrelated contexts like a budget/
-                // travelers answer, where a stray "more" could misfire).
-                // Confirmed live: this used to silently fall through and
-                // get misread as a failed attempt to NAME a destination
-                // ("Sorry, I didn't quite catch a destination there...").
+
                 $choices = $this->suggestDestinations($trimmedReply, $optionsCount ?? 3);
                 if (!empty($choices)) {
                     $this->aiDestinationChoices = $choices;
@@ -365,11 +427,6 @@ class Llm extends Component
                     return;
                 }
 
-                // The alternatives request itself failed (AI unavailable,
-                // or nothing it suggested resolved to a known place) —
-                // say so plainly instead of silently falling through,
-                // where it would get misread as a failed attempt to NAME
-                // a destination rather than a failed recommendation.
                 $this->awaitingSlot = 'destination';
                 $this->missCount    = 0;
                 $this->aiPrompt     = '';
@@ -411,17 +468,12 @@ class Llm extends Component
                     return;
                 }
 
-                // Waiting on a destination value specifically doesn't
-                // mean the traveler has to NAME one directly — they might
-                // ask for options/a recommendation instead, and that must
-                // be recognized here too, not just tried as a (failing)
-                // literal place name.
                 if ($slot === 'destination' && $this->tryDestinationAlternatives($trimmedReply)) {
                     return;
                 }
 
                 if ($this->applyValueToSlot($slot, $trimmedReply)) {
-                    if ($this->blockUnaffordableDestinationEdit($slot)) {
+                    if ($this->blockUnaffordableSlotEdit($slot)) {
                         return;
                     }
                     $this->pendingEditSlot = '';
@@ -456,7 +508,7 @@ class Llm extends Component
 
             $editedSlot = $this->applySlotEdit($trimmedReply);
             if ($editedSlot !== null) {
-                if ($this->blockUnaffordableDestinationEdit($editedSlot)) {
+                if ($this->blockUnaffordableSlotEdit($editedSlot)) {
                     return;
                 }
                 $this->aiPrompt   = '';
@@ -465,14 +517,6 @@ class Llm extends Component
                 return;
             }
 
-            // Unlike a bare place name or a bare number — either of which
-            // could mean almost anything out of context — a real date
-            // range ("August 20 to 25") is unambiguous enough on its own
-            // to safely infer intent without the traveler having to say
-            // "dates" first. Confirmed live: typing a plain new date
-            // range here used to be silently discarded with the generic
-            // decline message below, even though it's exactly as
-            // deliberate an edit attempt as naming a new destination.
             if ($this->pendingEditSlot === '' && $this->applyValueToSlot('dates', $trimmedReply)) {
                 $this->aiPrompt   = '';
                 $this->messages[] = ['role' => 'assistant', 'text' => 'Got it, updated! ' . $this->confirmationSummary()];
@@ -604,13 +648,6 @@ class Llm extends Component
                     return;
                 }
 
-                // The exact bug reported live: the recommendation attempt
-                // itself failed (AI unavailable, or nothing it suggested
-                // resolved to a known place), and this used to fall
-                // through silently to the missing-slot logic below, which
-                // showed "I didn't quite catch a destination there" — a
-                // message that wrongly implies the TRAVELER's wording was
-                // unclear, when actually the recommendation step failed.
                 $this->missCount    = 0;
                 $this->awaitingSlot = 'destination';
                 $this->aiPrompt     = '';
@@ -723,20 +760,12 @@ class Llm extends Component
             return;
         }
 
-        // Checked right as every slot becomes known for the first time,
-        // before ever showing the confirmation summary — a destination
-        // typed directly ("Japan") goes through knownPlaceName() like any
-        // other, with no concept of "is this affordable", so without this
-        // the summary (and an eventual generated itinerary) would show a
-        // combination that was never realistically possible with zero
-        // warning. Only fires on a genuinely international destination —
-        // the earlier keyword-based check in tryDestinationAlternatives()/
-        // the recommendation flow still covers "recommend an international
-        // place" phrasing before a destination is even chosen.
         if ($this->isInternationalDestination($this->aiTo)
             && ($shortfall = $this->internationalBudgetShortfallMessage()) !== null) {
-            $this->aiTo         = '';
-            $this->awaitingSlot = 'destination';
+
+            $this->aiBudgetMin  = 0;
+            $this->aiBudgetMax  = 0;
+            $this->awaitingSlot = 'budget';
             $this->missCount    = 0;
             $this->messages[]   = ['role' => 'assistant', 'text' => $shortfall];
             $this->dispatch('message-added');
@@ -778,14 +807,13 @@ class Llm extends Component
         $this->aiDestinationChoices = [];
         $this->pendingPlaceSuggestion = null;
         $this->pendingPlaceSuggestionSlot = null;
+        $this->pendingProfileOffer = false;
         $this->pendingEditSlot = '';
         $this->rejectedDestinations = [];
 
-        $this->awaitingSlot    = 'destination';
+        $this->awaitingSlot    = '';
         $this->missCount       = 0;
-        $this->messages        = [['role' => 'assistant', 'text' => "Conversation reset — let's start fresh! Where would you like to go?"]];
-
-        $this->dispatch('message-added');
+        $this->messages        = [];
     }
 
     private const NON_ANSWER_FILLERS = [
@@ -875,13 +903,6 @@ class Llm extends Component
         return is_array($data) ? $data : null;
     }
 
-    // Shared by suggestDestination() and suggestDestinations() — a
-    // recommendation used to be generated with zero knowledge of the
-    // traveler's budget, only their interests, so it could suggest
-    // something like Italy or the Maldives regardless of what they said
-    // they could actually spend. Empty string when no budget is known
-    // yet, since a recommendation genuinely shouldn't fabricate a
-    // constraint that hasn't been given.
     private function budgetContextForPrompt(): string
     {
         if ($this->aiBudgetMin <= 0 && $this->aiBudgetMax <= 0) return '';
@@ -1016,14 +1037,28 @@ class Llm extends Component
 
         if ($this->awaitingSlot === 'destination' && $this->aiTo === '') {
 
-            $resolved = $this->knownPlaceName($this->cleanCityName($userText), 'destination');
-            if ($resolved !== '') {
-                $this->aiTo = $resolved;
+            if ($this->placeCueDirection($userText) === 'origin') {
+                if ($this->aiFrom === '') {
+                    $resolved = $this->knownPlaceName($this->cleanCityName($userText), 'origin');
+                    if ($resolved !== '') $this->aiFrom = $resolved;
+                }
+            } else {
+                $resolved = $this->knownPlaceName($this->cleanCityName($userText), 'destination');
+                if ($resolved !== '') {
+                    $this->aiTo = $resolved;
+                }
             }
         } elseif ($this->awaitingSlot === 'origin' && $this->aiFrom === '') {
-            $resolved = $this->knownPlaceName($this->cleanCityName($userText), 'origin');
-            if ($resolved !== '') {
-                $this->aiFrom = $resolved;
+            if ($this->placeCueDirection($userText) === 'destination') {
+                if ($this->aiTo === '') {
+                    $resolved = $this->knownPlaceName($this->cleanCityName($userText), 'destination');
+                    if ($resolved !== '') $this->aiTo = $resolved;
+                }
+            } else {
+                $resolved = $this->knownPlaceName($this->cleanCityName($userText), 'origin');
+                if ($resolved !== '') {
+                    $this->aiFrom = $resolved;
+                }
             }
         } elseif ($this->awaitingSlot === 'travelers' && $this->aiTravelers === 0) {
 
@@ -1301,20 +1336,6 @@ PROMPT;
         return false;
     }
 
-    // Tries to read $text as a request for destination alternatives (a
-    // numbered list, or a single recommendation) during confirmation —
-    // shared by the normal confirmation flow AND the pendingEditSlot
-    // value-follow-up, so asking for options/a recommendation is
-    // recognized the same way whether or not TARA happens to already be
-    // waiting on a specific destination value. Confirmed live: without
-    // sharing this, "other destination" (named the field, no value) set
-    // pendingEditSlot='destination', and the very next reply — "give me
-    // top 5 destination" — got tried as a literal (and inevitably
-    // failing) place name instead of being recognized as an options
-    // request, since the pendingEditSlot check ran first and had no idea
-    // this logic existed. Returns true (and has already sent its own
-    // reply) if it handled the message; false if the caller should keep
-    // trying other interpretations.
     private function tryDestinationAlternatives(string $text): bool
     {
         if ($this->wantsInternational($text)
@@ -1376,22 +1397,13 @@ PROMPT;
         $slot = $this->detectEditSlot($text);
         if ($slot === null) return null;
 
-        // A date range ("August 20 to 25") has its own "to" baked in,
-        // which collides with the "value follows the LAST connector word"
-        // extraction below — that heuristic finds the "to" INSIDE the
-        // range itself, not the one before it, and ends up extracting
-        // just the trailing day ("25") as the value. Confirmed live:
-        // "change dates to August 20 to 25" failed to apply in one shot
-        // because of exactly this. A date range is self-contained and
-        // matchable anywhere in the text, so trying it directly sidesteps
-        // the connector search entirely instead of trying to out-clever it.
         if ($slot === 'dates' && $this->applyValueToSlot('dates', $text)) {
             return $slot;
         }
 
         $bestPos = null;
         $bestConnectorLen = 0;
-        foreach ([' to ', ' in '] as $connector) {
+        foreach ([' to ', ' in ', ' into '] as $connector) {
             $pos = strripos($text, $connector);
             if ($pos !== false && ($bestPos === null || $pos > $bestPos)) {
                 $bestPos = $pos;
@@ -1446,7 +1458,8 @@ PROMPT;
     private function looksLikeAttempt(string $slot, string $userText): bool
     {
         return match ($slot) {
-            'destination', 'origin' => $this->hasPlaceLikeCandidate($userText),
+            'destination' => $this->placeCueDirection($userText) !== 'origin' && $this->hasPlaceLikeCandidate($userText),
+            'origin'      => $this->placeCueDirection($userText) !== 'destination' && $this->hasPlaceLikeCandidate($userText),
             'travelers' => (bool) preg_match('/\d|\bsolo\b|\balone\b|\bjust me\b|\bmyself\b/i', $userText),
             'budget'    => (bool) preg_match('/\d/', $userText),
             'dates'     => (bool) preg_match(
@@ -1455,6 +1468,19 @@ PROMPT;
             ),
             default => false,
         };
+    }
+
+    private function placeCueDirection(string $text): ?string
+    {
+        $hasOriginCue = (bool) preg_match('/\b(?:from|leaving from|departing from|starting from)\s+[a-z]{2,}/i', $text);
+        $hasDestinationCue = (bool) preg_match(
+            '/\b(?:to|in|at|visit(?:ing)?|travel(?:l?ing)?\s+to|fly(?:ing)?\s+to|go(?:ing)?\s+to|stay(?:ing)?\s+(?:in|at))\s+[a-z]{2,}/i',
+            $text
+        );
+
+        if ($hasOriginCue && !$hasDestinationCue) return 'origin';
+        if ($hasDestinationCue && !$hasOriginCue) return 'destination';
+        return null;
     }
 
     private function looksLikeQuestion(string $text): bool
@@ -1556,23 +1582,14 @@ PROMPT;
                 $package['food']['cost'] = (int) round($package['food']['cost'] * $travelers);
             }
 
-            $transportCost     = (int)($package['transport']['cost']     ?? 0);
-            $accommodationCost = (int)($package['accommodation']['cost'] ?? 0);
-            $foodCost          = (int)($package['food']['cost']          ?? 0);
-            $attractionsCost   = (int)($package['attractions']['cost']   ?? 0);
-
             $budget = $this->aiBudgetMax ?: $this->aiBudgetMin ?: 30000;
-            $total  = $transportCost + $accommodationCost + $foodCost + $attractionsCost;
 
-            $this->aiPackage   = [
+            $this->aiPackage = $this->capPackageToBudget([
                 'transport'     => $package['transport']     ?? [],
                 'accommodation' => $package['accommodation'] ?? [],
                 'food'          => $package['food']          ?? [],
                 'attractions'   => $package['attractions']   ?? ['items'=>[],'cost'=>0],
-                'total'         => $total,
-                'budget'        => $budget,
-                'pct'           => min(100, (int)round($total / $budget * 100)),
-            ];
+            ], $budget);
             $this->aiStep = 'results';
             return;
         }
@@ -1725,43 +1742,7 @@ PROMPT;
             }
         }
 
-        $total = $rawPackage['transport']['cost']
-               + $rawPackage['accommodation']['cost']
-               + $rawPackage['food']['cost']
-               + $rawPackage['attractions']['cost'];
-
-        if ($total > $budget && !empty($rawPackage['attractions']['items'])) {
-            $itemCost = fn ($item) => is_numeric(str_replace(['₱', ','], '', $item[1] ?? ''))
-                ? (int) str_replace(['₱', ','], '', $item[1]) : 0;
-
-            $items = $rawPackage['attractions']['items'];
-            usort($items, fn ($a, $b) => $itemCost($b) <=> $itemCost($a));
-
-            $overage = $total - $budget;
-            foreach ($items as $i => $item) {
-                if ($overage <= 0 || count($items) <= 1) break;
-                $cost = $itemCost($item);
-                if ($cost <= 0) continue;
-                unset($items[$i]);
-                $overage -= $cost;
-            }
-            $items = array_values($items);
-
-            if (count($items) !== count($rawPackage['attractions']['items'])) {
-                $rawPackage['attractions']['items'] = $items;
-                $rawPackage['attractions']['cost']  = array_sum(array_map($itemCost, $items));
-                $total = $rawPackage['transport']['cost']
-                       + $rawPackage['accommodation']['cost']
-                       + $rawPackage['food']['cost']
-                       + $rawPackage['attractions']['cost'];
-            }
-        }
-
-        return array_merge($rawPackage, [
-            'total'  => $total,
-            'budget' => $budget,
-            'pct'    => min(100, (int)round($total / $budget * 100)),
-        ]);
+        return $this->capPackageToBudget($rawPackage, $budget);
     }
 
     private function matchKnownPlace(string $city, ?string $slotContext = null): ?array
@@ -1904,12 +1885,6 @@ PROMPT;
         return $this->matchKnownPlace($city)['code'] ?? '';
     }
 
-    // Every domestic Philippine airport code in PlaceCatalog::IATA_CODES
-    // — anything else a real, resolved destination maps to counts as
-    // international for the budget-shortfall check. Used so that check
-    // fires based on the ACTUAL destination (typed directly, like
-    // "Japan", or AI-suggested) rather than only when the traveler
-    // happens to use the word "international" in their message.
     private const PHILIPPINE_IATA_CODES = [
         'MNL', 'CEB', 'DVO', 'MPH', 'KLO', 'TAG', 'PPS', 'ENI', 'USU', 'IAO',
         'BCD', 'ILO', 'ZAM', 'CGY', 'GES', 'TAC', 'DGT', 'SUG', 'CBO', 'BSO',
@@ -1956,18 +1931,6 @@ PROMPT;
         return $profileDailyBudget > 0 ? $profileDailyBudget : 500;
     }
 
-    // Rough, deliberately conservative floor for what an international
-    // trip actually costs a Philippine traveler — round-trip flights
-    // alone routinely exceed a modest full-trip budget, which the
-    // domestic-only budgetFloor() above has no concept of. Confirmed
-    // live: asking for an international recommendation on a budget that
-    // can't realistically support one just got a domestic destination
-    // suggested back with no explanation for the mismatch.
-    // Confirmed live these needed to be higher than the first pass: a
-    // 2-day Japan trip on ₱15,000 slipped through at ₱8,000+₱2,500/day
-    // (only ₱13,000 required) — round-trip international flights alone
-    // routinely exceed that even on promo fares, before counting a
-    // single night of accommodation.
     private const INTERNATIONAL_FLIGHT_FLOOR = 15000;
     private const INTERNATIONAL_DAILY_FLOOR  = 3000;
 
@@ -1976,12 +1939,6 @@ PROMPT;
         return (bool) preg_match('/\binternational\b|\babroad\b|\boverseas\b|\bout of the country\b/i', $text);
     }
 
-    // Returns an explanatory "your budget won't cover this" message when
-    // the traveler's known budget clearly can't support an international
-    // trip of the known (or assumed 7-day) length — null if the budget
-    // isn't known yet, or if it's realistically enough. Deliberately only
-    // blocks a CLEAR mismatch (deep under the floor), not anything
-    // borderline, since these numbers are estimates, not a real quote.
     private function internationalBudgetShortfallMessage(): ?string
     {
         if ($this->aiBudgetMin <= 0 && $this->aiBudgetMax <= 0) return null;
@@ -1993,30 +1950,20 @@ PROMPT;
         if ($budget >= $minimum) return null;
 
         $fromText = $this->aiFrom !== '' ? " from {$this->aiFrom}" : '';
-        return "Your {$this->formattedBudget()} budget is too low for a {$days}-day international trip{$fromText}. Please increase your budget or choose a more affordable destination.";
+        return "Your {$this->formattedBudget()} budget is too low for a {$days}-day international trip{$fromText}. Please increase your budget.";
     }
 
-    // The shortfall check above only ran at the moment every slot FIRST
-    // became known — but a destination can also be changed later, during
-    // confirmation, via "change destination to X" or a pendingEditSlot
-    // follow-up ("where would you like to go?" → "Japan"). Both of those
-    // call applyValueToSlot()/applySlotEdit() directly and would
-    // otherwise commit an unaffordable destination with zero check.
-    // Confirmed live: "change the destination to japan" on a ₱15,000
-    // budget sailed straight through to the confirmation summary. Called
-    // right after a destination edit succeeds; returns true (and has
-    // sent its own reply) if the edit gets blocked, false if the normal
-    // "Got it, updated!" message should proceed instead.
-    private function blockUnaffordableDestinationEdit(string $slot): bool
+    private function blockUnaffordableSlotEdit(string $slot): bool
     {
-        if ($slot !== 'destination') return false;
+        if ($slot !== 'destination' && $slot !== 'budget') return false;
         if (!$this->isInternationalDestination($this->aiTo)) return false;
 
         $shortfall = $this->internationalBudgetShortfallMessage();
         if ($shortfall === null) return false;
 
-        $this->aiTo            = '';
-        $this->awaitingSlot     = 'destination';
+        $this->aiBudgetMin      = 0;
+        $this->aiBudgetMax      = 0;
+        $this->awaitingSlot     = 'budget';
         $this->pendingEditSlot  = '';
         $this->missCount        = 0;
         $this->aiPrompt         = '';
@@ -2026,6 +1973,84 @@ PROMPT;
     }
 
     private const MINIMUM_TOTAL_BUDGET = 10000;
+
+    private const MIN_FOOD_PER_DAY_PER_TRAVELER = 300;
+    private const MIN_ACCOMMODATION_PER_NIGHT   = 800;
+    private const MIN_TRANSPORT_RATIO           = 0.7;
+
+    private function capPackageToBudget(array $package, int $budget): array
+    {
+        $transport     = $package['transport']     ?? [];
+        $accommodation = $package['accommodation'] ?? [];
+        $food          = $package['food']          ?? [];
+        $attractions   = $package['attractions']   ?? ['items' => [], 'cost' => 0];
+
+        $transport['cost']     = (int) ($transport['cost']     ?? 0);
+        $accommodation['cost'] = (int) ($accommodation['cost'] ?? 0);
+        $food['cost']          = (int) ($food['cost']          ?? 0);
+        $attractions['items']  = $attractions['items'] ?? [];
+        $attractions['cost']   = (int) ($attractions['cost']   ?? 0);
+
+        $itemCost = fn ($item) => is_numeric(str_replace(['₱', ','], '', $item[1] ?? ''))
+            ? (int) str_replace(['₱', ','], '', $item[1]) : 0;
+
+        $total = $transport['cost'] + $accommodation['cost'] + $food['cost'] + $attractions['cost'];
+
+        if ($total > $budget && !empty($attractions['items'])) {
+            $items = $attractions['items'];
+            usort($items, fn ($a, $b) => $itemCost($b) <=> $itemCost($a));
+
+            $overage = $total - $budget;
+            foreach ($items as $i => $item) {
+                if ($overage <= 0 || count($items) <= 1) break;
+                $cost = $itemCost($item);
+                if ($cost <= 0) continue;
+                unset($items[$i]);
+                $overage -= $cost;
+            }
+            $items = array_values($items);
+
+            if (count($items) !== count($attractions['items'])) {
+                $attractions['items'] = $items;
+                $attractions['cost']  = array_sum(array_map($itemCost, $items));
+                $total = $transport['cost'] + $accommodation['cost'] + $food['cost'] + $attractions['cost'];
+            }
+        }
+
+        $days      = max(1, $this->aiDays);
+        $travelers = max(1, $this->aiTravelers);
+
+        if ($total > $budget && $food['cost'] > 0) {
+            $floor    = self::MIN_FOOD_PER_DAY_PER_TRAVELER * $days * $travelers;
+            $reduceBy = min($total - $budget, max(0, $food['cost'] - $floor));
+            $food['cost'] -= $reduceBy;
+            $total        -= $reduceBy;
+        }
+
+        if ($total > $budget && $accommodation['cost'] > 0) {
+            $floor    = self::MIN_ACCOMMODATION_PER_NIGHT * $days;
+            $reduceBy = min($total - $budget, max(0, $accommodation['cost'] - $floor));
+            $accommodation['cost'] -= $reduceBy;
+            $total                 -= $reduceBy;
+        }
+
+        if ($total > $budget && $transport['cost'] > 0) {
+            $floor    = (int) round($transport['cost'] * self::MIN_TRANSPORT_RATIO);
+            $reduceBy = min($total - $budget, max(0, $transport['cost'] - $floor));
+            $transport['cost'] -= $reduceBy;
+            $total             -= $reduceBy;
+        }
+
+        return array_merge($package, [
+            'transport'     => $transport,
+            'accommodation' => $accommodation,
+            'food'          => $food,
+            'attractions'   => $attractions,
+            'total'         => $total,
+            'budget'        => $budget,
+            'pct'           => min(100, (int) round($total / max(1, $budget) * 100)),
+        ]);
+    }
 
     private const SUPPORTED_CURRENCIES = [
         'PHP' => ['name' => 'Philippine pesos',   'symbol' => '₱',    'rate' => 1],
@@ -2350,6 +2375,32 @@ PROMPT;
                     'remainder' => str_replace($m[0], '', $text),
                 ];
             }
+
+        } elseif (preg_match('/\b(a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|\d{1,2})\s*-?\s*(days?|weeks?)\b/i', $text, $m)) {
+            $wordNums = [
+                'a' => 1, 'an' => 1, 'one' => 1, 'two' => 2, 'three' => 3, 'four' => 4,
+                'five' => 5, 'six' => 6, 'seven' => 7, 'eight' => 8, 'nine' => 9, 'ten' => 10,
+                'eleven' => 11, 'twelve' => 12, 'thirteen' => 13, 'fourteen' => 14,
+            ];
+            $n    = is_numeric($m[1]) ? (int) $m[1] : ($wordNums[strtolower($m[1])] ?? 0);
+            $days = str_starts_with(strtolower($m[2]), 'week') ? $n * 7 : $n;
+
+            if ($days > 0 && $days <= 60) {
+                $anchorTs = strtotime('today');
+                if ($this->aiDateFrom !== '') {
+                    $existing = strtotime($this->aiDateFrom . ' ' . date('Y'));
+                    if ($existing !== false && $existing >= strtotime('today')) {
+                        $anchorTs = $existing;
+                    }
+                }
+
+                return [
+                    'from'      => date('M j', $anchorTs),
+                    'to'        => date('M j, Y', $anchorTs + ($days - 1) * 86400),
+                    'days'      => $days,
+                    'remainder' => str_replace($m[0], '', $text),
+                ];
+            }
         }
 
         return null;
@@ -2532,17 +2583,13 @@ PROMPT;
         $accommodation = (int) round(($budget * 0.50 / $days)) * $days;
         $foodTotal     = $data['meal_day'] * $days * $travelers;
         $attrTotal     = array_sum(array_map(fn($a) => is_numeric(str_replace(['₱',','], '', $a[1])) ? (int)str_replace(['₱',','], '', $a[1]) : 0, $data['attractions']));
-        $totalEst      = $transport + $accommodation + $foodTotal + $attrTotal;
 
-        $this->aiPackage = [
+        $this->aiPackage = $this->capPackageToBudget([
             'transport'     => ['label'=>'TRANSPORTATION','icon'=>'fa-solid fa-plane','from_code'=>$this->resolveCode($this->aiFrom ?: 'Manila'),'to_code'=>$data['code'],'detail'=>$data['airline'].' · Direct Flight · Round Trip','cost'=>$transport],
             'accommodation' => ['label'=>'ACCOMMODATION','icon'=>'fa-solid fa-bed','name'=>$data['hotel'],'stars'=>$data['hotel_stars'],'detail'=>$days.' Nights · '.$data['hotel_type'].' · '.$data['hotel_city'],'cost'=>$accommodation],
             'food'          => ['label'=>'FOOD & DINING','icon'=>'fa-solid fa-utensils','name'=>$data['restaurant'],'detail'=>$days.' Days · '.$data['meal_plan'].' · '.$data['meal_city'],'cost'=>$foodTotal],
             'attractions'   => ['label'=>'ATTRACTIONS','icon'=>'fa-solid fa-landmark','items'=>$data['attractions'],'cost'=>$attrTotal],
-            'total'         => $totalEst,
-            'budget'        => $budget,
-            'pct'           => min(100, (int)round($totalEst / $budget * 100)),
-        ];
+        ], $budget);
     }
 
     public function render()

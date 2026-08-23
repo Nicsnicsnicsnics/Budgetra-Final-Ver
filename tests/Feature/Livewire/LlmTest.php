@@ -2,8 +2,10 @@
 namespace Tests\Feature\Livewire;
 
 use App\Livewire\Traveler\Llm;
+use App\Models\AiConversationDraft;
 use App\Models\AiConversationHistory;
 use App\Models\User;
+use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -630,17 +632,24 @@ class LlmTest extends TestCase
         $component->assertSet('pendingEditSlot', 'destination'); // still waiting
     }
 
-    // The exact bug reported live: right after /reset, TARA's own message
-    // directly asks for a destination, but awaitingSlot stayed blank —
-    // so a bad first answer (e.g. "dota") fell through to the generic
-    // off-topic classifier instead of the destination-specific retry.
-    // Uses gibberish ("xxxxxxxx") rather than "dota" itself so the place
-    // check is rejected by the deterministic gibberish filter with no AI
-    // call — "dota" would additionally trigger a live place-verification
-    // call this test isn't faking. Mistral (tried first in
+    // The exact bug reported live: /reset used to pre-seed a "Conversation
+    // reset — where would you like to go?" chat bubble and jump straight
+    // to awaitingSlot='destination', which skipped right past the actual
+    // blank landing screen ("Good day, {name}!" + composer) a genuinely
+    // new conversation shows — so /reset looked different from opening
+    // TARA fresh. Reset now clears messages back to empty (same as
+    // mount() with no saved draft) so that screen shows again, and lets
+    // the very next message go through the exact same first-message path
+    // a brand new conversation would — which already handles a bad first
+    // answer (e.g. gibberish) correctly on its own: not misread as
+    // off-topic, not accepted as a place, and it's what naturally sets
+    // awaitingSlot to 'destination' once it's asked the follow-up
+    // question. Uses gibberish ("xxxxxxxx") rather than a real word like
+    // "dota" so the place check is rejected by the deterministic
+    // gibberish filter with no AI call needed. Mistral (tried first in
     // extractWithAi()'s chain) is faked to return a definite "not
     // off-topic" so the classification step is deterministic too.
-    public function test_reset_marks_awaiting_destination_so_a_bad_first_reply_gets_the_destination_retry(): void
+    public function test_reset_returns_to_the_blank_landing_state_and_a_bad_first_reply_still_gets_the_destination_retry(): void
     {
         $this->fakeExtraction();
         $user = User::factory()->create();
@@ -648,13 +657,15 @@ class LlmTest extends TestCase
         $component = Livewire::actingAs($user)->test(Llm::class)
             ->set('aiPrompt', '/reset')->call('automateTrip');
 
-        $component->assertSet('awaitingSlot', 'destination');
+        $component->assertSet('messages', []);
+        $component->assertSet('awaitingSlot', '');
 
         $component->set('aiPrompt', 'xxxxxxxx')->call('automateTrip');
 
         $lastMessage = collect($component->get('messages'))->last()['text'];
         $this->assertStringNotContainsString("Travel Assistant", $lastMessage); // not the off-topic message
         $component->assertSet('aiTo', ''); // still correctly not accepted as a place
+        $component->assertSet('awaitingSlot', 'destination');
     }
 
     // The exact bug reported live: "I want to change my destination in
@@ -674,6 +685,134 @@ class LlmTest extends TestCase
 
         $component->assertSet('aiTo', 'Bohol');
         $component->assertSet('aiFrom', 'Manila'); // untouched
+        $component->assertSet('awaitingSlot', 'confirmation');
+    }
+
+    // The exact bug reported live: "change my budget into 5000" failed to
+    // apply in one shot — the connector search only recognized " to " and
+    // " in " as their own space-bound words, and "into" doesn't contain
+    // either as a separate word (the "in" is immediately followed by "to",
+    // not a space), so no value was ever extracted. It silently fell back
+    // to asking "What's your budget?" and waiting for a second message.
+    public function test_editing_a_slot_using_into_as_the_connector_word(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiTo', 'Japan')
+            ->set('aiBudgetMin', 30000)
+            ->set('aiBudgetMax', 30000)
+            ->set('aiDays', 3)
+            ->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change my budget into 5000')->call('automateTrip');
+
+        // Applied in one shot — and since 5000 is unrealistic for a
+        // 3-day international trip, the usual shortfall guard catches it
+        // immediately rather than silently accepting it.
+        $component->assertSet('pendingEditSlot', '');
+        $component->assertSet('aiBudgetMax', 0);
+        $component->assertSet('awaitingSlot', 'budget');
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('too low', $lastMessage);
+    }
+
+    // The exact bug reported live: a brand new conversation where the
+    // very first message is "Im from Cebu" correctly captures the ORIGIN
+    // (aiFrom) — but since a destination still isn't known, TARA needs to
+    // ask for one next. The wording was wrong: it showed the RETRY phrase
+    // ("Sorry, I didn't quite catch a destination there...") as if the
+    // traveler had just tried and failed to name a destination, when
+    // really they never attempted one at all — they were only answering
+    // origin. Root cause: hasPlaceLikeCandidate() just checks "does this
+    // text contain a capitalized word," with no sense of direction, so
+    // "Cebu" in "from Cebu" counted as a failed DESTINATION guess.
+    public function test_stating_origin_only_on_the_first_message_asks_cleanly_for_destination(): void
+    {
+        $this->fakeExtraction(['origin' => 'Cebu']);
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', "Im from Cebu")->call('automateTrip');
+
+        $component->assertSet('aiFrom', 'Cebu');
+        $component->assertSet('aiTo', '');
+        $component->assertSet('awaitingSlot', 'destination');
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertSame('Sure! Where would you like to go?', $lastMessage);
+    }
+
+    // Same root cause, worse consequence: TARA has ALREADY explicitly
+    // asked "where would you like to go?" (awaitingSlot='destination'),
+    // and the traveler replies "Im from Cebu" — clearly origin info, not
+    // an answer to that question. Before this fix, the destination slot's
+    // raw-text matcher didn't check for "from"-style phrasing at all, so
+    // it happily resolved "Cebu" out of the sentence and set it as the
+    // DESTINATION too — silently producing a nonsensical Cebu-to-Cebu
+    // trip that the usual same-place guard never got a chance to catch.
+    public function test_answering_a_destination_question_with_from_phrasing_updates_origin_not_destination(): void
+    {
+        $this->fakeExtraction();
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('awaitingSlot', 'destination')
+            ->set('aiPrompt', "Im from Cebu")->call('automateTrip');
+
+        $component->assertSet('aiFrom', 'Cebu');
+        $component->assertSet('aiTo', ''); // NOT wrongly set to Cebu too
+        $component->assertSet('awaitingSlot', 'destination'); // still needs one
+    }
+
+    // The exact bug reported live: mid-confirmation, "change my travel
+    // date to 3days" was rejected with "I still need actual travel
+    // dates" — this local (no-AI) date parser only ever recognized real
+    // calendar dates/ranges, never a pure duration like "3 days" or
+    // "1 week", even though the AI-assisted first-message path already
+    // handled durations fine. Anchors the new duration on the trip's
+    // EXISTING (future) start date rather than today, so "make it 3
+    // days" reads as shortening/lengthening the same trip, not moving it.
+    public function test_editing_dates_to_a_duration_anchors_on_the_existing_start_date(): void
+    {
+        $user = User::factory()->create();
+        $futureStart = now()->addDays(30);
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiDateFrom', $futureStart->format('M j'))
+            ->set('aiDateTo', $futureStart->copy()->addDays(6)->format('M j, Y'))
+            ->set('aiDays', 7)
+            ->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change my travel date to 3days')->call('automateTrip');
+
+        $component->assertSet('aiDateFrom', $futureStart->format('M j'));
+        $component->assertSet('aiDateTo', $futureStart->copy()->addDays(2)->format('M j, Y'));
+        $component->assertSet('aiDays', 3);
+        $component->assertSet('awaitingSlot', 'confirmation');
+    }
+
+    // Same fix, word-form duration ("1 week") — the traveler's exact
+    // follow-up question was "why will '1 week' work [but not '3days']?"
+    // It didn't, before this fix; both are handled identically now.
+    public function test_editing_dates_to_a_word_form_week_duration_is_accepted(): void
+    {
+        $user = User::factory()->create();
+        $futureStart = now()->addDays(30);
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiDateFrom', $futureStart->format('M j'))
+            ->set('aiDateTo', $futureStart->copy()->addDays(2)->format('M j, Y'))
+            ->set('aiDays', 3)
+            ->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change my travel date to 1 week')->call('automateTrip');
+
+        $component->assertSet('aiDateFrom', $futureStart->format('M j'));
+        $component->assertSet('aiDateTo', $futureStart->copy()->addDays(6)->format('M j, Y'));
+        $component->assertSet('aiDays', 7);
         $component->assertSet('awaitingSlot', 'confirmation');
     }
 
@@ -1471,12 +1610,16 @@ class LlmTest extends TestCase
             ->set('aiPrompt', 'japan')
             ->call('automateTrip');
 
-        $component->assertSet('aiTo', '');
-        $component->assertSet('awaitingSlot', 'destination');
+        // Destination is KEPT — only budget gets cleared, since the
+        // message now only offers "increase your budget" as the fix.
+        $component->assertSet('aiTo', 'Japan');
+        $component->assertSet('aiBudgetMin', 0);
+        $component->assertSet('aiBudgetMax', 0);
+        $component->assertSet('awaitingSlot', 'budget');
         $lastMessage = collect($component->get('messages'))->last()['text'];
         $this->assertStringContainsString('too low', $lastMessage);
         $this->assertStringContainsString('15,000', $lastMessage);
-        $this->assertStringContainsString('more affordable destination', $lastMessage);
+        $this->assertStringNotContainsString('more affordable destination', $lastMessage);
     }
 
     // A domestic destination on the exact same low budget must never be
@@ -1542,8 +1685,12 @@ class LlmTest extends TestCase
 
         $component->set('aiPrompt', 'change the destination to japan')->call('automateTrip');
 
-        $component->assertSet('aiTo', '');
-        $component->assertSet('awaitingSlot', 'destination');
+        // Destination is KEPT as the edited value — only budget clears,
+        // since the message now only offers "increase your budget".
+        $component->assertSet('aiTo', 'Japan');
+        $component->assertSet('aiBudgetMin', 0);
+        $component->assertSet('aiBudgetMax', 0);
+        $component->assertSet('awaitingSlot', 'budget');
         $lastMessage = collect($component->get('messages'))->last()['text'];
         $this->assertStringContainsString('too low', $lastMessage);
 
@@ -1573,11 +1720,101 @@ class LlmTest extends TestCase
             ->set('aiPrompt', 'japan')
             ->call('automateTrip');
 
-        $component->assertSet('aiTo', '');
-        $component->assertSet('awaitingSlot', 'destination');
+        // Destination is KEPT as the named value — only budget clears,
+        // since the message now only offers "increase your budget".
+        $component->assertSet('aiTo', 'Japan');
+        $component->assertSet('aiBudgetMin', 0);
+        $component->assertSet('aiBudgetMax', 0);
+        $component->assertSet('awaitingSlot', 'budget');
         $component->assertSet('pendingEditSlot', '');
         $lastMessage = collect($component->get('messages'))->last()['text'];
         $this->assertStringContainsString('too low', $lastMessage);
+    }
+
+    // The exact bug reported live: the shortfall guard above only ever
+    // checked DESTINATION edits — lowering the BUDGET instead (via
+    // "change my budget" → a too-low number) on an already-set
+    // international destination sailed through with no check at all,
+    // over and over, however low the traveler typed.
+    public function test_editing_budget_to_an_unaffordable_amount_on_an_international_destination_is_blocked(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiTo', 'Japan')
+            ->set('aiBudgetMin', 45000)
+            ->set('aiBudgetMax', 45000)
+            ->set('aiDays', 8)
+            ->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change my budget')->call('automateTrip');
+        $component->assertSet('pendingEditSlot', 'budget');
+
+        $component->set('aiPrompt', '15000')->call('automateTrip');
+
+        // Destination is KEPT — only the too-low budget attempt is
+        // rejected, resetting back to awaitingSlot='budget' so the next
+        // reply is read as a fresh (hopefully sufficient) budget answer.
+        $component->assertSet('aiTo', 'Japan');
+        $component->assertSet('aiBudgetMin', 0);
+        $component->assertSet('aiBudgetMax', 0);
+        $component->assertSet('awaitingSlot', 'budget');
+        $component->assertSet('pendingEditSlot', '');
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('too low', $lastMessage);
+
+        // A stray "yes" afterward must never slip through to generation.
+        $component->set('aiPrompt', 'yes')->call('automateTrip');
+        $component->assertSet('aiStep', '');
+    }
+
+    // Same guard, reached through the ONE-SHOT edit path — "change budget
+    // to X" in a single message instead of a pendingEditSlot follow-up.
+    public function test_one_shot_budget_edit_to_an_unaffordable_amount_on_an_international_destination_is_blocked(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiTo', 'Japan')
+            ->set('aiBudgetMin', 45000)
+            ->set('aiBudgetMax', 45000)
+            ->set('aiDays', 8)
+            ->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change budget to 5000')->call('automateTrip');
+
+        $component->assertSet('aiTo', 'Japan');
+        $component->assertSet('aiBudgetMin', 0);
+        $component->assertSet('aiBudgetMax', 0);
+        $component->assertSet('awaitingSlot', 'budget');
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('too low', $lastMessage);
+    }
+
+    // A SUFFICIENT budget edit on an international destination must still
+    // proceed normally — this guard only blocks a clear mismatch.
+    public function test_editing_budget_to_a_sufficient_amount_on_an_international_destination_proceeds_normally(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiTo', 'Japan')
+            ->set('aiBudgetMin', 45000)
+            ->set('aiBudgetMax', 45000)
+            ->set('aiDays', 8)
+            ->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change budget to 50000')->call('automateTrip');
+
+        $component->assertSet('aiTo', 'Japan');
+        $component->assertSet('aiBudgetMin', 50000);
+        $component->assertSet('aiBudgetMax', 50000);
+        $component->assertSet('awaitingSlot', 'confirmation');
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('Got it, updated!', $lastMessage);
     }
 
     // buildSerpApiPackage()'s three real search calls (flights/hotels,
@@ -1756,10 +1993,16 @@ class LlmTest extends TestCase
         $this->assertSame(5, $package['accommodation']['stars']);
         $this->assertSame(15001, $package['accommodation']['cost']);
         $this->assertSame('Aria at Discovery Shores (₱1,500)', $package['food']['name']);
-        $this->assertSame(21000, $package['food']['cost']);
-        // White Beach Walk (Free) + Paraw Sailing (₱800) + Willy's Rock (Free).
-        $this->assertSame(800, $package['attractions']['cost']);
-        $this->assertSame(42201, $package['total']);
+        // Raw figures (5400 + 15001 + 21000 + 800 = 42201) blow the
+        // ₱30,000 budget by ₱12,201 — capPackageToBudget() squeezes this
+        // back down to fit: first the one paid attraction (Paraw Sailing,
+        // ₱800) is dropped, leaving only the two free items, then food is
+        // reduced the rest of the way (21000 - 11401 = 9599), which is
+        // still comfortably above the ₱300/day/traveler floor (₱4,200).
+        $this->assertSame(0, $package['attractions']['cost']);
+        $this->assertCount(2, $package['attractions']['items']);
+        $this->assertSame(9599, $package['food']['cost']);
+        $this->assertSame(30000, $package['total']);
         $this->assertSame(30000, $package['budget']);
         $this->assertSame(100, $package['pct']);
     }
@@ -1792,5 +2035,139 @@ class LlmTest extends TestCase
         $this->assertSame(300, $package['attractions']['cost']);
         $this->assertSame(15999, $package['total']);
         $this->assertSame(80, $package['pct']);
+    }
+
+    public function test_mount_offers_saved_preferences_when_profile_has_origin_and_budget(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create([
+            'user_id' => $user->id, 'home_city' => 'Cebu City',
+            'daily_budget' => 35000, 'interests' => ['Nature'],
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class);
+
+        $component->assertSet('pendingProfileOffer', true);
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('Cebu City', $lastMessage);
+        $this->assertStringContainsString('35,000', $lastMessage);
+        $this->assertStringContainsString('Nature', $lastMessage);
+    }
+
+    public function test_mount_does_not_offer_when_no_profile_exists(): void
+    {
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)->test(Llm::class);
+
+        $component->assertSet('messages', []);
+        $component->assertSet('pendingProfileOffer', false);
+    }
+
+    public function test_mount_does_not_offer_when_only_interests_are_saved(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create(['user_id' => $user->id, 'interests' => ['Nature']]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class);
+
+        $component->assertSet('messages', []);
+        $component->assertSet('pendingProfileOffer', false);
+    }
+
+    public function test_mount_offer_mentions_only_budget_when_home_city_is_missing(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create(['user_id' => $user->id, 'daily_budget' => 35000]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class);
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringNotContainsString('starting point', $lastMessage);
+        $this->assertStringContainsString('35,000', $lastMessage);
+    }
+
+    public function test_accepting_the_profile_offer_prefills_origin_and_budget(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create(['user_id' => $user->id, 'home_city' => 'Cebu City', 'daily_budget' => 35000]);
+        $this->fakeExtraction();
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', 'yes')->call('automateTrip');
+
+        $component->assertSet('aiFrom', 'Cebu City');
+        $component->assertSet('aiBudgetMin', 35000);
+        $component->assertSet('aiBudgetMax', 35000);
+        $component->assertSet('pendingProfileOffer', false);
+    }
+
+    public function test_declining_the_profile_offer_leaves_slots_empty(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create(['user_id' => $user->id, 'home_city' => 'Cebu City', 'daily_budget' => 35000]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', 'no')->call('automateTrip');
+
+        $component->assertSet('aiFrom', '');
+        $component->assertSet('aiBudgetMin', 0);
+        $component->assertSet('pendingProfileOffer', false);
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringNotContainsString('Cebu City', $lastMessage);
+    }
+
+    public function test_an_unrelated_reply_declines_the_offer_and_is_processed_as_a_normal_message(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create(['user_id' => $user->id, 'home_city' => 'Cebu City', 'daily_budget' => 35000]);
+        $this->fakeExtraction();
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', 'I want to go to Japan')->call('automateTrip');
+
+        $component->assertSet('pendingProfileOffer', false);
+        $component->assertSet('aiFrom', '');
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringNotContainsString('saved travel preferences', $lastMessage);
+    }
+
+    public function test_mount_does_not_re_offer_when_a_draft_already_exists(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create(['user_id' => $user->id, 'home_city' => 'Cebu City', 'daily_budget' => 35000]);
+        AiConversationDraft::create([
+            'user_id' => $user->id,
+            'messages' => [['role' => 'user', 'text' => 'Boracay trip']],
+            'ai_from' => '', 'ai_to' => '', 'ai_budget_min' => 0, 'ai_budget_max' => 0,
+            'ai_date_from' => '', 'ai_date_to' => '', 'ai_days' => 0, 'ai_travelers' => 0,
+            'awaiting_slot' => '', 'miss_count' => 0, 'ai_step' => '', 'ai_gen_count' => 0,
+            'pending_profile_offer' => false,
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class);
+
+        $component->assertSet('pendingProfileOffer', false);
+        $component->assertCount('messages', 1);
+    }
+
+    public function test_pending_profile_offer_survives_a_simulated_page_reload(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create(['user_id' => $user->id, 'home_city' => 'Cebu City', 'daily_budget' => 35000]);
+        $this->fakeExtraction();
+
+        Livewire::actingAs($user)->test(Llm::class);
+
+        $draft = AiConversationDraft::where('user_id', $user->id)->first();
+        $this->assertNotNull($draft);
+        $this->assertTrue((bool) $draft->pending_profile_offer);
+
+        $component2 = Livewire::actingAs($user)->test(Llm::class);
+        $component2->assertSet('pendingProfileOffer', true);
+        $component2->assertCount('messages', 1);
+
+        $component2->set('aiPrompt', 'yes')->call('automateTrip');
+        $component2->assertSet('aiFrom', 'Cebu City');
     }
 }
