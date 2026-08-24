@@ -45,22 +45,22 @@
        gets a visible ring, since none of these existed before. ──── */
     .txn-action-btn:focus-visible,
     .txn-icon-photo:focus-visible,
-    .expense-fab:focus-visible,
+    .expense-add-pill:focus-visible,
     .expense-dest-link:focus-visible {
         outline: 2px solid var(--primary); outline-offset: 2px;
     }
 
-    /* ── Floating Add Expense button ──────────────────────── */
-    .expense-fab {
-        position: fixed; bottom: 28px; right: 28px; width: 56px; height: 56px; border-radius: 50%;
-        background: var(--primary); border: none; box-shadow: var(--shadow-lg);
-        font-size: 20px; cursor: pointer; z-index: 500; display: flex; align-items: center; justify-content: center;
-        transition: transform .2s ease, background .2s ease;
+    /* ── Add Expense pill (replaced the floating + button) ── */
+    .expense-add-pill {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: var(--primary); color: #fff; border: none; border-radius: 30px;
+        padding: 12px 26px; font-family: inherit; font-size: 13.5px; font-weight: 700;
+        text-decoration: none; cursor: pointer; white-space: nowrap;
+        transition: background .18s ease, gap .18s ease;
     }
-    .expense-fab i { color: #fff; line-height: 1; }
-    .expense-fab:hover { transform: scale(1.08); background: var(--primary-dark); }
-    .expense-fab:hover i { color: #fff; }
-    @media (max-width: 640px) { .expense-fab { bottom: 20px; right: 20px; width: 50px; height: 50px; font-size: 18px; } }
+    .expense-add-pill:hover { background: var(--primary-dark); color: #fff; gap: 11px; }
+    .expense-add-pill i { font-size: 12px; }
+    .expense-add-pill.is-compact { padding: 9px 18px; font-size: 12.5px; }
 
     /* ── From/To mini calendar dropdowns ──────────────────── */
     .exp-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; font-weight: 700; color: var(--dark); }
@@ -312,6 +312,10 @@
             <div class="text-muted" style="font-size:13px;max-width:280px;line-height:1.5;">
                 Start tracking your trip costs by adding your first expense. Keep your budget on track with real-time ledger updates.
             </div>
+            <a href="{{ route('expenses.create') }}{{ $selectedTripId ? '?trip_id='.$selectedTripId : '' }}"
+               class="expense-add-pill" style="margin-top:22px;">
+                <i class="fa-solid fa-plus"></i> Add Expenses
+            </a>
         </div>
         @else
         @php
@@ -321,13 +325,31 @@
                 return $e->expense_date->format('F j, Y');
             });
         @endphp
+        {{-- The floating + button used to be the ONLY route to expenses.create.
+             With it gone, the empty state carries the pill and this row carries
+             it once there are expenses to list. --}}
+        <div style="display:flex;align-items:center;justify-content:flex-end;padding:12px 16px;border-bottom:1px solid var(--border-light);">
+            <a href="{{ route('expenses.create') }}{{ $selectedTripId ? '?trip_id='.$selectedTripId : '' }}"
+               class="expense-add-pill is-compact">
+                <i class="fa-solid fa-plus"></i> Add Expenses
+            </a>
+        </div>
         <div>
             @foreach ($groupedExpenses as $groupLabel => $group)
             <div class="txn-date-label">{{ $groupLabel }}</div>
             @foreach ($group as $expense)
             @php $color = $categoryColors[$expense->category] ?? '#6B7280'; @endphp
             <div class="txn-card">
-                @if ($expense->receipt_path)
+                {{-- A receipt_path can outlive its file (uploads from another
+                     machine, a cleared storage dir). Rendering the <img>
+                     regardless left a broken-image glyph in the row, so check
+                     the file is actually there and fall back to the category
+                     icon when it isn't. --}}
+                @php
+                    $hasReceipt = $expense->receipt_path
+                        && Storage::disk('public')->exists($expense->receipt_path);
+                @endphp
+                @if ($hasReceipt)
                 <a href="{{ Storage::url($expense->receipt_path) }}" target="_blank" rel="noopener" class="txn-icon txn-icon-photo" title="View receipt">
                     <img src="{{ Storage::url($expense->receipt_path) }}" alt="Receipt for {{ $expense->description ?? $expense->category }}" loading="lazy">
                 </a>
@@ -350,10 +372,9 @@
                 </div>
                 <div class="txn-amount">{{ currency_symbol() }}{{ number_format($expense->amount, 0) }}</div>
                 <div class="txn-actions">
-                    {{-- Edit/Delete are owner-only server-side (403 otherwise),
-                         so showing them on someone else's expense would only
-                         ever dead-end. --}}
-                    @if ($isMine)
+                    {{-- Everyone on the trip can edit/delete its expenses; the
+                         controller gates on trip access rather than authorship,
+                         so these no longer dead-end on a companion's row. --}}
                     <a href="{{ route('expenses.edit', $expense) }}" class="txn-action-btn" title="Edit">
                         <i class="fa-solid fa-pen"></i>
                     </a>
@@ -364,7 +385,6 @@
                             @click="confirmDeleteId = {{ $expense->id }}; confirmDeleteDesc = @js($expense->description ?? $expense->category)">
                         <i class="fa-solid fa-trash"></i>
                     </button>
-                    @endif
                 </div>
             </div>
             @endforeach
@@ -377,11 +397,6 @@
     </div>
 
     </div>{{-- /#expenses-region --}}
-
-    {{-- Floating Add Expense button --}}
-    <a href="{{ route('expenses.create') }}{{ $selectedTripId ? '?trip_id='.$selectedTripId : '' }}" class="expense-fab" title="Add Expense">
-        <i class="fa-solid fa-plus"></i>
-    </a>
 
     {{-- Delete Confirmation Modal --}}
     <template x-if="confirmDeleteId">

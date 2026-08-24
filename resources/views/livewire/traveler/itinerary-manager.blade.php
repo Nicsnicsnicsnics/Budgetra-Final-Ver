@@ -88,7 +88,10 @@
                     <div style="width:28px;height:28px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <i class="fa-solid fa-plane" style="color:var(--primary);font-size:11px;"></i>
                     </div>
-                    <span style="font-size:13px;font-weight:{{ $selectedTripId == $t->id ? '700' : '500' }};color:{{ $selectedTripId == $t->id ? 'var(--primary)' : 'var(--dark)' }};">{{ $tripLabel($t) }}</span>
+                    {{-- Weights/colours match the Expenses trip dropdown so the
+                         two read as the same control: 600/primary when picked,
+                         400/muted otherwise. --}}
+                    <span style="font-size:13px;font-weight:{{ $selectedTripId == $t->id ? '600' : '400' }};color:{{ $selectedTripId == $t->id ? 'var(--primary)' : 'var(--muted)' }};">{{ $tripLabel($t) }}</span>
                 </button>
                 @endforeach
             </div>

@@ -110,7 +110,10 @@ class ExpenseController extends Controller
 
     public function edit(Expense $expense)
     {
-        abort_if($expense->user_id !== auth()->id(), 403);
+        // Anyone on the trip may edit its expenses, not just whoever logged
+        // them — a shared trip's ledger is shared. The row still shows who
+        // recorded it, so attribution isn't lost.
+        abort_if(!auth()->user()->canAccessTrip((int) $expense->trip_id), 403);
         $trips      = auth()->user()->accessibleTrips()->latest()->get();
         $categories = self::CATEGORIES;
         return view('traveler.expenses.edit', compact('expense', 'trips', 'categories'));
@@ -118,7 +121,8 @@ class ExpenseController extends Controller
 
     public function update(Request $request, Expense $expense)
     {
-        abort_if($expense->user_id !== auth()->id(), 403);
+        // Trip membership, not authorship — see edit().
+        abort_if(!auth()->user()->canAccessTrip((int) $expense->trip_id), 403);
 
         $validated = $request->validate([
             'trip_id'      => 'required|exists:trips,id',
@@ -168,7 +172,8 @@ class ExpenseController extends Controller
 
     public function destroy(Expense $expense)
     {
-        abort_if($expense->user_id !== auth()->id(), 403);
+        // Trip membership, not authorship — see edit().
+        abort_if(!auth()->user()->canAccessTrip((int) $expense->trip_id), 403);
 
         if ($expense->receipt_path) {
             Storage::disk('public')->delete($expense->receipt_path);

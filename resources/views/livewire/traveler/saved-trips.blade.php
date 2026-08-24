@@ -191,6 +191,16 @@
                         onmouseenter="this.style.background='rgba(0,0,0,0.55)'" onmouseleave="this.style.background='rgba(0,0,0,0.35)'">
                     <i class="fa-solid fa-share-nodes" style="font-size:13px;"></i>
                 </button>
+                {{-- Download PDF, continuing the same icon stack. Reuses the
+                     existing reports.download route + ReportService rather
+                     than a second PDF path. Plain link, not wire:navigate —
+                     the response is a Content-Disposition attachment, so the
+                     browser saves it without leaving the page. --}}
+                <a href="{{ route('reports.download') }}?trip_id={{ $trip->id }}" title="Download trip PDF"
+                   style="position:absolute;top:92px;right:12px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,0.35);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;text-decoration:none;backdrop-filter:blur(4px);transition:background .18s;"
+                   onmouseenter="this.style.background='rgba(0,0,0,0.55)'" onmouseleave="this.style.background='rgba(0,0,0,0.35)'">
+                    <i class="fa-solid fa-file-arrow-down" style="font-size:13px;"></i>
+                </a>
                 <div style="position:absolute;bottom:12px;left:16px;right:16px;">
                     <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:8px;">
                         {{ $dest }}

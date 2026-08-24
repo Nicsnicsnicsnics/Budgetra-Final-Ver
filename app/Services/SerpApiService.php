@@ -204,23 +204,61 @@ class SerpApiService
 
             if (!$price) continue;
 
+            // Google routinely returns connecting itineraries — for thin
+            // domestic pairs (CEB→TAG, say) that's ALL it returns. The card
+            // used to print a hardcoded "Nonstop" over them, so a two-leg
+            // trip with a five-hour Manila layover read as a 7h55m direct
+            // flight. Carry the real shape through so the view can tell the
+            // truth about it.
+            $stops    = max(0, count($segments) - 1);
+            $layovers = [];
+            foreach ($item['layovers'] ?? [] as $lay) {
+                $layovers[] = [
+                    'id'       => $lay['id'] ?? '',
+                    'duration' => (int) ($lay['duration'] ?? 0),
+                ];
+            }
+
+            // Every flight number in the itinerary, not just the first leg's.
+            $segNumbers = [];
+            foreach ($segments as $seg) {
+                $n = trim((string) ($seg['flight_number'] ?? ''));
+                if ($n !== '') $segNumbers[] = $n;
+            }
+
+            // "6:20 AM" on its own is misleading when the leg departed the
+            // night before — SerpAPI gives full "Y-m-d H:i" timestamps, so
+            // the day difference is knowable.
+            $dayOffset = 0;
+            if ($depart && $arrive) {
+                $d1 = strtotime(substr($depart, 0, 10));
+                $d2 = strtotime(substr($arrive, 0, 10));
+                if ($d1 && $d2 && $d2 > $d1) {
+                    $dayOffset = (int) round(($d2 - $d1) / 86400);
+                }
+            }
+
             // Skip results that don't depart from the requested origin
             if ($dep_id && $fromCode && strtoupper(substr($dep_id, 0, 3)) !== strtoupper(substr($fromCode, 0, 3))) {
                 continue;
             }
 
             $results[] = [
-                'airline'  => $airline,
-                'logo'     => $logo,
-                'number'   => $num,
-                'depart'   => $depart,
-                'arrive'   => $arrive,
-                'dep_id'   => $dep_id,
-                'arr_id'   => $arr_id,
-                'duration' => $dur,
-                'price'    => $price,
-                'type'     => $type,
-                'bags'     => $bags,
+                'airline'    => $airline,
+                'logo'       => $logo,
+                'number'     => $segNumbers ? implode(' · ', $segNumbers) : $num,
+                'depart'     => $depart,
+                'arrive'     => $arrive,
+                'dep_id'     => $dep_id,
+                'arr_id'     => $arr_id,
+                'duration'   => $dur,
+                'price'      => $price,
+                'type'       => $type,
+                'bags'       => $bags,
+                'stops'      => $stops,
+                'layovers'   => $layovers,
+                'day_offset' => $dayOffset,
+                'source'     => 'serpapi',
             ];
         }
 

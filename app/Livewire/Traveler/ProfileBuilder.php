@@ -124,7 +124,7 @@ class ProfileBuilder extends Component
         // the AI planner jumps right to the interests step) instead of
         // always starting the whole wizard over from step 1.
         $requestedStep = (int) request()->query('step', 0);
-        if ($requestedStep >= 1 && $requestedStep <= 6) {
+        if ($requestedStep >= 1 && $requestedStep <= 7) {
             $this->step = $requestedStep;
         }
 
@@ -140,11 +140,20 @@ class ProfileBuilder extends Component
     // Missing ones used to be listed in a modal; now their keys go back to the
     // browser and the fields themselves shake with a red border, so the
     // traveler is looking at the thing that needs fixing.
-    public function nextStep(): void
+    /**
+     * Required-field keys still missing on the given step, in the same
+     * vocabulary the browser's shake handler expects.
+     *
+     * Extracted from nextStep() so saveAndReturn() can run the identical
+     * check — editing a single step from the Profile page never went through
+     * nextStep(), so a field cleared there used to save empty with no shake
+     * and no complaint.
+     */
+    private function missingForStep(int $step): array
     {
         $missing = [];
 
-        if ($this->step === 1) {
+        if ($step === 1) {
             $city = trim($this->homeCity);
             if (empty($city)) {
                 $missing[] = 'home';
@@ -152,16 +161,15 @@ class ProfileBuilder extends Component
                 // This one has a real @error slot under the field, so keep the
                 // message — just shake it too.
                 $this->addError('homeCity', 'Please enter a city name (e.g. "Manila"), not a number.');
-                $this->dispatch('profile-missing', fields: ['home']);
-                return;
+                $missing[] = 'home';
             }
         }
 
-        if ($this->step === 2 && $this->dailyBudget <= 0) {
+        if ($step === 2 && $this->dailyBudget <= 0) {
             $missing[] = 'budget';
         }
 
-        if ($this->step === 3) {
+        if ($step === 3) {
             if ($this->travelStyle === '') {
                 $missing[] = 'style';
             } elseif ($this->travelStyle === 'Group' && empty($this->groupMemberEmails)) {
@@ -169,16 +177,27 @@ class ProfileBuilder extends Component
             }
         }
 
-        if ($this->step === 4 && empty($this->selectedInterests)) {
+        if ($step === 4 && empty($this->selectedInterests)) {
             $missing[] = 'interests';
         }
 
-        if ($this->step === 5) {
-            if ($this->preferredTransportation === '') $missing[] = 'transportation';
-            if ($this->preferredAccommodation === '')  $missing[] = 'accommodation';
+        // Transport and stay are separate steps now, so each is gated on its
+        // own — otherwise step 5 would demand an accommodation the traveler
+        // hasn't been shown yet.
+        if ($step === 5 && $this->preferredTransportation === '') {
+            $missing[] = 'transportation';
         }
 
-        if ($missing) {
+        if ($step === 6 && $this->preferredAccommodation === '') {
+            $missing[] = 'accommodation';
+        }
+
+        return $missing;
+    }
+
+    public function nextStep(): void
+    {
+        if ($missing = $this->missingForStep($this->step)) {
             $this->dispatch('profile-missing', fields: $missing);
             return;
         }
@@ -343,6 +362,14 @@ class ProfileBuilder extends Component
     // instead of forcing the traveler through the rest of the wizard again.
     public function saveAndReturn(): void
     {
+        // Editing one step from the Profile page bypasses nextStep() entirely,
+        // so without this a cleared field saved as empty in silence.
+        if ($missing = $this->missingForStep($this->step)) {
+            $this->dispatch('profile-missing', fields: $missing);
+            return;
+        }
+
+        $this->resetErrorBag();
         $this->persistProfile();
         $this->redirect(route($this->returnTo ?: 'dashboard'), navigate: true);
     }

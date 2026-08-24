@@ -148,7 +148,7 @@
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <div class="rv-icon-sm"><i class="fa-solid fa-location-dot"></i></div>
-                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Starting Point</div>
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Address</div>
                     </div>
                     <a href="{{ route('profile.setup') }}?step=1&return=profile.edit" class="rv-edit">Edit</a>
                 </div>
@@ -182,16 +182,31 @@
                 <div style="font-size:11px;color:var(--muted);">Cost-splitting & accommodation fit</div>
             </div>
 
+            {{-- Transportation and Accommodation are separate steps in the
+                 profile builder now, so they get a card each here too, with
+                 Edit pointing at the step that actually owns the field. --}}
             <div class="rv-card-sm">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <div class="rv-icon-sm"><i class="fa-solid fa-route"></i></div>
-                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Transport & Stay</div>
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Transportation</div>
                     </div>
                     <a href="{{ route('profile.setup') }}?step=5&return=profile.edit" class="rv-edit">Edit</a>
                 </div>
-                <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $profile->preferred_transportation ?: '—' }} / {{ $profile->preferred_accommodation ?: '—' }}</div>
-                <div style="font-size:11px;color:var(--muted);">How you'll travel & stay</div>
+                <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $profile->preferred_transportation ?: '—' }}</div>
+                <div style="font-size:11px;color:var(--muted);">How you'll travel</div>
+            </div>
+
+            <div class="rv-card-sm">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div class="rv-icon-sm"><i class="fa-solid fa-bed"></i></div>
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Accommodation</div>
+                    </div>
+                    <a href="{{ route('profile.setup') }}?step=6&return=profile.edit" class="rv-edit">Edit</a>
+                </div>
+                <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $profile->preferred_accommodation ?: '—' }}</div>
+                <div style="font-size:11px;color:var(--muted);">Where you'll stay</div>
             </div>
         </div>
 

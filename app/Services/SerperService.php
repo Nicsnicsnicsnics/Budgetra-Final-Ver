@@ -48,62 +48,32 @@ class SerperService
         return $data['images'] ?? [];
     }
 
+    /**
+     * No longer returns anything.
+     *
+     * This used to be the fallback whenever SerpApiService returned no
+     * flights (quota exhausted, error, thin route). It fired a Serper web
+     * search, THREW THE RESPONSE AWAY without reading it, and then invented
+     * three flights out of thin air:
+     *
+     *   - price from rand(1500, 4000) etc., x1.8 for a round trip
+     *   - duration hardcoded to 90 minutes for every route on earth
+     *   - flight numbers from rand(100, 999)
+     *   - departure/arrival picked from five fixed time slots
+     *
+     * Those were rendered in the same card as real SerpAPI results with no
+     * way for the traveler to tell them apart, and the invented prices fed
+     * straight into the trip budget, savings goals and estimates. A budgeting
+     * app cannot quote made-up fares.
+     *
+     * Serper's /search endpoint returns generic web results, not structured
+     * itineraries, so there is nothing here to parse into honest flight data.
+     * Returning null lets the callers fall through to their existing "we
+     * couldn't load flights right now" state, which is the truth.
+     */
     public function searchFlights(string $fromCode, string $toCode, string $departDate, string $returnDate = ''): ?array
     {
-        $isRoundTrip = !empty($returnDate);
-        $type        = $isRoundTrip ? 'Round Trip' : 'One Way';
-        $q           = "flights from {$fromCode} to {$toCode} {$departDate}" . ($isRoundTrip ? " return {$returnDate}" : '');
-
-        $cacheKey = 'serper_flights_' . md5($q);
-        $data = Cache::remember($cacheKey, now()->addHours(6), function () use ($q) {
-            $response = Http::timeout(15)
-                ->withHeaders(['X-API-KEY' => $this->key, 'Content-Type' => 'application/json'])
-                ->post('https://google.serper.dev/search', ['q' => $q, 'hl' => 'en', 'gl' => 'ph', 'num' => 10]);
-            if (!$response->successful()) return null;
-            return $response->json();
-        });
-
-        // Build synthetic but realistic Philippine domestic flight options
-        $airlines = [
-            ['name' => 'Cebu Pacific',        'codes' => ['5J'], 'logo' => 'https://www.gstatic.com/flights/airline_logos/70px/5J.png'],
-            ['name' => 'Philippine Airlines', 'codes' => ['PR'], 'logo' => 'https://www.gstatic.com/flights/airline_logos/70px/PR.png'],
-            ['name' => 'AirAsia Philippines', 'codes' => ['Z2'], 'logo' => 'https://www.gstatic.com/flights/airline_logos/70px/Z2.png'],
-        ];
-
-        // Price ranges per route type
-        $basePrice = match(true) {
-            in_array($fromCode, ['MNL']) && in_array($toCode, ['CEB','DVO','BCD','ILO']) => rand(1500, 4000),
-            in_array($fromCode, ['CEB']) && in_array($toCode, ['DVO','BCD','ILO','MNL']) => rand(1200, 3500),
-            default => rand(1800, 5000),
-        };
-        if ($isRoundTrip) $basePrice = (int)($basePrice * 1.8);
-
-        $results = [];
-        $times   = [['07:00 AM','08:30 AM'],['10:00 AM','11:30 AM'],['02:00 PM','03:30 PM'],['05:00 PM','06:30 PM'],['07:30 PM','09:00 PM']];
-
-        foreach ($airlines as $i => $airline) {
-            if ($i >= 3) break;
-            [$dep, $arr] = $times[$i % count($times)];
-            $flightNum   = $airline['codes'][0] . rand(100, 999);
-            $price       = $basePrice + ($i * rand(-300, 500));
-
-            $results[] = [
-                'airline'  => $airline['name'],
-                'logo'     => $airline['logo'],
-                'number'   => $flightNum,
-                'depart'   => $dep,
-                'arrive'   => $arr,
-                'dep_id'   => $fromCode,
-                'arr_id'   => $toCode,
-                'duration' => 90,
-                'price'    => max(800, $price),
-                'type'     => $type,
-                'bags'     => 'Carry-on baggage included',
-                'source'   => 'serper',
-            ];
-        }
-
-        return $results ?: null;
+        return null;
     }
 
     public function searchHotels(string $destination, string $checkIn, string $checkOut, int $nights, string $type = 'hotel'): ?array
