@@ -69,4 +69,8 @@ return [
         'key' => env('SERPER_KEY', ''),
     ],
 
+    'currency_converter' => [
+        'key' => env('CURRENCY_CONVERTER_KEY', ''),
+    ],
+
 ];

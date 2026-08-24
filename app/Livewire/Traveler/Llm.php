@@ -4,6 +4,7 @@ namespace App\Livewire\Traveler;
 use App\Models\AiConversationDraft;
 use App\Models\AiConversationHistory;
 use App\Models\Trip;
+use App\Services\CurrencyConverterService;
 use App\Services\GeminiService;
 use App\Services\GroqService;
 use App\Services\MistralService;
@@ -49,6 +50,8 @@ class Llm extends Component
     private ?string $currencyNotice = null;
 
     private ?string $unsupportedCurrencyNotice = null;
+
+    private ?string $currencyRateUnavailableNotice = null;
 
     public ?string $pendingPlaceSuggestion = null;
 
@@ -252,16 +255,20 @@ class Llm extends Component
             ? $this->aiDateTo
             : date('Y-m-d', strtotime($this->aiDateFrom) + max(1, $this->aiDays - 1) * 86400);
 
+        $conversion = $this->destinationBudgetConversion();
+
         $data = [
-            'user_id'          => auth()->id(),
-            'destination'      => $this->aiTo,
-            'origin'           => trim($this->aiFrom),
-            'start_date'       => $this->aiDateFrom,
-            'end_date'         => $endDate,
-            'budget_limit'     => $this->aiBudgetMax ?: $this->aiBudgetMin,
-            'travel_type'      => 'Solo',
-            'num_travelers'    => max(1, $this->aiTravelers),
-            'status'           => 'draft',
+            'user_id'              => auth()->id(),
+            'destination'          => $this->aiTo,
+            'origin'               => trim($this->aiFrom),
+            'start_date'           => $this->aiDateFrom,
+            'end_date'             => $endDate,
+            'budget_limit'         => $this->aiBudgetMax ?: $this->aiBudgetMin,
+            'destination_currency' => $conversion['code'] ?? null,
+            'destination_budget'   => $conversion['amount'] ?? null,
+            'travel_type'          => 'Solo',
+            'num_travelers'        => max(1, $this->aiTravelers),
+            'status'               => 'draft',
         ];
 
         $existing = $this->draftTripId ? Trip::where('id', $this->draftTripId)
@@ -580,9 +587,24 @@ class Llm extends Component
             return;
         }
 
+        if ($this->currencyRateUnavailableNotice !== null) {
+            $notice = $this->currencyRateUnavailableNotice;
+            $this->currencyRateUnavailableNotice = null;
+            $this->aiPrompt = '';
+            $this->messages[] = ['role' => 'assistant', 'text' => $notice];
+            $this->dispatch('message-added');
+            return;
+        }
+
         if ($this->currencyNotice !== null) {
             $notice = $this->currencyNotice;
             $this->currencyNotice = null;
+
+            $conversion = $this->destinationBudgetConversion();
+            if ($conversion !== null) {
+                $notice .= " In {$this->aiTo} that's about " . $this->formatDestinationAmount($conversion['code'], $conversion['amount']) . '.';
+            }
+
             $this->messages[] = ['role' => 'assistant', 'text' => $notice];
             $this->dispatch('message-added');
         }
@@ -1182,14 +1204,20 @@ PROMPT;
             $currency = $currencyCode !== '' && $currencyCode !== 'PHP'
                 ? (self::SUPPORTED_CURRENCIES[$currencyCode] ?? null)
                 : null;
-            if ($currency !== null) {
-                $min = round($min * $currency['rate']);
-                $max = round($max * $currency['rate']);
-                $this->aiCurrency = $currencyCode;
-            }
 
-            $this->aiBudgetMin = min(self::MAX_BUDGET, (int) $min);
-            $this->aiBudgetMax = min(self::MAX_BUDGET, (int) $max);
+            if ($currency !== null) {
+                $rate = $this->currencyRate($currencyCode);
+                if ($rate === null) {
+                    $this->currencyNotice = "I couldn't fetch the live exchange rate just now — please try entering your budget again in a moment.";
+                } else {
+                    $this->aiBudgetMin = min(self::MAX_BUDGET, (int) round($min * $rate));
+                    $this->aiBudgetMax = min(self::MAX_BUDGET, (int) round($max * $rate));
+                    $this->aiCurrency  = $currencyCode;
+                }
+            } else {
+                $this->aiBudgetMin = min(self::MAX_BUDGET, (int) $min);
+                $this->aiBudgetMax = min(self::MAX_BUDGET, (int) $max);
+            }
         }
 
         if (($this->aiDateFrom === '' || $this->aiDateTo === '')
@@ -1219,12 +1247,17 @@ PROMPT;
 
     private function confirmationSummary(): string
     {
+        $conversion = $this->destinationBudgetConversion();
+        $destinationLine = $conversion !== null
+            ? "\n- Destination budget: " . $this->formatDestinationAmount($conversion['code'], $conversion['amount'])
+            : '';
+
         return "Here's what I've got so far:\n"
             . "- From: {$this->aiFrom}\n"
             . "- Destination: {$this->aiTo}\n"
             . "- Travel dates: {$this->aiDateFrom} to {$this->aiDateTo}\n"
             . "- Travelers: {$this->aiTravelers}\n"
-            . "- Budget: {$this->formattedBudget()}\n\n"
+            . "- Budget: {$this->formattedBudget()}{$destinationLine}\n\n"
             . "Would you like me to proceed with this plan?";
     }
 
@@ -2093,7 +2126,14 @@ PROMPT;
         '₱' => 'PHP', 'php' => 'PHP', 'peso' => 'PHP', 'pesos' => 'PHP',
     ];
 
-    private function detectAndConvertCurrency(string $text): ?array
+    private function currencyRate(string $code): ?float
+    {
+        if ($code === 'PHP') return 1.0;
+
+        return (new CurrencyConverterService())->rateToPhp($code);
+    }
+
+    private function detectAndConvertCurrency(string $text): array|false|null
     {
         $symbolOrCode = '(?:\$|＄|€|£|￡|¥|￥|₩|￦|₱|USD|EUR|GBP|JPY|SGD|AUD|KRW|HKD|THB|MYR|AED|PHP|pesos?)';
 
@@ -2118,10 +2158,13 @@ PROMPT;
 
         $this->aiCurrency = $code;
 
+        $rate = $this->currencyRate($code);
+        if ($rate === null) return false;
+
         return [
             'code'         => $code,
             'currencyName' => $currency['name'],
-            'pesoAmount'   => (int) round($foreignAmount * $currency['rate']),
+            'pesoAmount'   => (int) round($foreignAmount * $rate),
             'displayLabel' => $currency['symbol'] . number_format($foreignAmount),
         ];
     }
@@ -2145,8 +2188,41 @@ PROMPT;
 
     public function displayAmount(int|float $pesoAmount, ?string $currencyCode = null): string
     {
-        $currency = self::SUPPORTED_CURRENCIES[$currencyCode ?? $this->aiCurrency] ?? self::SUPPORTED_CURRENCIES['PHP'];
-        return $currency['symbol'] . number_format($pesoAmount / $currency['rate']);
+        $code = $currencyCode ?? $this->aiCurrency;
+        if (!isset(self::SUPPORTED_CURRENCIES[$code])) $code = 'PHP';
+
+        $rate = $this->currencyRate($code);
+        if ($rate === null) {
+            return self::SUPPORTED_CURRENCIES['PHP']['symbol'] . number_format($pesoAmount);
+        }
+
+        $currency = self::SUPPORTED_CURRENCIES[$code];
+        return $currency['symbol'] . number_format($pesoAmount / $rate);
+    }
+
+    private function destinationCurrencyCode(): ?string
+    {
+        if ($this->aiTo === '') return null;
+        return PlaceCatalog::DESTINATION_CURRENCIES[strtolower(trim($this->aiTo))] ?? null;
+    }
+
+    private function destinationBudgetConversion(): ?array
+    {
+        if ($this->aiBudgetMax <= 0) return null;
+
+        $code = $this->destinationCurrencyCode();
+        if ($code === null) return null;
+
+        $rate = $this->currencyRate($code);
+        if ($rate === null) return null;
+
+        return ['code' => $code, 'amount' => round($this->aiBudgetMax / $rate, 2)];
+    }
+
+    private function formatDestinationAmount(string $code, float $amount): string
+    {
+        $symbol = self::SUPPORTED_CURRENCIES[$code]['symbol'] ?? null;
+        return $symbol !== null ? $symbol . number_format($amount) : number_format($amount) . ' ' . $code;
     }
 
     private function pickFromPool(array $pool, int $gen, int $poolSize = 3): array
@@ -2448,8 +2524,12 @@ PROMPT;
 
         } elseif ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0
             && ($conversion = $this->detectAndConvertCurrency($withoutDate)) !== null) {
-            $this->aiBudgetMin = $this->aiBudgetMax = min(self::MAX_BUDGET, $conversion['pesoAmount']);
-            $this->currencyNotice = "Got it — {$conversion['displayLabel']} is about ₱" . number_format($conversion['pesoAmount']) . ", I'll plan around that.";
+            if ($conversion === false) {
+                $this->currencyRateUnavailableNotice = "I couldn't fetch the live exchange rate just now — please try entering your budget again in a moment.";
+            } else {
+                $this->aiBudgetMin = $this->aiBudgetMax = min(self::MAX_BUDGET, $conversion['pesoAmount']);
+                $this->currencyNotice = "Got it — {$conversion['displayLabel']} is about ₱" . number_format($conversion['pesoAmount']) . ", I'll plan around that.";
+            }
 
         } elseif (
                preg_match('/daily\s*budget\D{0,15}?[₱P]?\s*(' . $big . ')/ui', $withoutDate, $m)

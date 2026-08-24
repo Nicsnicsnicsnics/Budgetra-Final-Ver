@@ -146,6 +146,83 @@ final class PlaceCatalog
         'maldives' => 'MLE', 'male' => 'MLE',
     ];
 
+    // City/country name (lowercase) => 3-letter ISO currency code actually
+    // used at that destination. Philippine cities are deliberately absent —
+    // a domestic trip has nothing to convert, so a lookup miss here means
+    // "same currency as home" rather than "unknown."
+    public const DESTINATION_CURRENCIES = [
+
+        'singapore' => 'SGD',
+        'bangkok' => 'THB', 'thailand' => 'THB', 'suvarnabhumi' => 'THB',
+        'phuket' => 'THB', 'krabi' => 'THB', 'chiang mai' => 'THB',
+        'bali' => 'IDR', 'denpasar' => 'IDR', 'jakarta' => 'IDR', 'indonesia' => 'IDR',
+        'kuala lumpur' => 'MYR', 'malaysia' => 'MYR', 'kl' => 'MYR',
+        'penang' => 'MYR', 'langkawi' => 'MYR', 'kota kinabalu' => 'MYR',
+        'hong kong' => 'HKD',
+        'macau' => 'MOP',
+        'ho chi minh city' => 'VND', 'ho chi minh' => 'VND', 'hcmc' => 'VND', 'saigon' => 'VND',
+        'hanoi' => 'VND', 'vietnam' => 'VND', 'da nang' => 'VND',
+        'yangon' => 'MMK', 'myanmar' => 'MMK',
+        'phnom penh' => 'KHR', 'cambodia' => 'KHR', 'siem reap' => 'KHR',
+        'vientiane' => 'LAK', 'laos' => 'LAK',
+        'colombo' => 'LKR', 'sri lanka' => 'LKR',
+        'dhaka' => 'BDT', 'bangladesh' => 'BDT',
+        'kathmandu' => 'NPR', 'nepal' => 'NPR',
+
+        'tokyo' => 'JPY', 'japan' => 'JPY', 'osaka' => 'JPY', 'nagoya' => 'JPY',
+        'fukuoka' => 'JPY', 'sapporo' => 'JPY', 'okinawa' => 'JPY',
+        'seoul' => 'KRW', 'korea' => 'KRW', 'incheon' => 'KRW', 'busan' => 'KRW',
+        'taipei' => 'TWD', 'taiwan' => 'TWD', 'kaohsiung' => 'TWD',
+        'beijing' => 'CNY', 'china' => 'CNY', 'shanghai' => 'CNY',
+        'guangzhou' => 'CNY', 'shenzhen' => 'CNY',
+
+        'delhi' => 'INR', 'new delhi' => 'INR', 'india' => 'INR',
+        'mumbai' => 'INR', 'bombay' => 'INR', 'bangalore' => 'INR', 'bengaluru' => 'INR',
+        'chennai' => 'INR', 'madras' => 'INR', 'kolkata' => 'INR', 'hyderabad' => 'INR',
+
+        'dubai' => 'AED', 'uae' => 'AED', 'abu dhabi' => 'AED',
+        'doha' => 'QAR', 'qatar' => 'QAR',
+        'riyadh' => 'SAR', 'saudi arabia' => 'SAR', 'jeddah' => 'SAR',
+        'kuwait' => 'KWD', 'kuwait city' => 'KWD',
+        'bahrain' => 'BHD',
+        'muscat' => 'OMR', 'oman' => 'OMR',
+        'amman' => 'JOD', 'jordan' => 'JOD',
+        'tel aviv' => 'ILS', 'israel' => 'ILS',
+        'istanbul' => 'TRY', 'turkey' => 'TRY',
+
+        'london' => 'GBP',
+        'paris' => 'EUR', 'amsterdam' => 'EUR', 'frankfurt' => 'EUR', 'germany' => 'EUR',
+        'rome' => 'EUR', 'italy' => 'EUR', 'madrid' => 'EUR', 'spain' => 'EUR',
+        'barcelona' => 'EUR', 'vienna' => 'EUR', 'austria' => 'EUR',
+        'brussels' => 'EUR', 'belgium' => 'EUR', 'lisbon' => 'EUR', 'portugal' => 'EUR',
+        'athens' => 'EUR', 'greece' => 'EUR', 'helsinki' => 'EUR', 'finland' => 'EUR',
+        'zurich' => 'CHF', 'switzerland' => 'CHF',
+        'prague' => 'CZK', 'czech republic' => 'CZK',
+        'budapest' => 'HUF', 'hungary' => 'HUF',
+        'warsaw' => 'PLN', 'poland' => 'PLN',
+        'stockholm' => 'SEK', 'sweden' => 'SEK',
+        'oslo' => 'NOK', 'norway' => 'NOK',
+        'copenhagen' => 'DKK', 'denmark' => 'DKK',
+        'moscow' => 'RUB', 'russia' => 'RUB',
+
+        'sydney' => 'AUD', 'australia' => 'AUD', 'melbourne' => 'AUD',
+        'brisbane' => 'AUD', 'perth' => 'AUD',
+        'auckland' => 'NZD', 'new zealand' => 'NZD',
+
+        'new york' => 'USD', 'new york city' => 'USD', 'nyc' => 'USD',
+        'los angeles' => 'USD', 'la' => 'USD', 'san francisco' => 'USD',
+        'chicago' => 'USD', 'miami' => 'USD',
+        'toronto' => 'CAD', 'canada' => 'CAD', 'vancouver' => 'CAD',
+        'sao paulo' => 'BRL', 'brazil' => 'BRL',
+
+        'nairobi' => 'KES', 'kenya' => 'KES',
+        'johannesburg' => 'ZAR', 'south africa' => 'ZAR',
+        'cairo' => 'EGP', 'egypt' => 'EGP',
+        'casablanca' => 'MAD', 'morocco' => 'MAD',
+
+        'maldives' => 'MVR', 'male' => 'MVR',
+    ];
+
     // City/region name (lowercase) => synthetic trip-package data used as
     // the last-resort fallback when neither the AI free-generation nor
     // SerpAPI live-search paths produce anything usable.

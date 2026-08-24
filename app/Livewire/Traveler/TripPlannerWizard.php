@@ -114,6 +114,10 @@ class TripPlannerWizard extends Component
     public string $flightError       = '';
     public string $flightTripType    = 'one_way'; // 'one_way' | 'round_trip' | 'multi_city'
     public ?array $selectedFlight    = null;
+    // Index of a flight card awaiting a "Confirm this flight?" click before
+    // selectFlight() actually runs — guards against an accidental misclick
+    // on "Select" silently committing a flight and advancing the wizard.
+    public ?int   $confirmFlightIndex = null;
     // multi-city leg 2 (synced on search)
     public string $mcTo              = '';
     public string $mcStartDate       = '';
@@ -123,6 +127,7 @@ class TripPlannerWizard extends Component
     public bool   $mcFlightStep      = false; // true = showing leg 2 flight list
     public bool   $mcSearched        = false; // true after multi-city search fires
     public ?array $selectedMcFlight  = null;
+    public ?int   $confirmMcFlightIndex = null;
 
     // ── Step 3: accommodation ──────────────────────────────
     public array  $hotelResults      = [];
@@ -834,6 +839,8 @@ class TripPlannerWizard extends Component
         $this->mcFlightResults = [];
         $this->selectedFlight  = null;
         $this->selectedMcFlight = null;
+        $this->confirmFlightIndex = null;
+        $this->confirmMcFlightIndex = null;
 
         $serp      = new SerpApiService();
         $fromCode  = $this->resolveCode($this->manualFrom);
@@ -897,8 +904,19 @@ class TripPlannerWizard extends Component
         return true;
     }
 
+    public function confirmFlightPick(int $index): void
+    {
+        $this->confirmFlightIndex = $index;
+    }
+
+    public function cancelFlightPick(): void
+    {
+        $this->confirmFlightIndex = null;
+    }
+
     public function selectFlight(int $index): void
     {
+        $this->confirmFlightIndex = null;
         $this->selectedFlight = $this->flightResults[$index] ?? null;
         // A re-search between render and click can leave this index pointing
         // past the end of a now-shorter array — don't silently advance with
@@ -961,8 +979,19 @@ class TripPlannerWizard extends Component
         $this->searchAccommodations();
     }
 
+    public function confirmMcFlightPick(int $index): void
+    {
+        $this->confirmMcFlightIndex = $index;
+    }
+
+    public function cancelMcFlightPick(): void
+    {
+        $this->confirmMcFlightIndex = null;
+    }
+
     public function selectMcFlight(int $index): void
     {
+        $this->confirmMcFlightIndex = null;
         $this->selectedMcFlight = $this->mcFlightResults[$index] ?? null;
         if ($this->selectedMcFlight === null) {
             $this->flightError = 'That flight is no longer available. Please pick another.';

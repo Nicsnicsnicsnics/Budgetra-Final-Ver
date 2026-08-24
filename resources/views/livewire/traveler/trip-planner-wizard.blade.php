@@ -528,6 +528,7 @@ $allCities2 = array_merge(
 @endphp
 
 <style>
+@keyframes tpwModalPop{from{opacity:0;transform:scale(.94) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
 [x-cloak]{display:none!important;}
 .city-drop{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:500;max-height:320px;overflow:hidden;display:flex;flex-direction:column;}
 .city-search{padding:10px 14px;border-bottom:1px solid var(--border);}
@@ -934,18 +935,49 @@ $allCities2 = array_merge(
                 <div style="text-align:right;">
                     <div style="font-size:20px;font-weight:800;color:var(--primary);line-height:1;">{{ currency_code() }} {{ number_format($flight['price'] ?? 0) }}</div>
                     <div style="font-size:11px;color:var(--muted);margin-top:3px;margin-bottom:10px;">{{ $flight['type'] ?? 'One-way' }}</div>
-                    <button wire:click="selectMcFlight({{ $idx }})" wire:loading.attr="disabled" wire:target="selectMcFlight({{ $idx }})"
+                    <button wire:click="confirmMcFlightPick({{ $idx }})"
                             style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .18s,gap .18s;"
                             onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'"
                             onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
-                        <span wire:loading.remove wire:target="selectMcFlight({{ $idx }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
-                        <span wire:loading wire:target="selectMcFlight({{ $idx }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                        Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i>
                     </button>
                 </div>
             </div>
         </div>
         @endforeach
     </div>
+
+    {{-- Confirm-flight modal (leg 2) --}}
+    @if ($confirmMcFlightIndex !== null && isset($mcFlightResults[$confirmMcFlightIndex]))
+    @php $cf = $mcFlightResults[$confirmMcFlightIndex]; @endphp
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:var(--bg-white);border-radius:24px;width:100%;max-width:380px;overflow:hidden;animation:tpwModalPop .22s cubic-bezier(.34,1.56,.64,1);">
+            <div style="position:relative;background:var(--bg);padding:36px 28px 24px;text-align:center;overflow:hidden;">
+                <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;margin:0 auto 18px;">
+                    <i class="fa-solid fa-plane" style="font-size:24px;color:#fff;"></i>
+                </div>
+                <div style="font-size:19px;font-weight:800;color:var(--dark);margin-bottom:8px;">Fly with {{ $cf['airline'] ?? 'this airline' }}?</div>
+                <div style="font-size:13px;color:var(--muted);line-height:1.6;max-width:280px;margin:0 auto;">
+                    <strong style="color:var(--dark);">{{ currency_code() }} {{ number_format($cf['price'] ?? 0) }}</strong> for this {{ $cf['type'] ?? 'flight' }}.<br>You can still change this before your trip is saved.
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;padding:20px 22px 22px;">
+                <button wire:click="cancelMcFlightPick"
+                        style="flex:1;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s,border-color .18s;"
+                        onmouseenter="this.style.background='var(--border-light)';this.style.borderColor='var(--border)'" onmouseleave="this.style.background='transparent';this.style.borderColor='var(--border)'">
+                    Cancel
+                </button>
+                <button wire:click="selectMcFlight({{ $confirmMcFlightIndex }})" wire:loading.attr="disabled" wire:target="selectMcFlight({{ $confirmMcFlightIndex }})"
+                        style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s,transform .12s;"
+                        onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'"
+                        onmousedown="this.style.transform='scale(.97)'" onmouseup="this.style.transform='scale(1)'">
+                    <span wire:loading.remove wire:target="selectMcFlight({{ $confirmMcFlightIndex }})"><i class="fa-solid fa-check" style="font-size:11px;margin-right:6px;"></i>Yes, select</span>
+                    <span wire:loading wire:target="selectMcFlight({{ $confirmMcFlightIndex }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
     @endif
 
     @else
@@ -1003,18 +1035,49 @@ $allCities2 = array_merge(
                 <div style="text-align:right;">
                     <div style="font-size:20px;font-weight:800;color:var(--primary);line-height:1;">{{ currency_code() }} {{ number_format($flight['price'] ?? 0) }}</div>
                     <div style="font-size:11px;color:var(--muted);margin-top:3px;margin-bottom:10px;">{{ $flight['type'] ?? 'One-way' }}</div>
-                    <button wire:click="selectFlight({{ $idx }})" wire:loading.attr="disabled" wire:target="selectFlight({{ $idx }})"
+                    <button wire:click="confirmFlightPick({{ $idx }})"
                             style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .18s,gap .18s;"
                             onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='9px'"
                             onmouseleave="this.style.background='var(--primary)';this.style.gap='6px'">
-                        <span wire:loading.remove wire:target="selectFlight({{ $idx }})">Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></span>
-                        <span wire:loading wire:target="selectFlight({{ $idx }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                        Select <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i>
                     </button>
                 </div>
             </div>
         </div>
         @endforeach
     </div>
+
+    {{-- Confirm-flight modal (leg 1 / one-way / round-trip) --}}
+    @if ($confirmFlightIndex !== null && isset($flightResults[$confirmFlightIndex]))
+    @php $cf = $flightResults[$confirmFlightIndex]; @endphp
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:var(--bg-white);border-radius:24px;width:100%;max-width:380px;overflow:hidden;animation:tpwModalPop .22s cubic-bezier(.34,1.56,.64,1);">
+            <div style="position:relative;background:var(--bg);padding:36px 28px 24px;text-align:center;overflow:hidden;">
+                <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;margin:0 auto 18px;">
+                    <i class="fa-solid fa-plane" style="font-size:24px;color:#fff;"></i>
+                </div>
+                <div style="font-size:19px;font-weight:800;color:var(--dark);margin-bottom:8px;">Fly with {{ $cf['airline'] ?? 'this airline' }}?</div>
+                <div style="font-size:13px;color:var(--muted);line-height:1.6;max-width:280px;margin:0 auto;">
+                    <strong style="color:var(--dark);">{{ currency_code() }} {{ number_format($cf['price'] ?? 0) }}</strong> for this {{ $cf['type'] ?? 'flight' }}.<br>You can still change this before your trip is saved.
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;padding:20px 22px 22px;">
+                <button wire:click="cancelFlightPick"
+                        style="flex:1;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s,border-color .18s;"
+                        onmouseenter="this.style.background='var(--border-light)';this.style.borderColor='var(--border)'" onmouseleave="this.style.background='transparent';this.style.borderColor='var(--border)'">
+                    Cancel
+                </button>
+                <button wire:click="selectFlight({{ $confirmFlightIndex }})" wire:loading.attr="disabled" wire:target="selectFlight({{ $confirmFlightIndex }})"
+                        style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s,transform .12s;"
+                        onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'"
+                        onmousedown="this.style.transform='scale(.97)'" onmouseup="this.style.transform='scale(1)'">
+                    <span wire:loading.remove wire:target="selectFlight({{ $confirmFlightIndex }})"><i class="fa-solid fa-check" style="font-size:11px;margin-right:6px;"></i>Yes, select</span>
+                    <span wire:loading wire:target="selectFlight({{ $confirmFlightIndex }})"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
     @endif
 
 </div>
