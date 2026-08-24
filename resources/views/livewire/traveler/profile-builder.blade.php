@@ -6,7 +6,7 @@
 
 @if(!$returnTo)
 <div style="display:flex;align-items:center;width:100%;max-width:560px;margin:8px 0 36px;padding:0 24px;box-sizing:border-box;">
-    @for ($i = 1; $i <= 6; $i++)
+    @for ($i = 1; $i <= 7; $i++)
         @php $state = $step > $i ? 'done' : ($step === $i ? 'current' : 'upcoming'); @endphp
         <div style="width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
                     background:{{ $state === 'upcoming' ? 'var(--bg-white)' : 'var(--primary)' }};
@@ -35,6 +35,9 @@
 .pb-input-wrap:focus-within{border-color:var(--primary);}
 /* Required-but-empty. Replaces the old "missing fields" modal — the field
    itself says what's wrong. Beats :focus-within so the red survives a click. */
+.pb-clear{margin-left:auto;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:none;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:0;transition:background .15s,color .15s;}
+.pb-clear:hover{background:var(--border);color:var(--dark);}
+.pb-clear:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 .pb-input-wrap.is-bad,.pb-input-wrap.is-bad:focus-within{
     border-color:#FF3B3B;box-shadow:0 0 0 3px rgba(255,59,59,.20);
     animation:pb-shake .48s cubic-bezier(.36,.07,.19,.97) both;}
@@ -121,7 +124,7 @@
 
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;width:100%;">
 
-{{-- ── STEP 1: Home Location ── --}}
+{{-- ── STEP 1: Address ── --}}
 @if($step === 1)
 <div wire:key="step-1"
      x-data="{
@@ -189,12 +192,19 @@
         <h1 class="pb-title" style="font-size:32px;">Where does your journey begin?</h1>
         <p class="pb-sub" style="font-size:16px;">We'll use your location to calculate flight durations, estimated costs, and suggest custom activities for your adventure.</p>
 
-        <div class="pb-label" style="font-size:12px;">Home Location / Starting Point</div>
+        <div class="pb-label" style="font-size:12px;">Address</div>
         <div style="position:relative;" x-on:click.away="open = false">
             <div class="pb-input-wrap" :class="{ 'is-bad': $store.pbBad.home }" style="padding:18px 20px;cursor:pointer;" x-on:click="open = !open; $store.pbBad.home = false">
                 <i class="fa-solid fa-location-dot" style="color:var(--primary);font-size:16px;flex-shrink:0;"></i>
                 <span x-text="query ? (code ? query + ' (' + code + ')' : query) : 'Where are you from?'"
                       :style="query ? 'font-size:16px;font-weight:700;color:var(--dark);' : 'font-size:17px;font-weight:400;color:var(--muted);'"></span>
+                {{-- Clears the label, the code and the Livewire property
+                     together; clearing only one lets the value come back on
+                     the next render. --}}
+                <button type="button" class="pb-clear" title="Clear" x-show="query" x-cloak
+                        x-on:click.stop="query=''; code=''; search=''; open=false; $wire.set('homeCity',''); $store.pbBad.home=false">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
 
             <div x-show="open" x-cloak x-transition
@@ -265,23 +275,29 @@
                    $wire.set('dailyBudget', raw ? Number(raw) : 0);
                    $wire.set('dailyBudgetDisplay', $event.target.value);
                ">
+        <button type="button" class="pb-clear" title="Clear" x-show="display" x-cloak
+                x-on:click.stop="display=''; $el.closest('.pb-input-wrap').querySelector('input').value='';
+                                 $wire.set('dailyBudget', 0); $wire.set('dailyBudgetDisplay', '');
+                                 $store.pbBad.budget = false">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
     </div>
     <p style="font-size:14px;color:var(--muted);margin-top:10px;">This helps us calculate more accurate estimates for your trips.</p>
 </div>
 
 {{-- ── STEP 6: Review ── --}}
-@elseif($step === 6)
-<div wire:key="step-6" style="width:100%;max-width:640px;padding:0 24px;">
+@elseif($step === 7)
+<div wire:key="step-7" style="width:100%;max-width:640px;padding:0 24px;">
     <h1 style="font-size:18px;font-weight:800;color:var(--dark);margin:0 0 4px;">Review your profile</h1>
     <p style="font-size:13px;color:var(--muted);margin:0 0 20px;">Verify your travel preferences before we finalize your workspace. These settings will help us tailor your budgeting tools.</p>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-        {{-- Starting Point --}}
+        {{-- Address --}}
         <div class="rv-card-sm">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                 <div style="display:flex;align-items:center;gap:8px;">
                     <div class="rv-icon-sm"><i class="fa-solid fa-location-dot"></i></div>
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Starting Point</div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Address</div>
                 </div>
                 <span class="rv-edit" wire:click="$set('step', 1)">Edit</span>
             </div>
@@ -317,17 +333,30 @@
             <div style="font-size:11px;color:var(--muted);">Cost-splitting & accommodation fit</div>
         </div>
 
-        {{-- Transportation & Accommodation --}}
+        {{-- Transportation and Accommodation are separate steps now, so each
+             gets its own card and its own Edit target. --}}
         <div class="rv-card-sm">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                 <div style="display:flex;align-items:center;gap:8px;">
                     <div class="rv-icon-sm"><i class="fa-solid fa-route"></i></div>
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Transport & Stay</div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Transportation</div>
                 </div>
                 <span class="rv-edit" wire:click="$set('step', 5)">Edit</span>
             </div>
-            <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $preferredTransportation ?: '—' }} / {{ $preferredAccommodation ?: '—' }}</div>
-            <div style="font-size:11px;color:var(--muted);">How you'll travel & stay</div>
+            <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $preferredTransportation ?: '—' }}</div>
+            <div style="font-size:11px;color:var(--muted);">How you'll travel</div>
+        </div>
+
+        <div class="rv-card-sm">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="rv-icon-sm"><i class="fa-solid fa-bed"></i></div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Accommodation</div>
+                </div>
+                <span class="rv-edit" wire:click="$set('step', 6)">Edit</span>
+            </div>
+            <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $preferredAccommodation ?: '—' }}</div>
+            <div style="font-size:11px;color:var(--muted);">Where you'll stay</div>
         </div>
     </div>
 
@@ -436,9 +465,13 @@
         transport: '{{ $preferredTransportation }}',
         stay: '{{ $preferredAccommodation }}'
      }"
-     style="width:100%;padding:0 24px;{{ $step === 5 ? '' : 'display:none;' }}">
-    <h1 style="font-size:22px;font-weight:800;color:var(--dark);text-align:center;margin:0 0 8px;">How do you like to get around and stay?</h1>
-    <p style="font-size:13px;color:var(--muted);text-align:center;margin:0 0 28px;">Select your preferred transportation and accommodation types.</p>
+     style="width:100%;padding:0 24px;{{ in_array($step, [5, 6]) ? '' : 'display:none;' }}">
+    {{-- Transport and stay used to share one screen. They're now a step each,
+         so this wrapper keeps the single x-data (transport/stay) both halves
+         bind to while showing only the half that belongs to the current step. --}}
+    <div style="{{ $step === 5 ? '' : 'display:none;' }}">
+    <h1 style="font-size:22px;font-weight:800;color:var(--dark);text-align:center;margin:0 0 8px;">How do you like to get around?</h1>
+    <p style="font-size:13px;color:var(--muted);text-align:center;margin:0 0 28px;">Select your preferred transportation type.</p>
 
     <div class="pb-label" style="text-align:center;">Preferred Transportation</div>
     <div class="int-scroll" style="display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;margin-bottom:24px;">
@@ -460,6 +493,12 @@
         @endforeach
     </div>
 
+    </div>
+
+    <div style="{{ $step === 6 ? '' : 'display:none;' }}">
+    <h1 style="font-size:22px;font-weight:800;color:var(--dark);text-align:center;margin:0 0 8px;">Where do you like to stay?</h1>
+    <p style="font-size:13px;color:var(--muted);text-align:center;margin:0 0 28px;">Select your preferred accommodation type.</p>
+
     <div class="pb-label" style="text-align:center;">Preferred Accommodation</div>
     <div class="int-scroll" style="display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;">
         @foreach($accommodationOptions as $name => $icon)
@@ -478,6 +517,7 @@
             <div class="int-check"><i class="fa-solid fa-check"></i></div>
         </div>
         @endforeach
+    </div>
     </div>
 </div>
 
@@ -561,7 +601,7 @@
 </div>
 
 {{-- Navigation --}}
-<div class="pb-nav" style="max-width:{{ in_array($step, [4, 5]) ? '100%' : ($step === 3 ? '1100px' : ($step === 1 ? '1280px' : ($step === 2 ? '720px' : ($step === 6 ? '640px' : '480px')))) }};{{ in_array($step, [1, 2, 3, 4, 5, 6]) ? ' padding:0 24px;' : '' }}">
+<div class="pb-nav" style="max-width:{{ in_array($step, [4, 5, 6]) ? '100%' : ($step === 3 ? '1100px' : ($step === 1 ? '1280px' : ($step === 2 ? '720px' : ($step === 7 ? '640px' : '480px')))) }};{{ in_array($step, [1, 2, 3, 4, 5, 6, 7]) ? ' padding:0 24px;' : '' }}">
     @if($step > 1 && !$returnTo)
     <button class="pb-btn pb-btn-ghost" wire:click="prevStep">
         <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back
@@ -575,7 +615,7 @@
         <span wire:loading.remove wire:target="saveAndReturn"><i class="fa-solid fa-check" style="font-size:11px;"></i> Save Changes</span>
         <span wire:loading wire:target="saveAndReturn"><i class="fa-solid fa-spinner fa-spin"></i></span>
     </button>
-    @elseif($step < 6)
+    @elseif($step < 7)
     <button class="pb-btn pb-btn-primary" wire:click="nextStep">
         Next Step <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>
     </button>

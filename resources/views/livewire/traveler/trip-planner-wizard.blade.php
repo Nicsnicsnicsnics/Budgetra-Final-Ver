@@ -41,6 +41,10 @@ $allCities = array_merge(
 .pyt-field{background:var(--bg-white);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:border-color .18s,background .18s,box-shadow .18s;}
 .pyt-field:hover{border-color:#D9C4AE;}
 .pyt-field:focus-within{border-color:var(--primary);background:var(--bg-white);box-shadow:0 0 0 4px rgba(147,75,25,0.08);}
+/* Clear (x) — only rendered once a field actually holds a value. */
+.pyt-clear{margin-left:auto;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:none;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:0;transition:background .15s,color .15s;}
+.pyt-clear:hover{background:var(--border-light);color:var(--dark);}
+.pyt-clear:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 /* Required-but-empty. Beats :hover and :focus-within so the red survives the
    pointer landing on the field. The dropdown/calendar popovers are siblings
    of .pyt-field, not children, so the transform can't drag them along. */
@@ -88,7 +92,29 @@ $allCities = array_merge(
          possibly morph-reusing a stale DOM node and skipping Alpine's
          x-init — which is what actually re-seeds fromLabel/toLabel/dates/
          budget from the still-intact server-side values. --}}
-    <div wire:key="pyt-manual-card-{{ $step1VisitToken }}" x-data="pytManual()" x-init="init()"
+    @php
+        // Seeds handed to pytManual() through this attribute rather than
+        // baked into the factory itself. window.pytManual lives in an
+        // @script block, which Livewire runs ONCE per page load — so the
+        // values compiled into it are whatever the properties held on first
+        // render (empty). Coming back here from Select Flight remounts the
+        // card and re-ran that stale factory, blanking From/To/dates even
+        // though the server still had them. This attribute is part of the
+        // component's HTML, so it re-renders with the current values.
+        $pytSeed = [
+            'fromLabel'  => $manualFrom ? $manualFrom.' ('.\App\Livewire\Traveler\TripPlannerWizard::staticIataCode($manualFrom).')' : '',
+            'toLabel'    => $manualTo   ? $manualTo.' ('.\App\Livewire\Traveler\TripPlannerWizard::staticIataCode($manualTo).')'   : '',
+            'startLabel' => $startDate ? \Carbon\Carbon::parse($startDate)->format('M d, Y') : '',
+            'endLabel'   => $endDate   ? \Carbon\Carbon::parse($endDate)->format('M d, Y')   : '',
+            'startVal'   => $startDate ?? '',
+            'endVal'     => $endDate   ?? '',
+            // The budget <input> is uncontrolled (set via x-init), so its
+            // filled-ness has to be seeded separately for the x to know
+            // whether to show on first paint.
+            'budgetFilled' => trim((string) $manualBudgetMin) !== '',
+        ];
+    @endphp
+    <div wire:key="pyt-manual-card-{{ $step1VisitToken }}" x-data="pytManual(@js($pytSeed))" x-init="init()"
          @trip-details-missing.window="flagBad($event.detail.fields)"
          style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:24px;width:100%;max-width:720px;box-shadow:0 8px 36px rgba(45,27,20,.08);">
 
@@ -104,7 +130,11 @@ $allCities = array_merge(
                          style="display:flex;align-items:center;gap:12px;">
                         <div class="pyt-icon" style="background:#FEF3E2;"><i class="fa-solid fa-plane-departure" style="color:#F1A53D;font-size:14px;"></i></div>
                         <span x-show="!fromLabel" class="pyt-placeholder" style="font-size:16px;">Leaving from?</span>
-                        <span x-show="fromLabel" x-text="fromLabel" class="pyt-value" style="font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                        <span wire:ignore x-show="fromLabel" x-text="fromLabel" class="pyt-value" style="font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $pytSeed['fromLabel'] }}</span>
+                        <button type="button" class="pyt-clear" title="Clear"
+                                x-show="fromLabel" x-cloak @click.stop="clearField('from')">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
                     </div>
                     <div class="city-drop" x-show="activeDrop==='from'" @click.outside="activeDrop=''" x-cloak>
                         <div class="city-search"><input type="text" x-model="fromSearch" placeholder="Select city" x-ref="fromSearch"></div>
@@ -139,7 +169,11 @@ $allCities = array_merge(
                          style="display:flex;align-items:center;gap:12px;">
                         <div class="pyt-icon" style="background:#FEF3E2;"><i class="fa-solid fa-plane-arrival" style="color:#F1A53D;font-size:14px;"></i></div>
                         <span x-show="!toLabel" class="pyt-placeholder" style="font-size:16px;">Going to?</span>
-                        <span x-show="toLabel" x-text="toLabel" class="pyt-value" style="font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                        <span wire:ignore x-show="toLabel" x-text="toLabel" class="pyt-value" style="font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $pytSeed['toLabel'] }}</span>
+                        <button type="button" class="pyt-clear" title="Clear"
+                                x-show="toLabel" x-cloak @click.stop="clearField('to')">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
                     </div>
                     <div class="city-drop" x-show="activeDrop==='to'" @click.outside="activeDrop=''" x-cloak>
                         <div class="city-search"><input type="text" x-model="toSearch" placeholder="Select city" x-ref="toSearch"></div>
@@ -164,7 +198,13 @@ $allCities = array_merge(
                 <div class="pyt-label">Preferred Budget Range (must not exceed 7 digits)</div>
                 <div class="pyt-field" :class="{ 'is-bad': bad.budget }" style="cursor:default;display:flex;align-items:center;gap:12px;">
                     <div class="pyt-icon" style="background:#E6F5EC;"><i class="fa-solid fa-money-bill-wave" style="color:#22A06B;font-size:14px;"></i></div>
-                    <input type="text"
+                    {{-- wire:ignore for the same reason as the label spans: this
+                         input is uncontrolled (seeded by x-init, then owned by
+                         the traveler), and letting Livewire morph it re-ran that
+                         x-init with a stale server value — a budget cleared with
+                         the x reappeared on the next round trip. A fresh mount
+                         still seeds it, since wire:key changes the node. --}}
+                    <input type="text" wire:ignore
                            placeholder="Please input your budget"
                            style="border:none;outline:none;font-size:16px;font-weight:600;color:var(--dark);background:transparent;width:100%;font-family:inherit;"
                            class="pyt-budget-input"
@@ -174,9 +214,18 @@ $allCities = array_merge(
                                const raw = $el.value; const parts = raw.split('-');
                                $el.value = parts.length===2 ? fmt(parts[0])+' - '+fmt(parts[1]) : fmt(parts[0]);
                                if ($el.value) bad.budget = false;
+                               budgetFilled = !!$el.value;
                            "
                            @change="$wire.set('manualBudgetMin', $el.value)"
-                           x-init="$el.value = '{{ $manualBudgetMin }}'">
+                           {{-- Re-seeded on every mount (including coming back
+                                from a later step). Stored digits-only, so put the
+                                separators back rather than showing a bare 60000
+                                where the traveler typed 60,000. --}}
+                           x-init="$el.value = @js(ctype_digit((string) $manualBudgetMin) && $manualBudgetMin !== '' ? number_format((int) $manualBudgetMin) : (string) $manualBudgetMin)">
+                    <button type="button" class="pyt-clear" title="Clear"
+                            x-show="budgetFilled" x-cloak @click.stop="clearField('budget')">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
             </div>
 
@@ -190,7 +239,11 @@ $allCities = array_merge(
                         <div class="pyt-field" :class="{ 'is-bad': bad.start }" @click.stop="toggleCal('start'); bad.start = false" style="display:flex;align-items:center;gap:12px;">
                             <div class="pyt-icon"><i class="fa-regular fa-calendar" style="color:var(--primary);font-size:14px;"></i></div>
                             <span x-show="!startLabel" class="pyt-placeholder" style="font-size:16px;">Select date</span>
-                            <span x-show="startLabel" x-text="startLabel" class="pyt-value" style="font-size:16px;"></span>
+                            <span wire:ignore x-show="startLabel" x-text="startLabel" class="pyt-value" style="font-size:16px;">{{ $pytSeed['startLabel'] }}</span>
+                        <button type="button" class="pyt-clear" title="Clear"
+                                x-show="startLabel" x-cloak @click.stop="clearField('start')">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
                         </div>
                         <div class="mini-cal" x-show="activeCal==='start'" x-cloak
                              @click.stop style="min-width:260px;z-index:300;">
@@ -219,7 +272,11 @@ $allCities = array_merge(
                         <div class="pyt-field" :class="{ 'is-bad': bad.end }" @click.stop="toggleCal('end'); bad.end = false" style="display:flex;align-items:center;gap:12px;">
                             <div class="pyt-icon"><i class="fa-regular fa-calendar" style="color:var(--primary);font-size:14px;"></i></div>
                             <span x-show="!endLabel" class="pyt-placeholder" style="font-size:16px;">Select date</span>
-                            <span x-show="endLabel" x-text="endLabel" class="pyt-value" style="font-size:16px;"></span>
+                            <span wire:ignore x-show="endLabel" x-text="endLabel" class="pyt-value" style="font-size:16px;">{{ $pytSeed['endLabel'] }}</span>
+                        <button type="button" class="pyt-clear" title="Clear"
+                                x-show="endLabel" x-cloak @click.stop="clearField('end')">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
                         </div>
                         <div class="mini-cal" x-show="activeCal==='end'" x-cloak
                              @click.stop style="min-width:260px;z-index:300;">
@@ -265,7 +322,8 @@ $allCities = array_merge(
 
 @script
 <script>
-window.pytManual = function() {
+window.pytManual = function (seed) {
+    seed = seed || {};
     const cities = @json($allCities);
     const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const now = new Date();
@@ -273,14 +331,15 @@ window.pytManual = function() {
     return {
         activeDrop: '',
         activeCal: '',
-        fromLabel: @json($manualFrom ? $manualFrom . ' (' . \App\Livewire\Traveler\TripPlannerWizard::staticIataCode($manualFrom) . ')' : ''),
-        toLabel: @json($manualTo ? $manualTo . ' (' . \App\Livewire\Traveler\TripPlannerWizard::staticIataCode($manualTo) . ')' : ''),
+        fromLabel:  seed.fromLabel  || '',
+        toLabel:    seed.toLabel    || '',
         fromSearch: '',
-        toSearch: '',
-        startLabel: @json($startDate ? \Carbon\Carbon::parse($startDate)->format('M d, Y') : ''),
-        endLabel:   @json($endDate   ? \Carbon\Carbon::parse($endDate)->format('M d, Y')   : ''),
-        startVal:   @json($startDate ?? ''),
-        endVal:     @json($endDate   ?? ''),
+        toSearch:   '',
+        budgetFilled: seed.budgetFilled === true,
+        startLabel: seed.startLabel || '',
+        endLabel:   seed.endLabel   || '',
+        startVal:   seed.startVal   || '',
+        endVal:     seed.endVal     || '',
         startYear: now.getFullYear(), startMonth: now.getMonth()+1,
         endYear:   now.getFullYear(), endMonth:   now.getMonth()+1,
         startCells: [],
@@ -295,6 +354,28 @@ window.pytManual = function() {
             // second time on an already-red field wouldn't restart the shake.
             keys.forEach(k => this.bad[k] = false);
             requestAnimationFrame(() => keys.forEach(k => { if (k in this.bad) this.bad[k] = true; }));
+        },
+
+        clearField(which) {
+            // The inverse of selectCity()/pickDate(): drop the local label and
+            // the Livewire property together, or the value reappears on the
+            // next render from whichever half wasn't cleared.
+            if (which === 'from')   { this.fromLabel = ''; this.fromSearch = ''; this.$wire.set('manualFrom', ''); }
+            if (which === 'to')     { this.toLabel   = ''; this.toSearch   = ''; this.$wire.set('manualTo', ''); }
+            if (which === 'budget') {
+                if (this.$refs.budgetInput) this.$refs.budgetInput.value = '';
+                this.budgetFilled = false;
+                this.$wire.set('manualBudgetMin', '');
+            }
+            if (which === 'start')  { this.startVal = ''; this.startLabel = ''; this.$wire.set('startDate', ''); }
+            if (which === 'end')    { this.endVal   = ''; this.endLabel   = ''; this.$wire.set('endDate', ''); }
+
+            // A cleared date changes which days are selectable in the other
+            // calendar's min/max bounds.
+            if (which === 'start' || which === 'end') this.rebuildCells();
+
+            this.activeDrop = '';
+            this.activeCal  = '';
         },
 
         budgetDigits() {
@@ -849,6 +930,41 @@ $allCities2 = array_merge(
             </div>
         </div>
 
+        {{-- Airline dropdown — carriers are read off whatever the search
+             actually returned, so there are never options that match nothing.
+             Filters client-side like the price sort beside it; no re-query,
+             so it costs nothing against the SerpAPI daily cap. --}}
+        @php
+            $airlineOptions = collect($flightResults)->pluck('airline')
+                ->filter()->unique()->sort()->values();
+        @endphp
+        @if ($airlineOptions->count() > 1)
+        <div style="position:relative;">
+            <button @click="airlineOpen=!airlineOpen"
+                    style="display:inline-flex;align-items:center;gap:10px;background:var(--bg-white);color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:border-color .15s;"
+                    onmouseenter="this.style.borderColor='#D9C4AE'" onmouseleave="this.style.borderColor='var(--border)'">
+                <span x-text="airline === '' ? 'All Airlines' : airline"></span>
+                <i class="fa-solid fa-chevron-down" :style="'font-size:10px;color:var(--muted);transition:transform .15s;' + (airlineOpen?'transform:rotate(180deg)':'')"></i>
+            </button>
+            <div x-show="airlineOpen" @click.outside="airlineOpen=false" x-cloak
+                 style="position:absolute;top:calc(100% + 6px);left:0;background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:50;min-width:210px;max-height:280px;overflow-y:auto;">
+                <button @click="airline='';airlineOpen=false;filterAirline()"
+                        :style="'width:100%;text-align:left;padding:13px 18px;border:none;background:none;font-size:13px;cursor:pointer;display:block;font-family:inherit;' + (airline==='' ? 'font-weight:700;color:var(--primary);' : 'font-weight:500;color:var(--dark);')"
+                        onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
+                    All Airlines
+                </button>
+                @foreach ($airlineOptions as $al)
+                <div style="height:1px;background:var(--border);"></div>
+                <button @click="airline=@js($al);airlineOpen=false;filterAirline()"
+                        :style="'width:100%;text-align:left;padding:13px 18px;border:none;background:none;font-size:13px;cursor:pointer;display:block;font-family:inherit;' + (airline===@js($al) ? 'font-weight:700;color:var(--primary);' : 'font-weight:500;color:var(--dark);')"
+                        onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
+                    {{ $al }}
+                </button>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         {{-- Trip type radios --}}
         <div style="display:flex;align-items:center;gap:20px;">
             @foreach(['one_way'=>'One-way','round_trip'=>'Round Trip','multi_city'=>'Multi-city'] as $val => $label)
@@ -896,7 +1012,23 @@ $allCities2 = array_merge(
         @foreach ($mcFlightResults as $idx => $flight)
         @php
             $dur    = $flight['duration'] ?? 0;
-            $durStr = $dur ? (floor($dur/60).'h '.($dur%60).'m') : 'Nonstop';
+            $durStr = $dur ? (floor($dur/60).'h '.($dur%60).'m') : '';
+
+            // Real stop count from the itinerary's segments. This label used
+            // to be a hardcoded "Nonstop", which turned a two-leg trip with a
+            // long layover into what looked like an absurdly slow direct
+            // flight (CEB→TAG showed "7h 55m · Nonstop" for CEB→MNL→TAG with
+            // a 5-hour Manila layover).
+            $stops    = (int) ($flight['stops'] ?? 0);
+            $stopsStr = $stops === 0 ? 'Nonstop' : ($stops === 1 ? '1 stop' : $stops.' stops');
+            $layStr   = collect($flight['layovers'] ?? [])->map(function ($l) {
+                $mins = (int) ($l['duration'] ?? 0);
+                $h    = intdiv($mins, 60);
+                $m    = $mins % 60;
+                $len  = trim(($h ? $h.'h ' : '').($m ? $m.'m' : ''));
+                return trim(($l['id'] ?? '').($len ? ' '.$len : ''));
+            })->filter()->implode(', ');
+            $dayOff   = (int) ($flight['day_offset'] ?? 0);
             $dep    = $flight['depart'] ?? '';
             $arr    = $flight['arrive'] ?? '';
             $fmtTime = fn($t) => $t ? date('g:i A', strtotime($t)) : '';
@@ -926,11 +1058,15 @@ $allCities2 = array_merge(
                             <i class="fa-solid fa-plane" style="font-size:13px;color:var(--primary);"></i>
                         </span>
                     </div>
-                    <div style="font-size:11px;color:var(--muted);margin-top:6px;">Nonstop</div>
+                    <div style="font-size:11px;margin-top:6px;color:{{ $stops > 0 ? 'var(--dark)' : 'var(--muted)' }};font-weight:{{ $stops > 0 ? '600' : '400' }};">
+                        {{ $stopsStr }}@if($layStr)<span style="color:var(--muted);font-weight:400;"> · via {{ $layStr }}</span>@endif
+                    </div>
                 </div>
                 <div>
-                    <div style="font-size:22px;font-weight:800;color:var(--dark);line-height:1;">{{ $fmtTime($arr) }}</div>
-                    <div style="font-size:12px;color:var(--muted);margin-top:3px;">{{ $flight['arr_id'] ?? '' }}</div>
+                    <div style="font-size:22px;font-weight:800;color:var(--dark);line-height:1;">
+                        {{ $fmtTime($arr) }}@if($dayOff > 0)<sup style="font-size:11px;font-weight:700;color:var(--primary);margin-left:2px;">+{{ $dayOff }}</sup>@endif
+                    </div>
+                    <div style="font-size:12px;color:var(--muted);margin-top:3px;">{{ $flight['arr_id'] ?? '' }}@if($dayOff > 0)<span style="white-space:nowrap;"> · next day</span>@endif</div>
                 </div>
                 <div style="text-align:right;">
                     <div style="font-size:20px;font-weight:800;color:var(--primary);line-height:1;">{{ currency_code() }} {{ number_format($flight['price'] ?? 0) }}</div>
@@ -982,17 +1118,34 @@ $allCities2 = array_merge(
 
     @else
     {{-- Leg 1 Flight cards --}}
-    <div id="flight-list" style="display:flex;flex-direction:column;gap:12px;">
+    <div id="flight-list" style="display:flex;flex-direction:column;gap:12px;"
+         x-init="$nextTick(() => filterAirline())">
         @foreach ($flightResults as $idx => $flight)
         @php
             $dur    = $flight['duration'] ?? 0;
-            $durStr = $dur ? (floor($dur/60).'h '.($dur%60).'m') : 'Nonstop';
+            $durStr = $dur ? (floor($dur/60).'h '.($dur%60).'m') : '';
+
+            // Real stop count from the itinerary's segments. This label used
+            // to be a hardcoded "Nonstop", which turned a two-leg trip with a
+            // long layover into what looked like an absurdly slow direct
+            // flight (CEB→TAG showed "7h 55m · Nonstop" for CEB→MNL→TAG with
+            // a 5-hour Manila layover).
+            $stops    = (int) ($flight['stops'] ?? 0);
+            $stopsStr = $stops === 0 ? 'Nonstop' : ($stops === 1 ? '1 stop' : $stops.' stops');
+            $layStr   = collect($flight['layovers'] ?? [])->map(function ($l) {
+                $mins = (int) ($l['duration'] ?? 0);
+                $h    = intdiv($mins, 60);
+                $m    = $mins % 60;
+                $len  = trim(($h ? $h.'h ' : '').($m ? $m.'m' : ''));
+                return trim(($l['id'] ?? '').($len ? ' '.$len : ''));
+            })->filter()->implode(', ');
+            $dayOff   = (int) ($flight['day_offset'] ?? 0);
             $dep    = $flight['depart'] ?? '';
             $arr    = $flight['arrive'] ?? '';
             // Format "2026-07-22 03:50" → "3:50 AM"
             $fmtTime = fn($t) => $t ? date('g:i A', strtotime($t)) : '';
         @endphp
-        <div class="flight-card" data-price="{{ $flight['price'] ?? 0 }}"
+        <div class="flight-card" data-price="{{ $flight['price'] ?? 0 }}" data-airline="{{ $flight['airline'] ?? '' }}"
              style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;transition:box-shadow .2s,transform .2s,border-color .2s;"
              onmouseenter="this.style.boxShadow='0 10px 30px rgba(45,27,20,0.10)';this.style.transform='translateY(-2px)';this.style.borderColor='#E7D4C4'"
              onmouseleave="this.style.boxShadow='none';this.style.transform='none';this.style.borderColor='var(--border)'">
@@ -1024,12 +1177,16 @@ $allCities2 = array_merge(
                             <i class="fa-solid fa-plane" style="font-size:13px;color:var(--primary);"></i>
                         </span>
                     </div>
-                    <div style="font-size:11px;color:var(--muted);margin-top:6px;">Nonstop</div>
+                    <div style="font-size:11px;margin-top:6px;color:{{ $stops > 0 ? 'var(--dark)' : 'var(--muted)' }};font-weight:{{ $stops > 0 ? '600' : '400' }};">
+                        {{ $stopsStr }}@if($layStr)<span style="color:var(--muted);font-weight:400;"> · via {{ $layStr }}</span>@endif
+                    </div>
                 </div>
                 {{-- Arrive --}}
                 <div>
-                    <div style="font-size:22px;font-weight:800;color:var(--dark);line-height:1;">{{ $fmtTime($arr) }}</div>
-                    <div style="font-size:12px;color:var(--muted);margin-top:3px;">{{ $flight['arr_id'] ?? '' }}</div>
+                    <div style="font-size:22px;font-weight:800;color:var(--dark);line-height:1;">
+                        {{ $fmtTime($arr) }}@if($dayOff > 0)<sup style="font-size:11px;font-weight:700;color:var(--primary);margin-left:2px;">+{{ $dayOff }}</sup>@endif
+                    </div>
+                    <div style="font-size:12px;color:var(--muted);margin-top:3px;">{{ $flight['arr_id'] ?? '' }}@if($dayOff > 0)<span style="white-space:nowrap;"> · next day</span>@endif</div>
                 </div>
                 {{-- Price + Select --}}
                 <div style="text-align:right;">
@@ -1078,6 +1235,19 @@ $allCities2 = array_merge(
         </div>
     </div>
     @endif
+
+    {{-- Shown only when the airline filter hides every card. Hidden by
+         default and toggled by filterAirline(), so it never flashes. --}}
+    <div id="flight-airline-empty" style="display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
+        <div style="width:52px;height:52px;border-radius:15px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
+            <i class="fa-solid fa-plane-slash" style="font-size:20px;color:var(--primary);"></i>
+        </div>
+        <p style="color:var(--muted);font-size:15px;margin:0 0 14px;">No flights from <b x-text="airline" style="color:var(--dark);"></b> in these results.</p>
+        <button type="button" @click="airline='';filterAirline()"
+                style="border:none;border-radius:20px;background:var(--primary);color:#fff;font-family:inherit;font-size:12.5px;font-weight:700;padding:8px 18px;cursor:pointer;">
+            Show all airlines
+        </button>
+    </div>
     @endif
 
 </div>
@@ -1093,6 +1263,8 @@ window.pytFlight = function() {
         activeDrop2: '',
         activeCal2: '',
         priceOpen: false,
+        airlineOpen: false,
+        airline: '',
         priceDir: 'asc',
         tripType: @json($flightTripType),
         fromLabel: @json($manualFrom ? $manualFrom . ' (' . \App\Livewire\Traveler\TripPlannerWizard::staticIataCode($manualFrom) . ')' : ''),
@@ -1230,6 +1402,29 @@ window.pytFlight = function() {
                 return this.priceDir==='asc' ? pa-pb : pb-pa;
             });
             cards.forEach(c=>list.appendChild(c));
+        },
+
+        filterAirline() {
+            const list = document.getElementById('flight-list');
+            if (!list) return;
+            const cards = Array.from(list.querySelectorAll('.flight-card'));
+
+            // A carrier chosen before a re-search (trip type change, new dates)
+            // may not appear in the new results. Without this the traveler is
+            // left staring at an empty list with no obvious cause.
+            if (this.airline && !cards.some(c => c.dataset.airline === this.airline)) {
+                this.airline = '';
+            }
+
+            let shown = 0;
+            cards.forEach(c => {
+                const match = !this.airline || c.dataset.airline === this.airline;
+                c.style.display = match ? '' : 'none';
+                if (match) shown++;
+            });
+
+            const empty = document.getElementById('flight-airline-empty');
+            if (empty) empty.style.display = shown ? 'none' : '';
         },
 
     };
@@ -1384,17 +1579,6 @@ window.sortVenues = function(dir) {
                 </button>
             </div>
         </div>
-        @foreach(['hotel'=>'Hotel','apartment'=>'Apartment','inn'=>'Inn','resort'=>'Resort'] as $val => $label)
-        <label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:500;color:var(--dark);">
-            <input type="radio" name="acc_type" value="{{ $val }}"
-                   x-model="filterType"
-                   @change="$wire.set('hotelType', filterType)"
-                   style="accent-color:var(--primary);width:15px;height:15px;cursor:pointer;">
-            {{ $label }}
-        </label>
-        @endforeach
-        </div>
-
         <div class="tp-search">
             <i class="fa-solid fa-magnifying-glass"></i>
             <input type="text" wire:model="hotelSearch" wire:keydown.enter.prevent="searchHotelResults"
@@ -1405,7 +1589,20 @@ window.sortVenues = function(dir) {
             </button>
             @endif
             <button type="button" class="tp-search-go" wire:click="searchHotelResults"
-                    wire:loading.attr="disabled" wire:target="searchHotelResults">Search</button>
+                    wire:loading.attr="disabled" wire:target="searchHotelResults">
+                <span wire:loading.remove wire:target="searchHotelResults">Search</span>
+                <span wire:loading wire:target="searchHotelResults"><i class="fa-solid fa-spinner fa-spin"></i></span>
+            </button>
+        </div>
+        @foreach(['hotel'=>'Hotel','apartment'=>'Apartment','inn'=>'Inn','resort'=>'Resort'] as $val => $label)
+        <label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:500;color:var(--dark);">
+            <input type="radio" name="acc_type" value="{{ $val }}"
+                   x-model="filterType"
+                   @change="$wire.set('hotelType', filterType)"
+                   style="accent-color:var(--primary);width:15px;height:15px;cursor:pointer;">
+            {{ $label }}
+        </label>
+        @endforeach
         </div>
 
         <button wire:click="skipAccommodation" wire:loading.attr="disabled" wire:target="skipAccommodation"
@@ -1614,6 +1811,8 @@ window.sortVenues = function(dir) {
 
     {{-- Filter row --}}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;padding-right:20px;flex-wrap:wrap;" x-data="{vPriceOpen:false,vPriceDir:'asc'}">
+        {{-- Pill + search share a group so space-between only pushes "Skip this step" away. --}}
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
         <div style="position:relative;">
             <button @click="vPriceOpen=!vPriceOpen"
                     style="display:inline-flex;align-items:center;gap:10px;background:var(--bg-white);color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
@@ -1646,7 +1845,11 @@ window.sortVenues = function(dir) {
             </button>
             @endif
             <button type="button" class="tp-search-go" wire:click="searchVenueResults"
-                    wire:loading.attr="disabled" wire:target="searchVenueResults">Search</button>
+                    wire:loading.attr="disabled" wire:target="searchVenueResults">
+                <span wire:loading.remove wire:target="searchVenueResults">Search</span>
+                <span wire:loading wire:target="searchVenueResults"><i class="fa-solid fa-spinner fa-spin"></i></span>
+            </button>
+        </div>
         </div>
 
         <button wire:click="skipVenue" wire:loading.attr="disabled" wire:target="skipVenue"
@@ -1915,6 +2118,8 @@ window.sortVenues = function(dir) {
 
     {{-- Filter row --}}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;padding-right:20px;flex-wrap:wrap;" x-data="{aPriceOpen:false,aPriceDir:'asc'}">
+        {{-- Pill + search share a group so space-between only pushes "Skip this step" away. --}}
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
         <div style="position:relative;">
             <button @click="aPriceOpen=!aPriceOpen"
                     style="display:inline-flex;align-items:center;gap:10px;background:var(--bg-white);color:var(--dark);border:1.5px solid var(--border);border-radius:24px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
@@ -1947,7 +2152,11 @@ window.sortVenues = function(dir) {
             </button>
             @endif
             <button type="button" class="tp-search-go" wire:click="searchAttractionResults"
-                    wire:loading.attr="disabled" wire:target="searchAttractionResults">Search</button>
+                    wire:loading.attr="disabled" wire:target="searchAttractionResults">
+                <span wire:loading.remove wire:target="searchAttractionResults">Search</span>
+                <span wire:loading wire:target="searchAttractionResults"><i class="fa-solid fa-spinner fa-spin"></i></span>
+            </button>
+        </div>
         </div>
 
         <button wire:click="skipAttraction" wire:loading.attr="disabled" wire:target="skipAttraction"
@@ -2996,12 +3205,6 @@ window.sortAttractions = function(dir) {
             <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Suggested Itineraries
         </button>
         <div style="display:flex;gap:8px;">
-            <button wire:click="downloadPdf" wire:loading.attr="disabled" wire:target="downloadPdf"
-                    style="width:170px;padding:8px 18px;border:1.5px solid var(--primary);border-radius:10px;background:var(--bg-white);font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;transition:border-color .18s,background .18s,color .18s;"
-                    onmouseenter="this.style.background='var(--primary)';this.style.color='#fff'" onmouseleave="this.style.background='var(--bg-white)';this.style.color='var(--primary)'">
-                <span wire:loading.remove wire:target="downloadPdf"><i class="fa-solid fa-download" style="font-size:10px;"></i> Download PDF</span>
-                <span wire:loading wire:target="downloadPdf"><i class="fa-solid fa-spinner fa-spin"></i></span>
-            </button>
             <button wire:click="saveItinerary" wire:loading.attr="disabled"
                     style="width:170px;padding:8px 18px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;transition:background .18s;"
                     onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'">

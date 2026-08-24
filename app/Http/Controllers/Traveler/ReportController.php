@@ -23,7 +23,11 @@ class ReportController extends Controller
     {
         $request->validate(['trip_id' => 'required|exists:trips,id']);
         $trip = Trip::findOrFail($request->trip_id);
-        abort_if($trip->user_id !== auth()->id(), 403);
+
+        // Trip access, not ownership — Saved Trips lists trips shared with
+        // you, so an owner-only check would 403 a companion the moment they
+        // used the card's new download button.
+        abort_if(!auth()->user()->canAccessTrip((int) $trip->id), 403);
 
         $pdf = $reportService->generatePdf($trip);
         $filename = 'budget-report-' . Str::slug($trip->destination) . '-' . now()->format('Y-m-d') . '.pdf';
