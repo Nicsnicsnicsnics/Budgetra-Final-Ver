@@ -1956,6 +1956,20 @@ PROMPT;
     private function blockUnaffordableSlotEdit(string $slot): bool
     {
         if ($slot !== 'destination' && $slot !== 'budget') return false;
+
+        if ($this->aiBudgetMax > 0 && $this->aiBudgetMax < self::MINIMUM_TOTAL_BUDGET) {
+            $this->aiBudgetMin      = 0;
+            $this->aiBudgetMax      = 0;
+            $this->awaitingSlot     = 'budget';
+            $this->pendingEditSlot  = '';
+            $this->missCount        = 0;
+            $this->aiPrompt         = '';
+            $this->messages[]       = ['role' => 'assistant', 'text' =>
+                'That budget looks too low to plan a real trip — could you give me a more realistic number (at least ₱' . number_format(self::MINIMUM_TOTAL_BUDGET) . ')?'];
+            $this->dispatch('message-added');
+            return true;
+        }
+
         if (!$this->isInternationalDestination($this->aiTo)) return false;
 
         $shortfall = $this->internationalBudgetShortfallMessage();

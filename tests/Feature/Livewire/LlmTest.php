@@ -1817,6 +1817,56 @@ class LlmTest extends TestCase
         $this->assertStringContainsString('Got it, updated!', $lastMessage);
     }
 
+    // The exact bug reported live: blockUnaffordableSlotEdit() only ever
+    // checked the INTERNATIONAL shortfall case, so editing the budget down
+    // to an absurdly low amount (₱1,000) on a DOMESTIC destination (Boracay
+    // here, Davao in the live report) sailed through with no floor check
+    // at all — even though the same ₱10,000 minimum already blocks a too-low
+    // budget the first time it's entered (see the "too low to plan a real
+    // trip" check earlier in automateTrip()). The edit path now enforces
+    // that same flat floor regardless of destination.
+    public function test_one_shot_budget_edit_to_an_unaffordable_amount_on_a_domestic_destination_is_blocked(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change my budget to 1000')->call('automateTrip');
+
+        $component->assertSet('aiTo', 'Boracay');
+        $component->assertSet('aiBudgetMin', 0);
+        $component->assertSet('aiBudgetMax', 0);
+        $component->assertSet('awaitingSlot', 'budget');
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('too low', $lastMessage);
+
+        // A stray "yes" afterward must never slip through to generation.
+        $component->set('aiPrompt', 'yes')->call('automateTrip');
+        $component->assertSet('aiStep', '');
+    }
+
+    // A sufficient budget edit on a domestic destination must still
+    // proceed normally — the new floor check only blocks a clear mismatch.
+    public function test_editing_budget_to_a_sufficient_amount_on_a_domestic_destination_proceeds_normally(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $component->set('aiPrompt', 'change my budget to 15000')->call('automateTrip');
+
+        $component->assertSet('aiTo', 'Boracay');
+        $component->assertSet('aiBudgetMin', 15000);
+        $component->assertSet('aiBudgetMax', 15000);
+        $component->assertSet('awaitingSlot', 'confirmation');
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('Got it, updated!', $lastMessage);
+    }
+
     // buildSerpApiPackage()'s three real search calls (flights/hotels,
     // restaurants, attractions) all hit https://serpapi.com/search with
     // different "engine" query params — flights/hotels are distinguished
