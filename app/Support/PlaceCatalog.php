@@ -146,6 +146,122 @@ final class PlaceCatalog
         'maldives' => 'MLE', 'male' => 'MLE',
     ];
 
+    // City/country name (lowercase) => 3-letter ISO currency code actually
+    // used at that destination. Philippine cities are deliberately absent —
+    // a domestic trip has nothing to convert, so a lookup miss here means
+    // "same currency as home" rather than "unknown."
+    public const DESTINATION_CURRENCIES = [
+
+        'singapore' => 'SGD',
+        'bangkok' => 'THB', 'thailand' => 'THB', 'suvarnabhumi' => 'THB',
+        'phuket' => 'THB', 'krabi' => 'THB', 'chiang mai' => 'THB',
+        'bali' => 'IDR', 'denpasar' => 'IDR', 'jakarta' => 'IDR', 'indonesia' => 'IDR',
+        'kuala lumpur' => 'MYR', 'malaysia' => 'MYR', 'kl' => 'MYR',
+        'penang' => 'MYR', 'langkawi' => 'MYR', 'kota kinabalu' => 'MYR',
+        'hong kong' => 'HKD',
+        'macau' => 'MOP',
+        'ho chi minh city' => 'VND', 'ho chi minh' => 'VND', 'hcmc' => 'VND', 'saigon' => 'VND',
+        'hanoi' => 'VND', 'vietnam' => 'VND', 'da nang' => 'VND',
+        'yangon' => 'MMK', 'myanmar' => 'MMK',
+        'phnom penh' => 'KHR', 'cambodia' => 'KHR', 'siem reap' => 'KHR',
+        'vientiane' => 'LAK', 'laos' => 'LAK',
+        'colombo' => 'LKR', 'sri lanka' => 'LKR',
+        'dhaka' => 'BDT', 'bangladesh' => 'BDT',
+        'kathmandu' => 'NPR', 'nepal' => 'NPR',
+
+        'tokyo' => 'JPY', 'japan' => 'JPY', 'osaka' => 'JPY', 'nagoya' => 'JPY',
+        'fukuoka' => 'JPY', 'sapporo' => 'JPY', 'okinawa' => 'JPY',
+        'seoul' => 'KRW', 'korea' => 'KRW', 'incheon' => 'KRW', 'busan' => 'KRW',
+        'taipei' => 'TWD', 'taiwan' => 'TWD', 'kaohsiung' => 'TWD',
+        'beijing' => 'CNY', 'china' => 'CNY', 'shanghai' => 'CNY',
+        'guangzhou' => 'CNY', 'shenzhen' => 'CNY',
+
+        'delhi' => 'INR', 'new delhi' => 'INR', 'india' => 'INR',
+        'mumbai' => 'INR', 'bombay' => 'INR', 'bangalore' => 'INR', 'bengaluru' => 'INR',
+        'chennai' => 'INR', 'madras' => 'INR', 'kolkata' => 'INR', 'hyderabad' => 'INR',
+
+        'dubai' => 'AED', 'uae' => 'AED', 'abu dhabi' => 'AED',
+        'doha' => 'QAR', 'qatar' => 'QAR',
+        'riyadh' => 'SAR', 'saudi arabia' => 'SAR', 'jeddah' => 'SAR',
+        'kuwait' => 'KWD', 'kuwait city' => 'KWD',
+        'bahrain' => 'BHD',
+        'muscat' => 'OMR', 'oman' => 'OMR',
+        'amman' => 'JOD', 'jordan' => 'JOD',
+        'tel aviv' => 'ILS', 'israel' => 'ILS',
+        'istanbul' => 'TRY', 'turkey' => 'TRY',
+
+        'london' => 'GBP',
+        'paris' => 'EUR', 'amsterdam' => 'EUR', 'frankfurt' => 'EUR', 'germany' => 'EUR',
+        'rome' => 'EUR', 'italy' => 'EUR', 'madrid' => 'EUR', 'spain' => 'EUR',
+        'barcelona' => 'EUR', 'vienna' => 'EUR', 'austria' => 'EUR',
+        'brussels' => 'EUR', 'belgium' => 'EUR', 'lisbon' => 'EUR', 'portugal' => 'EUR',
+        'athens' => 'EUR', 'greece' => 'EUR', 'helsinki' => 'EUR', 'finland' => 'EUR',
+        'zurich' => 'CHF', 'switzerland' => 'CHF',
+        'prague' => 'CZK', 'czech republic' => 'CZK',
+        'budapest' => 'HUF', 'hungary' => 'HUF',
+        'warsaw' => 'PLN', 'poland' => 'PLN',
+        'stockholm' => 'SEK', 'sweden' => 'SEK',
+        'oslo' => 'NOK', 'norway' => 'NOK',
+        'copenhagen' => 'DKK', 'denmark' => 'DKK',
+        'moscow' => 'RUB', 'russia' => 'RUB',
+
+        'sydney' => 'AUD', 'australia' => 'AUD', 'melbourne' => 'AUD',
+        'brisbane' => 'AUD', 'perth' => 'AUD',
+        'auckland' => 'NZD', 'new zealand' => 'NZD',
+
+        'new york' => 'USD', 'new york city' => 'USD', 'nyc' => 'USD',
+        'los angeles' => 'USD', 'la' => 'USD', 'san francisco' => 'USD',
+        'chicago' => 'USD', 'miami' => 'USD',
+        'toronto' => 'CAD', 'canada' => 'CAD', 'vancouver' => 'CAD',
+        'sao paulo' => 'BRL', 'brazil' => 'BRL',
+
+        'nairobi' => 'KES', 'kenya' => 'KES',
+        'johannesburg' => 'ZAR', 'south africa' => 'ZAR',
+        'cairo' => 'EGP', 'egypt' => 'EGP',
+        'casablanca' => 'MAD', 'morocco' => 'MAD',
+
+        'maldives' => 'MVR', 'male' => 'MVR',
+    ];
+
+    // Country name (matching config/country_cities.php's keys, and the
+    // registration form's Country dropdown) => 3-letter ISO currency code.
+    public const COUNTRY_CURRENCIES = [
+        'Philippines' => 'PHP', 'Indonesia' => 'IDR', 'Thailand' => 'THB', 'Vietnam' => 'VND',
+        'Malaysia' => 'MYR', 'Singapore' => 'SGD', 'Japan' => 'JPY', 'South Korea' => 'KRW',
+        'China' => 'CNY', 'India' => 'INR', 'Australia' => 'AUD', 'New Zealand' => 'NZD',
+        'United States' => 'USD', 'Canada' => 'CAD', 'United Kingdom' => 'GBP',
+        'Germany' => 'EUR', 'France' => 'EUR', 'Italy' => 'EUR', 'Spain' => 'EUR',
+        'Netherlands' => 'EUR', 'Brazil' => 'BRL', 'Mexico' => 'MXN', 'Argentina' => 'ARS',
+        'Saudi Arabia' => 'SAR', 'United Arab Emirates' => 'AED', 'Egypt' => 'EGP',
+        'Nigeria' => 'NGN', 'South Africa' => 'ZAR', 'Kenya' => 'KES',
+    ];
+
+    // 3-letter ISO currency code => display symbol, covering every code in
+    // COUNTRY_CURRENCIES above.
+    public const CURRENCY_SYMBOLS = [
+        'PHP' => '₱', 'IDR' => 'Rp', 'THB' => '฿', 'VND' => '₫',
+        'MYR' => 'RM', 'SGD' => 'S$', 'JPY' => '¥', 'KRW' => '₩',
+        'CNY' => '¥', 'INR' => '₹', 'AUD' => 'A$', 'NZD' => 'NZ$',
+        'USD' => '$', 'CAD' => 'C$', 'GBP' => '£',
+        'EUR' => '€', 'BRL' => 'R$', 'MXN' => 'MX$', 'ARS' => 'AR$',
+        'SAR' => 'SAR ', 'AED' => 'AED ', 'EGP' => 'EGP ',
+        'NGN' => '₦', 'ZAR' => 'R', 'KES' => 'KSh ',
+    ];
+
+    // 3-letter ISO currency code => full display name, same coverage as
+    // CURRENCY_SYMBOLS above.
+    public const CURRENCY_NAMES = [
+        'PHP' => 'Philippine pesos', 'IDR' => 'Indonesian rupiah', 'THB' => 'Thai baht',
+        'VND' => 'Vietnamese dong', 'MYR' => 'Malaysian ringgit', 'SGD' => 'Singapore dollars',
+        'JPY' => 'Japanese yen', 'KRW' => 'Korean won', 'CNY' => 'Chinese yuan',
+        'INR' => 'Indian rupees', 'AUD' => 'Australian dollars', 'NZD' => 'New Zealand dollars',
+        'USD' => 'US dollars', 'CAD' => 'Canadian dollars', 'GBP' => 'British pounds',
+        'EUR' => 'euros', 'BRL' => 'Brazilian real', 'MXN' => 'Mexican pesos',
+        'ARS' => 'Argentine pesos', 'SAR' => 'Saudi riyals', 'AED' => 'UAE dirhams',
+        'EGP' => 'Egyptian pounds', 'NGN' => 'Nigerian naira', 'ZAR' => 'South African rand',
+        'KES' => 'Kenyan shillings',
+    ];
+
     // City/region name (lowercase) => synthetic trip-package data used as
     // the last-resort fallback when neither the AI free-generation nor
     // SerpAPI live-search paths produce anything usable.

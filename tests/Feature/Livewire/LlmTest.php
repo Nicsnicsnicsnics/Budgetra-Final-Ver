@@ -4,6 +4,7 @@ namespace Tests\Feature\Livewire;
 use App\Livewire\Traveler\Llm;
 use App\Models\AiConversationDraft;
 use App\Models\AiConversationHistory;
+use App\Models\Trip;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1074,6 +1075,11 @@ class LlmTest extends TestCase
                     'date_from' => null, 'date_to' => null,
                 ])]]],
             ], 200),
+            // currencyRate() now tries a live TwelveData lookup before
+            // falling back to the hardcoded SUPPORTED_CURRENCIES rate — fake
+            // it here so this test stays deterministic instead of depending
+            // on the real, ever-changing USD/PHP exchange rate.
+            'api.twelvedata.com/*' => Http::response(['symbol' => 'USD/PHP', 'rate' => 56], 200),
         ]);
 
         $llm = new Llm();
@@ -1084,6 +1090,152 @@ class LlmTest extends TestCase
         $this->assertSame(28000, $llm->aiBudgetMin);
         $this->assertSame(28000, $llm->aiBudgetMax);
         $this->assertSame('USD', $llm->aiCurrency);
+    }
+
+    // The regex path (detectAndConvertCurrency, reached via parseAiPrompt())
+    // now prefers a live TwelveData rate over the hardcoded SUPPORTED_CURRENCIES
+    // table — this confirms it actually uses the live figure (61.71, not the
+    // static 56) when the API call succeeds.
+    public function test_regex_currency_conversion_uses_the_live_twelvedata_rate_when_available(): void
+    {
+        $user = User::factory()->create();
+        // Destination is still missing, so extractWithAi() also runs — fake
+        // it too so the test doesn't depend on a real, uncontrolled AI call.
+        Http::fake([
+            'api.twelvedata.com/*' => Http::response(['symbol' => 'USD/PHP', 'rate' => 61.71], 200),
+            'api.mistral.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => json_encode([
+                    'off_topic' => false, 'is_greeting' => false, 'is_inappropriate' => false,
+                    'origin' => null, 'destination' => null, 'travelers' => null,
+                    'budget_min' => null, 'budget_max' => null,
+                    'date_from' => null, 'date_to' => null,
+                ])]]],
+            ], 200),
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', '$500')->call('automateTrip');
+
+        $component->assertSet('aiBudgetMin', 30855);
+        $component->assertSet('aiBudgetMax', 30855);
+        $component->assertSet('aiCurrency', 'USD');
+    }
+
+    // The exact bug reported live: destination-currency parsing happens
+    // LATER in parseAiPrompt() than the currency/budget block, so a
+    // one-shot message naming both the destination and a foreign-currency
+    // budget ("go to Japan... budget is $500") used to build the "Got it —
+    // $500 is about ₱X" acknowledgment before aiTo was resolved, silently
+    // dropping the destination-currency mention even though the
+    // destination was in the very same message. It's now appended where
+    // the notice is actually shown in automateTrip(), after parseAiPrompt()
+    // has fully run and aiTo is known. The peso figure itself is no longer
+    // shown once a destination conversion is available — pesos is only
+    // ever surfaced as the fallback when there's nothing to convert into
+    // yet (see the "still missing" test below).
+    public function test_currency_conversion_message_mentions_destination_currency_when_named_in_the_same_message(): void
+    {
+        $user = User::factory()->create();
+        Http::fake([
+            'api.twelvedata.com/*' => Http::response(['symbol' => 'USD/PHP', 'rate' => 61.71], 200),
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', 'Im from Canada and I want to go in the Japan and my budget is 500$ and 3days travel')
+            ->call('automateTrip');
+
+        $component->assertSet('aiTo', 'Japan');
+        $component->assertSet('aiBudgetMin', 30855);
+        $allText = collect($component->get('messages'))->pluck('text')->implode(' ');
+        $this->assertStringNotContainsString('₱30,855', $allText);
+        $this->assertStringContainsString('is about', $allText);
+        $this->assertStringContainsString('in Japan', $allText);
+    }
+
+    // No destination named yet — there's nothing to convert into, so the
+    // peso figure is still the only thing worth showing.
+    public function test_currency_conversion_message_falls_back_to_pesos_when_no_destination_is_known_yet(): void
+    {
+        $user = User::factory()->create();
+        Http::fake([
+            'api.twelvedata.com/*' => Http::response(['symbol' => 'USD/PHP', 'rate' => 61.71], 200),
+            'api.mistral.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => json_encode([
+                    'off_topic' => false, 'is_greeting' => false, 'is_inappropriate' => false,
+                    'origin' => null, 'destination' => null, 'travelers' => null,
+                    'budget_min' => null, 'budget_max' => null,
+                    'date_from' => null, 'date_to' => null,
+                ])]]],
+            ], 200),
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', '$500')->call('automateTrip');
+
+        $component->assertSet('aiTo', '');
+        $component->assertSet('aiBudgetMin', 30855);
+        $allText = collect($component->get('messages'))->pluck('text')->implode(' ');
+        $this->assertStringContainsString('is about ₱30,855', $allText);
+    }
+
+    // There is no hardcoded exchange-rate fallback — if TwelveData is
+    // unreachable or errors out, the budget must be left unset (not
+    // silently misread as pesos, e.g. "$500" treated as ₱500) and the
+    // traveler asked to try again, rather than trusting a stale number.
+    public function test_regex_currency_conversion_is_left_unset_when_twelvedata_is_unavailable(): void
+    {
+        $user = User::factory()->create();
+        // Destination is still missing after this message, so automateTrip()
+        // also calls extractWithAi() — fake it to return nothing so a real,
+        // non-deterministic AI call can't separately (mis)interpret "$500"
+        // as a plain ₱500 and mask the behavior this test is checking.
+        Http::fake([
+            'api.twelvedata.com/*' => Http::response(['message' => 'Unauthorized'], 401),
+            'api.mistral.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => json_encode([
+                    'off_topic' => false, 'is_greeting' => false, 'is_inappropriate' => false,
+                    'origin' => null, 'destination' => null, 'travelers' => null,
+                    'budget_min' => null, 'budget_max' => null,
+                    'date_from' => null, 'date_to' => null,
+                ])]]],
+            ], 200),
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', '$500')->call('automateTrip');
+
+        $component->assertSet('aiBudgetMin', 0);
+        $component->assertSet('aiBudgetMax', 0);
+        $allText = collect($component->get('messages'))->pluck('text')->implode(' ');
+        $this->assertStringContainsString("couldn't fetch the live exchange rate", $allText);
+    }
+
+    // Same no-fallback guarantee through the AI-extraction path
+    // (extractWithAi's budget_currency handling) as the regex path above.
+    public function test_ai_extracted_currency_conversion_is_left_unset_when_twelvedata_is_unavailable(): void
+    {
+        $user = User::factory()->create();
+        auth()->login($user);
+
+        Http::fake([
+            'api.mistral.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => json_encode([
+                    'off_topic' => false, 'is_greeting' => false, 'is_inappropriate' => false,
+                    'origin' => null, 'destination' => null, 'travelers' => null,
+                    'budget_min' => 500, 'budget_max' => 500, 'budget_currency' => 'USD',
+                    'date_from' => null, 'date_to' => null,
+                ])]]],
+            ], 200),
+            'api.twelvedata.com/*' => Http::response(['message' => 'Unauthorized'], 401),
+        ]);
+
+        $llm = new Llm();
+        $method = (new \ReflectionClass($llm))->getMethod('extractWithAi');
+        $method->setAccessible(true);
+        $method->invoke($llm, 'budget around 500 bucks');
+
+        $this->assertSame(0, $llm->aiBudgetMin);
+        $this->assertSame(0, $llm->aiBudgetMax);
     }
 
     private function fakeDestinationSuggestions(array $destinations): void
@@ -2104,6 +2256,39 @@ class LlmTest extends TestCase
         $this->assertStringContainsString('Nature', $lastMessage);
     }
 
+    // A profile saved via Profile Builder with a foreign starting point
+    // stores daily_budget already converted to pesos, plus the traveler's
+    // real original number/currency untouched (daily_budget_local/
+    // daily_budget_currency). The offer message should describe the
+    // budget using that real currency, not the pesos figure underneath.
+    public function test_mount_offers_saved_preferences_using_the_local_currency_when_available(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create([
+            'user_id' => $user->id, 'home_city' => 'Osaka',
+            'daily_budget' => 19175, 'daily_budget_currency' => 'JPY', 'daily_budget_local' => 50000,
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class);
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('¥50,000', $lastMessage);
+        $this->assertStringNotContainsString('19,175', $lastMessage);
+    }
+
+    public function test_mount_offers_saved_preferences_in_pesos_when_no_local_currency_saved(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create([
+            'user_id' => $user->id, 'home_city' => 'Manila', 'daily_budget' => 30000,
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class);
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('₱30,000', $lastMessage);
+    }
+
     public function test_mount_does_not_offer_when_no_profile_exists(): void
     {
         $user = User::factory()->create();
@@ -2219,5 +2404,108 @@ class LlmTest extends TestCase
 
         $component2->set('aiPrompt', 'yes')->call('automateTrip');
         $component2->assertSet('aiFrom', 'Cebu City');
+    }
+
+    // The exact bug reported live: a traveler's account had an unrelated
+    // "display currency" account setting (USD, from Settings). Accepting
+    // saved preferences correctly applied the peso-converted budget, but
+    // never updated aiCurrency to match the profile's real local currency
+    // (CAD) — so the very next message re-displayed the peso figure
+    // converted into the account's USD setting instead ("$361"), a third,
+    // unrelated number that didn't match the 500 CAD the traveler actually
+    // saved. Confirms accepting now correctly carries the local currency
+    // forward so it's echoed back consistently.
+    public function test_accepting_saved_preferences_carries_the_local_currency_into_the_confirmation_message(): void
+    {
+        $user = User::factory()->create(['currency_code' => 'USD', 'currency_symbol' => '$']);
+        UserProfile::create([
+            'user_id' => $user->id, 'home_city' => 'Vancouver',
+            'daily_budget' => 20000, 'daily_budget_currency' => 'CAD', 'daily_budget_local' => 500,
+        ]);
+        Http::fake([
+            'api.twelvedata.com/*' => Http::response(['symbol' => 'CAD/PHP', 'rate' => 40], 200),
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', 'yes')->call('automateTrip');
+
+        $component->assertSet('aiCurrency', 'CAD');
+        $component->assertSet('aiBudgetMin', 20000);
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('C$500', $lastMessage);
+        $this->assertStringNotContainsString('$361', $lastMessage);
+    }
+
+    public function test_confirmation_summary_shows_destination_currency_for_an_international_destination(): void
+    {
+        $user = User::factory()->create();
+        Http::fake([
+            'api.twelvedata.com/*' => Http::response(['symbol' => 'JPY/PHP', 'rate' => 0.38], 200),
+        ]);
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiTo', 'Japan')
+            ->set('aiBudgetMin', 45000)
+            ->set('aiBudgetMax', 45000)
+            ->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('Destination budget: ¥118,421', $lastMessage);
+    }
+
+    public function test_confirmation_summary_omits_destination_currency_for_a_domestic_destination(): void
+    {
+        $user = User::factory()->create();
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringNotContainsString('Destination budget', $lastMessage);
+    }
+
+    public function test_confirmation_summary_omits_destination_currency_when_twelvedata_is_unavailable(): void
+    {
+        $user = User::factory()->create();
+        Http::fake([
+            'api.twelvedata.com/*' => Http::response(['message' => 'Unauthorized'], 401),
+        ]);
+
+        $component = $this->withAllSlotsFilled(
+            Livewire::actingAs($user)->test(Llm::class)
+        )->set('aiTo', 'Japan')
+            ->set('aiBudgetMin', 45000)
+            ->set('aiBudgetMax', 45000)
+            ->set('aiPrompt', 'please continue')->call('automateTrip');
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringNotContainsString('Destination budget', $lastMessage);
+        $this->assertStringContainsString('Would you like me to proceed', $lastMessage);
+    }
+
+    public function test_autosave_draft_persists_destination_currency_and_budget_to_the_trip(): void
+    {
+        $user = User::factory()->create();
+        Http::fake([
+            'api.twelvedata.com/*' => Http::response(['symbol' => 'JPY/PHP', 'rate' => 0.38], 200),
+        ]);
+
+        Livewire::actingAs($user)->test(Llm::class)
+            ->set('messages', [['role' => 'user', 'text' => 'Japan trip']])
+            ->set('aiTo', 'Japan')
+            ->set('aiFrom', 'Manila')
+            ->set('aiBudgetMin', 45000)
+            ->set('aiBudgetMax', 45000)
+            ->set('aiDateFrom', '2026-09-01')
+            ->set('aiDateTo', '2026-09-05')
+            ->set('aiTravelers', 1)
+            ->set('aiStep', 'results');
+
+        $trip = Trip::where('user_id', $user->id)->where('status', 'draft')->first();
+        $this->assertNotNull($trip);
+        $this->assertSame('JPY', $trip->destination_currency);
+        $this->assertEquals(118421.05, (float) $trip->destination_budget);
     }
 }

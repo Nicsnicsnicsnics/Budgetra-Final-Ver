@@ -10,10 +10,22 @@ class ProfileController extends Controller
     public function edit()
     {
         $user = auth()->user();
+        $profile = $user->userProfile;
+
+        $homeCountry = null;
+        if ($profile && $profile->home_city) {
+            foreach (config('country_cities') as $country => $cities) {
+                if (in_array($profile->home_city, $cities, true)) {
+                    $homeCountry = $country;
+                    break;
+                }
+            }
+        }
 
         return view('traveler.profile.edit', [
-            'user'    => $user,
-            'profile' => $user->userProfile,
+            'user'        => $user,
+            'profile'     => $profile,
+            'homeCountry' => $homeCountry,
         ]);
     }
 

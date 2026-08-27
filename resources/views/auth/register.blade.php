@@ -125,16 +125,16 @@
                                 onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
                             <option value="" disabled selected>Select your country</option>
                             @foreach([
-                                '🇵🇭 Philippines','🇮🇩 Indonesia','🇹🇭 Thailand','🇻🇳 Vietnam',
-                                '🇲🇾 Malaysia','🇸🇬 Singapore','🇯🇵 Japan','🇰🇷 South Korea',
-                                '🇨🇳 China','🇮🇳 India','🇦🇺 Australia','🇳🇿 New Zealand',
-                                '🇺🇸 United States','🇨🇦 Canada','🇬🇧 United Kingdom',
-                                '🇩🇪 Germany','🇫🇷 France','🇮🇹 Italy','🇪🇸 Spain',
-                                '🇳🇱 Netherlands','🇧🇷 Brazil','🇲🇽 Mexico','🇦🇷 Argentina',
-                                '🇸🇦 Saudi Arabia','🇦🇪 United Arab Emirates','🇪🇬 Egypt',
-                                '🇳🇬 Nigeria','🇿🇦 South Africa','🇰🇪 Kenya',
-                            ] as $c)
-                                <option value="{{ $c }}" {{ old('country') === $c ? 'selected' : '' }}>{{ $c }}</option>
+                                'Philippines' => '🇵🇭', 'Indonesia' => '🇮🇩', 'Thailand' => '🇹🇭', 'Vietnam' => '🇻🇳',
+                                'Malaysia' => '🇲🇾', 'Singapore' => '🇸🇬', 'Japan' => '🇯🇵', 'South Korea' => '🇰🇷',
+                                'China' => '🇨🇳', 'India' => '🇮🇳', 'Australia' => '🇦🇺', 'New Zealand' => '🇳🇿',
+                                'United States' => '🇺🇸', 'Canada' => '🇨🇦', 'United Kingdom' => '🇬🇧',
+                                'Germany' => '🇩🇪', 'France' => '🇫🇷', 'Italy' => '🇮🇹', 'Spain' => '🇪🇸',
+                                'Netherlands' => '🇳🇱', 'Brazil' => '🇧🇷', 'Mexico' => '🇲🇽', 'Argentina' => '🇦🇷',
+                                'Saudi Arabia' => '🇸🇦', 'United Arab Emirates' => '🇦🇪', 'Egypt' => '🇪🇬',
+                                'Nigeria' => '🇳🇬', 'South Africa' => '🇿🇦', 'Kenya' => '🇰🇪',
+                            ] as $name => $flag)
+                                <option value="{{ $name }}" {{ old('country') === $name ? 'selected' : '' }}>{{ $flag }} {{ $name }}</option>
                             @endforeach
                         </select>
                     </div>

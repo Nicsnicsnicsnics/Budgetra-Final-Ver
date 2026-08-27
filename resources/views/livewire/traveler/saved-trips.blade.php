@@ -243,7 +243,7 @@
                 <div @if(!$isDraft) style="margin-bottom:16px;" @endif>
                     <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Trip Cost</div>
                     <div style="font-size:23px;font-weight:700;color:#C8874A;">
-                        {{ currency_code() }} {{ number_format($displayCost, 0) }}
+                        {{ $this->displayAmount($trip, $displayCost) }}
                     </div>
                     @if ($trip->shared_with_me)
                     <div style="font-size:11px;color:var(--primary);font-weight:600;margin-top:6px;display:flex;align-items:center;gap:5px;">
@@ -339,7 +339,7 @@
                     <div style="flex:1;min-width:0;">
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
                             <div style="font-size:12px;font-weight:700;color:var(--dark);margin-bottom:2px;">{{ $meta['label'] }}</div>
-                            <div style="font-size:12px;font-weight:700;color:var(--dark);white-space:nowrap;flex-shrink:0;">{{ currency_code() }} {{ number_format($rowCost, 0) }}</div>
+                            <div style="font-size:12px;font-weight:700;color:var(--dark);white-space:nowrap;flex-shrink:0;">{{ $this->displayAmount($dt, $rowCost) }}</div>
                         </div>
                         @if($rowDetail)
                         <div style="font-size:10px;color:var(--muted);line-height:1.4;">{{ $rowDetail }}</div>
@@ -356,7 +356,7 @@
             {{-- Total --}}
             <div style="margin:0 16px 18px;padding:14px 16px;background:var(--primary-light);border-radius:14px;">
                 <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;">Total Cost</div>
-                <div style="font-size:23px;font-weight:800;color:var(--primary);">{{ currency_code() }} {{ number_format($dtTotal, 0) }}</div>
+                <div style="font-size:23px;font-weight:800;color:var(--primary);">{{ $this->displayAmount($dt, $dtTotal) }}</div>
 
                 {{-- Split bill — only meaningful once more than one person
                      is on the trip, so a solo trip doesn't show "÷ 1". --}}
@@ -367,7 +367,7 @@
                         <div style="font-size:11px;color:var(--muted);">Split between {{ $dt->head_count }} travelers</div>
                     </div>
                     <div style="font-size:19px;font-weight:800;color:#C8874A;white-space:nowrap;">
-                        {{ currency_code() }} {{ number_format($dtTotal / $dt->head_count, 0) }}
+                        {{ $this->displayAmount($dt, $dtTotal / $dt->head_count) }}
                     </div>
                 </div>
                 @endif

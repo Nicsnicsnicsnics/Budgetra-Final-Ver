@@ -153,9 +153,15 @@
                     <a href="{{ route('profile.setup') }}?step=1&return=profile.edit" class="rv-edit">Edit</a>
                 </div>
                 <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $profile->home_city ?: '—' }}</div>
-                <div style="font-size:11px;color:var(--muted);">Philippines</div>
+                <div style="font-size:11px;color:var(--muted);">{{ $homeCountry ?: '—' }}</div>
             </div>
 
+            @php
+                $budgetSymbol = $profile->daily_budget_currency
+                    ? (\App\Support\PlaceCatalog::CURRENCY_SYMBOLS[$profile->daily_budget_currency] ?? currency_symbol())
+                    : currency_symbol();
+                $budgetAmount = $profile->daily_budget_local ?? $profile->daily_budget;
+            @endphp
             <div class="rv-card-sm">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                     <div style="display:flex;align-items:center;gap:8px;">
@@ -164,9 +170,9 @@
                     </div>
                     <a href="{{ route('profile.setup') }}?step=2&return=profile.edit" class="rv-edit">Edit</a>
                 </div>
-                <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $profile->daily_budget ? currency_symbol() . number_format($profile->daily_budget) : '—' }}</div>
+                <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $budgetAmount ? $budgetSymbol . number_format($budgetAmount) : '—' }}</div>
                 <div style="height:4px;border-radius:2px;background:var(--bg);margin-top:8px;overflow:hidden;">
-                    <div style="height:100%;width:{{ $profile->daily_budget ? min(100, round($profile->daily_budget / 3000 * 100)) : 0 }}%;background:var(--primary);"></div>
+                    <div style="height:100%;width:{{ $budgetAmount ? min(100, round($budgetAmount / 3000 * 100)) : 0 }}%;background:var(--primary);"></div>
                 </div>
             </div>
 

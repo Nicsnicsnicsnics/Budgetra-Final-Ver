@@ -302,7 +302,6 @@
                 <span class="rv-edit" wire:click="$set('step', 1)">Edit</span>
             </div>
             <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $homeCity ?: '—' }}</div>
-            <div style="font-size:11px;color:var(--muted);">Philippines</div>
         </div>
 
         {{-- Budget --}}
@@ -314,7 +313,7 @@
                 </div>
                 <span class="rv-edit" wire:click="$set('step', 2)">Edit</span>
             </div>
-            <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $dailyBudget ? currency_symbol().number_format($dailyBudget) : '—' }}</div>
+            <div style="font-size:15px;font-weight:700;color:var(--dark);">{{ $dailyBudget ? $budgetSymbol.number_format($dailyBudget) : '—' }}</div>
             <div style="height:4px;border-radius:2px;background:var(--bg);margin-top:8px;overflow:hidden;">
                 <div style="height:100%;width:{{ $dailyBudget ? min(100, round($dailyBudget / 3000 * 100)) : 0 }}%;background:var(--primary);"></div>
             </div>
