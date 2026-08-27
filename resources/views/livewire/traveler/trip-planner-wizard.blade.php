@@ -58,7 +58,7 @@ $allCities = array_merge(
   40%,60%{transform:translateX(6px);}
 }
 @media (prefers-reduced-motion:reduce){.pyt-field.is-bad{animation:none;}}
-.pyt-icon{width:32px;height:32px;border-radius:9px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pyt-icon{width:32px;height:32px;border-radius:9px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pyt-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:8px;}
 .pyt-value{font-size:16px;font-weight:600;color:var(--dark);}
 .pyt-placeholder{font-size:16px;color:#C4B8AC;}
@@ -76,11 +76,11 @@ $allCities = array_merge(
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;}
 .cal-day-name{font-size:10px;font-weight:700;color:var(--muted);padding:4px 0;}
 .cal-day{font-size:12px;font-weight:500;padding:6px 4px;border-radius:6px;cursor:pointer;}
-.cal-day:hover{background:var(--bg);}
+.cal-day:hover:not(.past):not(.empty){background:var(--bg);}
 .cal-day.selected{background:var(--primary);color:#fff;}
 .cal-day.empty{cursor:default;}
-.cal-day.in-range{background:#F5EDE7;color:var(--primary);}
-.cal-day.past{color:#D1C8C0;cursor:not-allowed;}
+.cal-day.in-range{background:var(--primary-light);color:var(--primary);}
+.cal-day.past{color:var(--muted);opacity:.35;cursor:not-allowed;}
 .pyt-budget-input::placeholder{color:#C4B8AC;font-weight:400;}
 </style>
 
@@ -627,8 +627,8 @@ $allCities2 = array_merge(
 .cal-day:hover:not(.past):not(.empty){background:var(--bg);}
 .cal-day.selected{background:var(--primary);color:#fff;}
 .cal-day.empty{cursor:default;}
-.cal-day.in-range{background:#F5EDE7;color:var(--primary);}
-.cal-day.past{color:#D1C8C0;cursor:not-allowed;}
+.cal-day.in-range{background:var(--primary-light);color:var(--primary);}
+.cal-day.past{color:var(--muted);opacity:.35;cursor:not-allowed;}
 </style>
 
 <div x-data="pytFlight()" x-init="init()" style="padding-bottom:20px;">
@@ -982,7 +982,7 @@ $allCities2 = array_merge(
     {{-- Loading --}}
     @if ($flightLoading)
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--dark);font-size:15px;font-weight:600;margin:0;">Searching for flights…</p>
@@ -996,7 +996,7 @@ $allCities2 = array_merge(
     </div>
     @elseif (empty($flightResults))
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-plane-slash" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--muted);font-size:15px;margin:0;">No flights found. Try searching above.</p>
@@ -1176,7 +1176,7 @@ $allCities2 = array_merge(
     {{-- Shown only when the airline filter hides every card. Hidden by
          default and toggled by filterAirline(), so it never flashes. --}}
     <div id="flight-airline-empty" style="display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:52px;height:52px;border-radius:15px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
+        <div style="width:52px;height:52px;border-radius:15px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
             <i class="fa-solid fa-plane-slash" style="font-size:20px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--muted);font-size:15px;margin:0 0 14px;">No flights from <b x-text="airline" style="color:var(--dark);"></b> in these results.</p>
@@ -1400,11 +1400,11 @@ window.sortVenues = function(dir) {
 @if ($planningMode !== '' && $step === 3)
 <style>
 [x-cloak]{display:none!important;}
-.acc-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;transition:box-shadow .2s,transform .2s,border-color .2s;}
+.acc-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:grid;grid-template-columns:140px 1fr auto;align-items:stretch;transition:box-shadow .2s,transform .2s,border-color .2s;}
 .acc-card:hover{box-shadow:0 10px 30px rgba(45,27,20,0.10);transform:translateY(-2px);border-color:#E7D4C4;}
-.acc-img{width:140px;height:100%;min-height:132px;flex-shrink:0;object-fit:cover;align-self:stretch;display:block;}
-.acc-body{flex:1;padding:16px 20px;display:flex;flex-direction:column;justify-content:center;gap:4px;}
-.acc-action{padding:16px 20px;display:flex;align-items:center;flex-shrink:0;}
+.acc-img{width:100%;height:100%;min-height:132px;object-fit:cover;display:block;}
+.acc-body{min-width:0;padding:16px 20px;display:flex;flex-direction:column;justify-content:center;gap:4px;}
+.acc-action{padding:16px 20px;display:flex;align-items:center;}
 </style>
 
 <div x-data="{guestOpen:false,guests:'1 Adult',filterType:'hotel'}" style="padding-bottom:20px;">
@@ -1552,7 +1552,7 @@ window.sortVenues = function(dir) {
     {{-- Results --}}
     @if ($hotelLoading || ($mcHotelStep && $mcHotelLoading))
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--dark);font-size:15px;font-weight:600;margin:0;">Searching for accommodations…</p>
@@ -1568,12 +1568,11 @@ window.sortVenues = function(dir) {
 
     @if (!$hasHotels)
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-hotel" style="font-size:22px;color:var(--primary);"></i>
         </div>
         @if ($hotelSearchApplied !== '' && !empty($allHotels))
-        <p style="color:var(--muted);font-size:15px;margin:0 0 14px;">No stays match &ldquo;{{ $hotelSearchApplied }}&rdquo;.</p>
-        <button type="button" class="tp-search-go" wire:click="clearHotelSearch">Clear search</button>
+        <p style="color:var(--muted);font-size:15px;margin:0;">No stays match &ldquo;{{ $hotelSearchApplied }}&rdquo;.</p>
         @else
         <p style="color:var(--muted);font-size:15px;margin:0;">{{ $hotelError ?: 'No stays found. Try searching above.' }}</p>
         @endif
@@ -1649,11 +1648,11 @@ window.sortVenues = function(dir) {
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($planningMode !== '' && $step === 4)
 <style>
-.venue-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s,border-color .2s;}
+.venue-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:grid;grid-template-columns:130px 1fr auto;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s,border-color .2s;}
 .venue-card:hover{box-shadow:0 10px 30px rgba(45,27,20,0.10);transform:translateY(-2px);border-color:#E7D4C4;}
-.venue-img{width:130px;height:100%;min-height:110px;flex-shrink:0;object-fit:cover;align-self:stretch;display:block;}
-.venue-body{flex:1;padding:14px 18px;min-width:0;}
-.venue-action{padding:16px 20px;display:flex;align-items:center;flex-shrink:0;}
+.venue-img{width:100%;height:100%;min-height:110px;object-fit:cover;display:block;}
+.venue-body{min-width:0;padding:14px 18px;}
+.venue-action{padding:16px 20px;display:flex;align-items:center;}
 </style>
 
 <div style="padding-bottom:20px;">
@@ -1801,19 +1800,18 @@ window.sortVenues = function(dir) {
     {{-- Leg 1 venue list --}}
     @if($venueLoading)
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--dark);font-size:15px;font-weight:600;margin:0;">Searching for dining options…</p>
     </div>
     @elseif(empty($this->filterResults($venueResults, $venueSearchApplied)))
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-utensils" style="font-size:22px;color:var(--primary);"></i>
         </div>
         @if ($venueSearchApplied !== '' && !empty($venueResults))
-        <p style="color:var(--muted);font-size:15px;margin:0 0 14px;">No dining spots match &ldquo;{{ $venueSearchApplied }}&rdquo;.</p>
-        <button type="button" class="tp-search-go" wire:click="clearVenueSearch">Clear search</button>
+        <p style="color:var(--muted);font-size:15px;margin:0;">No dining spots match &ldquo;{{ $venueSearchApplied }}&rdquo;.</p>
         @else
         <p style="color:var(--muted);font-size:15px;margin:0;">{{ $venueError ?: 'No venues found. Try searching above.' }}</p>
         @endif
@@ -1881,14 +1879,14 @@ window.sortVenues = function(dir) {
     {{-- Leg 2 venue list (multi-city second destination) --}}
     @if($mcVenueLoading)
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--dark);font-size:15px;font-weight:600;margin:0;">Searching for dining options in {{ $mcTo }}…</p>
     </div>
     @elseif(empty($mcVenueResults))
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-utensils" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--muted);font-size:15px;margin:0;">{{ $venueError ?: 'No venues found for '.$mcTo.'.' }}</p>
@@ -1961,11 +1959,11 @@ window.sortVenues = function(dir) {
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($planningMode !== '' && $step === 5)
 <style>
-.attr-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s,border-color .2s;}
+.attr-card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:grid;grid-template-columns:140px 1fr auto;align-items:stretch;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s,border-color .2s;}
 .attr-card:hover{box-shadow:0 10px 30px rgba(45,27,20,0.10);transform:translateY(-2px);border-color:#E7D4C4;}
-.attr-img{width:140px;height:100%;min-height:120px;flex-shrink:0;object-fit:cover;object-position:center;display:block;align-self:stretch;}
-.attr-body{flex:1;padding:14px 18px;min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;}
-.attr-action{padding:16px 20px;display:flex;align-items:center;flex-shrink:0;}
+.attr-img{width:100%;height:100%;min-height:120px;object-fit:cover;object-position:center;display:block;}
+.attr-body{min-width:0;padding:14px 18px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;}
+.attr-action{padding:16px 20px;display:flex;align-items:center;}
 </style>
 
 <div style="padding-bottom:20px;">
@@ -2110,19 +2108,18 @@ window.sortVenues = function(dir) {
     @endphp
     @if($attractionLoading || ($mcAttractionStep && $mcAttractionLoading))
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:var(--primary);"></i>
         </div>
         <p style="color:var(--dark);font-size:15px;font-weight:600;margin:0;">Searching for attractions…</p>
     </div>
     @elseif(empty($activeAttractions))
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
             <i class="fa-solid fa-binoculars" style="font-size:22px;color:var(--primary);"></i>
         </div>
         @if ($attractionSearchApplied !== '' && !empty($allAttractions))
-        <p style="color:var(--muted);font-size:15px;margin:0 0 14px;">No attractions match &ldquo;{{ $attractionSearchApplied }}&rdquo;.</p>
-        <button type="button" class="tp-search-go" wire:click="clearAttractionSearch">Clear search</button>
+        <p style="color:var(--muted);font-size:15px;margin:0;">No attractions match &ldquo;{{ $attractionSearchApplied }}&rdquo;.</p>
         @else
         <p style="color:var(--muted);font-size:15px;margin:0;">{{ $attractionError ?: 'No attractions found. Try searching above.' }}</p>
         @endif
@@ -2224,36 +2221,75 @@ window.sortAttractions = function(dir) {
      STEP 6 — Emergency Fund
 ═══════════════════════════════════════════════════════════════ --}}
 @if ($planningMode !== '' && $step === 6)
-<style>.emergency-fund-input::placeholder{font-weight:400 !important;color:var(--muted);}</style>
+<style>
+.emergency-fund-input::placeholder{font-weight:400 !important;color:var(--muted);}
+.ef-field{display:flex;align-items:center;gap:16px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:14px;padding:18px 22px;transition:border-color .18s,background .18s,box-shadow .18s;}
+/* Same required-but-empty treatment as the Trip Details fields. Beats
+   :hover/:focus-within so the red survives the pointer landing on it. */
+.ef-field.is-bad,.ef-field.is-bad:hover,.ef-field.is-bad:focus-within{
+    border-color:#FF3B3B;box-shadow:0 0 0 3px rgba(255,59,59,.20);
+    animation:pyt-shake .48s cubic-bezier(.36,.07,.19,.97) both;}
+@media (prefers-reduced-motion:reduce){.ef-field.is-bad{animation:none;}}
+.ef-clear{margin-left:auto;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:none;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:0;transition:background .15s,color .15s;}
+.ef-clear:hover{background:var(--border-light);color:var(--dark);}
+.ef-clear:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+</style>
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 120px);padding:40px 24px;text-align:center;">
 
     <h1 style="font-size:38px;font-weight:800;color:var(--dark);margin:0 0 14px;">Emergency Fund</h1>
     <p style="font-size:16px;color:var(--muted);margin:0 0 40px;max-width:560px;line-height:1.6;">Set aside a safety net for unexpected expenses during your journey.</p>
 
-    <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;width:100%;max-width:680px;box-shadow:0 4px 20px rgba(0,0,0,0.07);overflow:hidden;">
+    <div x-data="{
+            display: '',
+            bad: false,
+            init() {
+                if ($wire.emergency) this.display = Number($wire.emergency).toLocaleString('en-PH');
+            },
+            format(e) {
+                let raw = e.target.value.replace(/[^\d]/g, '').slice(0, 7);
+                this.display = raw ? Number(raw).toLocaleString('en-PH') : '';
+                this.bad = false;
+                $wire.set('emergency', raw ? Number(raw) : 0);
+            },
+            clear() {
+                // Drop the local display and the Livewire property together, or
+                // the amount reappears on the next render from whichever half
+                // wasn't cleared.
+                this.display = '';
+                this.bad = false;
+                $wire.set('emergency', 0);
+                this.$refs.amount?.focus();
+            },
+            flag() {
+                // Drop then re-set on the next frame, otherwise pressing Confirm
+                // again on an already-red field wouldn't restart the shake -- a
+                // CSS animation only plays when the class lands.
+                this.bad = false;
+                this.$nextTick(() => requestAnimationFrame(() => { this.bad = true; }));
+            },
+            submit() {
+                if (!this.display) { this.flag(); return; }
+                $wire.confirmEmergencyFund();
+            }
+         }"
+         @emergency-missing.window="flag()"
+         style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;width:100%;max-width:680px;box-shadow:0 4px 20px rgba(0,0,0,0.07);overflow:hidden;">
 
         {{-- Input area --}}
         <div style="padding:40px 40px 32px;text-align:left;">
             <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:14px;">Your Allocated Emergency Fund (must not exceed 7 digits)</div>
-            <div x-data="{
-                    display: '',
-                    init() {
-                        if ($wire.emergency) this.display = Number($wire.emergency).toLocaleString('en-PH');
-                    },
-                    format(e) {
-                        let raw = e.target.value.replace(/[^\d]/g, '').slice(0, 7);
-                        this.display = raw ? Number(raw).toLocaleString('en-PH') : '';
-                        $wire.set('emergency', raw ? Number(raw) : 0);
-                    }
-                 }"
-                 style="display:flex;align-items:center;gap:16px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:14px;padding:18px 22px;transition:border-color .18s,background .18s,box-shadow .18s;">
-                <div style="width:44px;height:44px;border-radius:12px;background:#F5EBDF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <div class="ef-field" :class="{ 'is-bad': bad }">
+                <div style="width:44px;height:44px;border-radius:12px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fa-solid fa-piggy-bank" style="color:var(--primary);font-size:19px;"></i>
                 </div>
                 <input type="text" x-model="display" @input="format($event)" placeholder="Please input amount"
-                       class="emergency-fund-input"
+                       class="emergency-fund-input" x-ref="amount"
                        style="border:none;background:transparent;font-size:20px;font-weight:700;color:var(--dark);outline:none;width:100%;"
                        autocomplete="off">
+                <button type="button" class="ef-clear" title="Clear"
+                        x-show="display" x-cloak @click.stop="clear()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
             @if ($emergencyError)
             <p style="color:var(--danger);font-size:13px;margin:10px 0 0;">{{ $emergencyError }}</p>
@@ -2266,7 +2302,7 @@ window.sortAttractions = function(dir) {
                 <i class="fa-solid fa-circle-info" style="font-size:14px;color:var(--muted);flex-shrink:0;"></i>
                 <span style="font-size:13px;color:var(--muted);line-height:1.4;">This amount is excluded from your daily budget</span>
             </div>
-            <button wire:click="confirmEmergencyFund" wire:loading.attr="disabled" wire:target="confirmEmergencyFund"
+            <button type="button" @click="submit()" wire:loading.attr="disabled" wire:target="confirmEmergencyFund"
                     style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px 28px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;transition:background .18s,gap .18s;"
                     onmouseenter="this.style.background='var(--primary-dark)';this.style.gap='11px'" onmouseleave="this.style.background='var(--primary)';this.style.gap='8px'">
                 <span wire:loading.remove wire:target="confirmEmergencyFund" style="display:inline-flex;align-items:center;gap:8px;">Confirm Amount <i class="fa-solid fa-arrow-right" style="font-size:12px;"></i></span>
@@ -2319,6 +2355,16 @@ window.sortAttractions = function(dir) {
     $budMax = $budMaxRaw ? number_format($budMaxRaw) : '0';
 @endphp
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 120px);padding:40px 24px;">
+
+    {{-- Same back affordance every other step carries, aligned to the card's
+         own left edge (the step is centred, so it needs the matching
+         max-width rather than sitting flush with the page). --}}
+    <div style="width:100%;max-width:480px;">
+        <button wire:click="backFromEdit(6)"
+                style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
+            <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Emergency Fund
+        </button>
+    </div>
 
     <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:22px;padding:32px 28px;width:100%;max-width:480px;box-shadow:0 8px 36px rgba(45,27,20,.08);">
 
@@ -2675,10 +2721,18 @@ window.sortAttractions = function(dir) {
     <div class="itin8-topbar">
         {{-- Left: date + tags + description --}}
         <div class="itin8-left">
+            {{-- One back affordance, never two: on leg 2 of a multi-city trip
+                 "back" means leg 1's itinerary, everywhere else it means the
+                 Generate Itinerary screen this step was launched from. --}}
             @if($flightTripType === 'multi_city' && $mcTo && $itineraryLeg === 2)
             <button wire:click="backToLeg1Itinerary"
                     style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
                 <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Suggested Itineraries
+            </button>
+            @else
+            <button wire:click="backFromEdit(7)"
+                    style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;">
+                <i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Back to Generate Itinerary
             </button>
             @endif
             <div class="itin8-meta">
@@ -2829,7 +2883,13 @@ window.sortAttractions = function(dir) {
         @php
             $opt            = $optionsToRender[$optIdx];
             $optDaysPreview = $buildAllDays($opt);
-            $optLabel       = $opt['_optionLabel'] ?? ('Option ' . ($optIdx + 1));
+            // The generator's own variant names ("Balanced Mix", "Adventure
+            // Focus", "Budget Friendly") are no longer shown -- they described
+            // the prompt that produced the option, not anything the traveler
+            // can verify in the plan itself. The cards are ordered by cost, so
+            // number them in the order they appear rather than by $optIdx,
+            // which is the pre-sort position.
+            $optLabel       = 'Option ' . $loop->iteration;
             $optActive      = $selectedItineraryIndex === $optIdx;
         @endphp
         <div wire:click="selectItineraryOption({{ $optIdx }})"
@@ -3110,7 +3170,7 @@ window.sortAttractions = function(dir) {
         $s9picks[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>implode(', ', array_map(fn($v) => $v['name'] ?? 'Restaurant', $selectedVenues)), 'cost'=>$s9venueBase1, 'editStep'=>4, 'color'=>'#EF4444'];
     }
     if (!empty($selectedAttractions)) {
-        $s9picks[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>implode(', ', array_map(fn($a) => $a['name'] ?? 'Attraction', $selectedAttractions)), 'cost'=>$s9attrBase1, 'editStep'=>5, 'color'=>'#10B981'];
+        $s9picks[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>implode(', ', array_map(fn($a) => $a['name'] ?? 'Attraction', $selectedAttractions)), 'cost'=>$s9attrBase1, 'editStep'=>5, 'color'=>'#FFDA03', 'ink'=>'var(--cat-attraction-ink)'];
     }
 
     $s9picksLeg2 = [];
@@ -3121,7 +3181,7 @@ window.sortAttractions = function(dir) {
             $s9picksLeg2[] = ['icon'=>'fa-utensils', 'label'=>'Food & Dining', 'val'=>implode(', ', array_map(fn($v) => $v['name'] ?? 'Restaurant', $selectedMcVenues)), 'cost'=>$s9venueBase2, 'editStep'=>4, 'color'=>'#EF4444'];
         }
         if (!empty($selectedMcAttractions)) {
-            $s9picksLeg2[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>implode(', ', array_map(fn($a) => $a['name'] ?? 'Attraction', $selectedMcAttractions)), 'cost'=>$s9attrBase2, 'editStep'=>5, 'color'=>'#10B981'];
+            $s9picksLeg2[] = ['icon'=>'fa-camera', 'label'=>'Attraction', 'val'=>implode(', ', array_map(fn($a) => $a['name'] ?? 'Attraction', $selectedMcAttractions)), 'cost'=>$s9attrBase2, 'editStep'=>5, 'color'=>'#FFDA03', 'ink'=>'var(--cat-attraction-ink)'];
         }
     }
 
@@ -3305,7 +3365,7 @@ window.sortAttractions = function(dir) {
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bg);">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <div style="width:28px;height:28px;border-radius:7px;background:{{ $pk['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:{{ $pk['color'] }};"></i>
+                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:{{ $pk['ink'] ?? $pk['color'] }};"></i>
                             </div>
                             <div>
                                 <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">{{ $pk['label'] }}</div>
@@ -3325,7 +3385,7 @@ window.sortAttractions = function(dir) {
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bg);">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <div style="width:28px;height:28px;border-radius:7px;background:{{ $pk['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:{{ $pk['color'] }};"></i>
+                                <i class="fa-solid {{ $pk['icon'] }}" style="font-size:11px;color:{{ $pk['ink'] ?? $pk['color'] }};"></i>
                             </div>
                             <div>
                                 <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">{{ $pk['label'] }}</div>

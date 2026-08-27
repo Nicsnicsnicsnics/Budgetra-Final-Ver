@@ -215,7 +215,15 @@
         // throughout the app's other cost/summary breakdowns.
         $catColor = [
             'flight' => '#3B82F6', 'hotel' => '#0D9488',
-            'food'   => '#EF4444', 'activity' => '#10B981',
+            'food'   => '#EF4444', 'activity' => '#FFDA03',
+        ];
+        // Accent (dot / border / tint) vs ink (text + glyphs). They only differ
+        // for attractions: #FFDA03 is gorgeous on the dark theme but measures
+        // 1.37:1 as text on a light one, so the ink token carries the same hue
+        // at a readable weight and flips back to pure sunflower on nightflight.
+        $catInk = [
+            'flight' => '#3B82F6', 'hotel' => '#0D9488',
+            'food'   => '#EF4444', 'activity' => 'var(--cat-attraction-ink)',
         ];
         $typeToCat = [
             'Flight' => 'flight', 'Accommodation' => 'hotel', 'Hotel' => 'hotel',
@@ -254,6 +262,7 @@
                 'title' => $item->title,
                 'time'  => $item->start_datetime->format('g:i A'),
                 'color' => $catColor[$cat],
+                'ink'   => $catInk[$cat],
             ];
         }
 
@@ -282,7 +291,7 @@
         .itin-nav-btn:disabled{opacity:.35;cursor:default;background:var(--bg-white);border-color:#d3c3be;color:var(--text);}
         .itin-mini-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;border-radius:7px;transition:background .15s;}
         .itin-mini-day-trip{color:var(--dark);font-weight:600;cursor:pointer;}
-        .itin-mini-day-trip:hover{background:#F5EBDF;}
+        .itin-mini-day-trip:hover{background:var(--primary-light);}
         .itin-mini-day-selected,.itin-mini-day-selected:hover{background:var(--primary);color:#fff;}
         .itin-cal-toggle{transition:background .15s;}
         .itin-cal-toggle:hover{background:var(--bg);}
@@ -344,7 +353,7 @@
             <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);">
                 <div style="font-size:12px;font-weight:800;color:var(--dark);margin-bottom:14px;">My Calendars</div>
                 <div style="display:flex;flex-direction:column;gap:4px;">
-                    @foreach([['showFlight','Transportation','#3B82F6'],['showHotel','Accommodation','#0D9488'],['showFood','Food & Dining','#EF4444'],['showActivity','Attractions','#10B981']] as [$flag, $label, $color])
+                    @foreach([['showFlight','Transportation','#3B82F6'],['showHotel','Accommodation','#0D9488'],['showFood','Food & Dining','#EF4444'],['showActivity','Attractions','#FFDA03']] as [$flag, $label, $color])
                     <label class="itin-cal-toggle" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);padding:6px 8px;border-radius:9px;margin:0 -8px;">
                         <span style="width:9px;height:9px;border-radius:50%;background:{{ $color }};flex-shrink:0;"></span>
                         <span style="flex:1;">{{ $label }}</span>
@@ -433,7 +442,7 @@
                         @foreach($shown as $si => $it)
                         @php $cat = array_search($it['color'], $catColor) ?: 'activity'; @endphp
                         <div x-show="show{{ ucfirst($cat === 'hotel' ? 'Hotel' : ($cat==='food'?'Food':($cat==='flight'?'Flight':'Activity'))) }}"
-                             style="background:{{ $it['color'] }}14;border-left:2.5px solid {{ $it['color'] }};border-radius:3px;padding:2px 5px;font-size:9px;font-weight:600;color:{{ $it['color'] }};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:6px;">
+                             style="background:{{ $it['color'] }}14;border-left:2.5px solid {{ $it['color'] }};border-radius:3px;padding:2px 5px;font-size:9px;font-weight:600;color:{{ $it['ink'] }};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:6px;">
                             {{ $it['time'] }} - {{ $it['title'] }}
                         </div>
                         @endforeach
@@ -488,7 +497,7 @@
                                 @foreach($dayItemsList as $it)
                                 @php $cat = array_search($it['color'], $catColor) ?: 'activity'; @endphp
                                 <div x-show="show{{ ucfirst($cat === 'hotel' ? 'Hotel' : ($cat==='food'?'Food':($cat==='flight'?'Flight':'Activity'))) }}"
-                                     style="background:{{ $it['color'] }}14;border-left:2.5px solid {{ $it['color'] }};border-radius:3px;padding:3px 6px;font-size:10px;font-weight:600;color:{{ $it['color'] }};margin-bottom:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
+                                     style="background:{{ $it['color'] }}14;border-left:2.5px solid {{ $it['color'] }};border-radius:3px;padding:3px 6px;font-size:10px;font-weight:600;color:{{ $it['ink'] }};margin-bottom:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
                                     {{ $it['time'] }} - {{ $it['title'] }}
                                 </div>
                                 @endforeach
@@ -514,7 +523,7 @@
                     @php $cat = array_search($it['color'], $catColor) ?: 'activity'; @endphp
                     <div x-show="show{{ ucfirst($cat === 'hotel' ? 'Hotel' : ($cat==='food'?'Food':($cat==='flight'?'Flight':'Activity'))) }}"
                          style="display:flex;flex-direction:column;gap:4px;background:{{ $it['color'] }}0D;border-left:3px solid {{ $it['color'] }};border-radius:10px;padding:14px 18px;margin-bottom:18px;">
-                        <div style="font-size:12px;font-weight:700;color:{{ $it['color'] }};">{{ $it['time'] }}</div>
+                        <div style="font-size:12px;font-weight:700;color:{{ $it['ink'] }};">{{ $it['time'] }}</div>
                         <div style="font-size:14px;font-weight:600;color:var(--dark);">{{ $it['title'] }}</div>
                     </div>
                     @endforeach
@@ -637,9 +646,9 @@ $msIconMap = [
     'Transportation' => ['icon'=>'directions_car',  'color'=>'#3B82F6'],
     'Dining'         => ['icon'=>'restaurant',      'color'=>'#EF4444'],
     'Food'           => ['icon'=>'restaurant',      'color'=>'#EF4444'],
-    'Attraction'     => ['icon'=>'photo_camera',    'color'=>'#10B981'],
-    'Shopping'       => ['icon'=>'shopping_bag',    'color'=>'#10B981'],
-    'Activity'       => ['icon'=>'explore',         'color'=>'#10B981'],
+    'Attraction'     => ['icon'=>'photo_camera',    'color'=>'#FFDA03', 'ink'=>'var(--cat-attraction-ink)'],
+    'Shopping'       => ['icon'=>'shopping_bag',    'color'=>'#FFDA03', 'ink'=>'var(--cat-attraction-ink)'],
+    'Activity'       => ['icon'=>'explore',         'color'=>'#FFDA03', 'ink'=>'var(--cat-attraction-ink)'],
 ];
 $titleIconMap = [
     'breakfast'  => ['icon'=>'free_breakfast',  'color'=>'#e07b39'],
@@ -738,7 +747,7 @@ $titleIconMap = [
             @endphp
             <div class="day-modal-row" style="display:flex;align-items:flex-start;gap:13px;padding:12px;border-radius:14px;">
                 <div style="width:38px;height:38px;border-radius:12px;background:{{ $mi['color'] }}1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
-                    <span class="material-symbols-outlined" style="font-size:19px;color:{{ $mi['color'] }};font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24;">{{ $mi['icon'] }}</span>
+                    <span class="material-symbols-outlined" style="font-size:19px;color:{{ $mi['ink'] ?? $mi['color'] }};font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24;">{{ $mi['icon'] }}</span>
                 </div>
                 <div style="flex:1;min-width:0;padding-top:1px;">
                     <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:3px;">{{ $item->title }}</div>

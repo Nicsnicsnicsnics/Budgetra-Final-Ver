@@ -111,12 +111,21 @@
         @foreach ($stGroups as $stGroup)
         <div x-show="tab === '{{ $stGroup['key'] }}'" x-cloak style="display:flex;flex-direction:column;">
             @if ($stGroup['items']->isEmpty())
+            {{-- A search that matched nothing is a different situation from an
+                 empty tab: the trips may well exist, just not under this term.
+                 Saying "No saved trips yet" there would be wrong, and would
+                 point the traveler at planning a trip they already have. --}}
             <div style="min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
                 <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-                    <i class="{{ $stGroup['icon'] }}" style="font-size:24px;color:#fff;"></i>
+                    <i class="{{ $search ? 'fa-solid fa-magnifying-glass' : $stGroup['icon'] }}" style="font-size:24px;color:#fff;"></i>
                 </div>
+                @if ($search)
+                <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No trips found</h3>
+                <p style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">Try searching another trip.</p>
+                @else
                 <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No {{ $stGroup['label'] }} yet</h3>
                 <p style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">Plan a trip first to see your {{ $stGroup['noun'] }}.</p>
+                @endif
             </div>
             @else
             @php $stTotalPages = (int) ceil($stGroup['items']->count() / 3); @endphp

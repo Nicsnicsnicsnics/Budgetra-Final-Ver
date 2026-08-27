@@ -823,6 +823,31 @@ class TripPlannerWizard extends Component
         $this->searchManualFlights();
     }
 
+    /**
+     * Keeps only nonstop itineraries.
+     *
+     * Google Flights returns connections whose layover dwarfs the flying —
+     * a "16h 15m" Cebu-Manila option that is a short hop plus 14h 20m sitting
+     * in Bacolod. Those are not trips anyone plans around, and their total
+     * duration was feeding the trip's travel estimate as if it were airtime.
+     *
+     * If a route has no direct service at all (long-haul international, say),
+     * the connecting options are kept rather than showing an empty board and
+     * a "we couldn't load flights" message that would not be true.
+     *
+     * array_values matters: selectFlight()/selectMcFlight() index into these
+     * arrays by position, and array_filter preserves the original keys.
+     */
+    private function directOnly(array $flights): array
+    {
+        $direct = array_values(array_filter(
+            $flights,
+            fn ($f) => (int) ($f['stops'] ?? 0) === 0
+        ));
+
+        return $direct ?: $flights;
+    }
+
     public function searchManualFlights(): void
     {
         set_time_limit(120);
@@ -853,11 +878,11 @@ class TripPlannerWizard extends Component
                 $serper = new SerperService();
                 $data = $serper->searchFlights($fromCode, $toCode, $depart, $return);
             }
-            $this->flightResults = $data ?? [];
+            $this->flightResults = $this->directOnly($data ?? []);
         } catch (\Throwable $e) {
             try {
                 $serper = new SerperService();
-                $this->flightResults = $serper->searchFlights($fromCode, $toCode, $depart, $return) ?? [];
+                $this->flightResults = $this->directOnly($serper->searchFlights($fromCode, $toCode, $depart, $return) ?? []);
             } catch (\Throwable $e2) {
                 $this->flightResults = [];
             }
@@ -936,11 +961,11 @@ class TripPlannerWizard extends Component
                     $serper = new SerperService();
                     $data = $serper->searchFlights($fromCode, $toCode, $this->mcStartDate);
                 }
-                $this->mcFlightResults = $data ?? [];
+                $this->mcFlightResults = $this->directOnly($data ?? []);
             } catch (\Throwable $e) {
                 try {
                     $serper = new SerperService();
-                    $this->mcFlightResults = $serper->searchFlights($fromCode, $toCode, $this->mcStartDate) ?? [];
+                    $this->mcFlightResults = $this->directOnly($serper->searchFlights($fromCode, $toCode, $this->mcStartDate) ?? []);
                 } catch (\Throwable $e2) {
                     $this->mcFlightResults = [];
                 }
@@ -1616,6 +1641,16 @@ class TripPlannerWizard extends Component
 
     public function confirmEmergencyFund(): void
     {
+        // Required-but-empty. Nothing gated this before, so pressing Confirm
+        // Amount on an untouched field advanced straight to step 7 with a
+        // fund of 0. Shake the field instead of moving on, matching the
+        // Trip Details fields.
+        if ((int) $this->emergency <= 0) {
+            $this->emergencyError = '';
+            $this->dispatch('emergency-missing');
+            return;
+        }
+
         // An emergency fund >= the whole entered budget zeroes out the
         // remaining activity budget in generateItinerary()/regenerateItinerary(),
         // which then falls back to a floor (aiBudMin + 500) with no real

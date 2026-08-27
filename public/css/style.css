@@ -22,6 +22,14 @@
   --neutral: #101F4A;
   --success: #16A34A;
   --danger: #DC2626;
+  /* Attractions category. #FFDA03 is the identity colour and is used as-is
+     for the legend dot, chip border and background tint at every theme. As
+     TEXT, though, it measures 1.37:1 on a light surface — invisible. So the
+     glyphs/labels use an "ink" variant that carries the same hue at a
+     readable weight; the dark theme swaps it back to the pure sunflower,
+     where it reads at 11.8:1. */
+  --cat-attraction: #FFDA03;
+  --cat-attraction-ink: #8A6A00;
   --warning: #D97706;
   --bg: #F8F5F2;
   --bg-white: #FFFFFF;
@@ -93,6 +101,8 @@
   --success: #4ADE80;
   /* Same story for the red: #DC2626 sits at ~3.4:1 on --bg-white here. */
   --danger: #F87171;
+  /* On this surface the pure sunflower is the readable choice (11.8:1). */
+  --cat-attraction-ink: #FFDA03;
   --primary: #7C8CFF;
   --primary-dark: #5F6FE0;
   --primary-hover: #5F6FE0;

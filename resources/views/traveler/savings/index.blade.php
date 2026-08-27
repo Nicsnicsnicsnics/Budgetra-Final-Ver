@@ -1,5 +1,21 @@
 @extends('layouts.app')
 @section('title', 'Savings Goals')
+
+@push('styles')
+<style>
+    /* The layout lives in a class, not an inline style, because x-show
+       un-hides by calling style.removeProperty('display') — which strips an
+       inline display:flex along with the display:none it set, leaving the
+       block laid out as plain flow (icon hard left, heading centred only by
+       text-align, paragraph adrift). A class rule survives that. */
+    .sg-empty {
+        min-height: 360px; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        text-align: center; padding: 40px 20px;
+    }
+</style>
+@endpush
+
 @section('content')
 
 
@@ -97,12 +113,18 @@
         @foreach ($sgGroups as $sgGroup)
         <div x-show="tab === '{{ $sgGroup['key'] }}'" x-cloak style="display:flex;flex-direction:column;">
             @if ($sgGroup['items']->isEmpty())
-            <div style="min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
+            {{-- Searching an already-empty tab still needs the search wording:
+                 "No past goals yet" would answer a question the traveler
+                 didn't ask and point them at planning a trip instead. --}}
+            <div class="sg-empty">
                 <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-                    <i class="{{ $sgGroup['icon'] }}" style="font-size:24px;color:#fff;"></i>
+                    <i class="{{ $sgGroup['icon'] }}" x-show="q.trim() === ''" style="font-size:24px;color:#fff;"></i>
+                    <i class="fa-solid fa-magnifying-glass" x-show="q.trim() !== ''" x-cloak style="font-size:22px;color:#fff;"></i>
                 </div>
-                <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No {{ $sgGroup['label'] }} yet</h3>
-                <p style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">Plan a trip first to see your {{ $sgGroup['noun'] }}.</p>
+                <h3 x-show="q.trim() === ''" style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No {{ $sgGroup['label'] }} yet</h3>
+                <p x-show="q.trim() === ''" style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">Plan a trip first to see your {{ $sgGroup['noun'] }}.</p>
+                <h3 x-show="q.trim() !== ''" x-cloak style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No goals found</h3>
+                <p x-show="q.trim() !== ''" x-cloak style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">Try searching another goal.</p>
             </div>
             @else
             <div style="width:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:20px;align-items:flex-start;">
@@ -117,15 +139,12 @@
                 @endforeach
             </div>
             {{-- Shown only while a search is filtering everything out. --}}
-            <div x-show="q.trim() !== '' && countFor('{{ $sgGroup['key'] }}') === 0" x-cloak
-                 style="min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;">
+            <div x-show="q.trim() !== '' && countFor('{{ $sgGroup['key'] }}') === 0" x-cloak class="sg-empty">
                 <div style="width:56px;height:56px;border-radius:16px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
                     <i class="fa-solid fa-magnifying-glass" style="font-size:22px;color:#fff;"></i>
                 </div>
-                <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No goals match your search</h3>
-                <p style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">
-                    Nothing in {{ strtolower($sgGroup['label']) }} matches &ldquo;<span x-text="q"></span>&rdquo;.
-                </p>
+                <h3 style="font-weight:700;font-size:17px;margin:0 0 6px;color:var(--dark);">No goals found</h3>
+                <p style="color:var(--muted);font-size:13px;max-width:280px;line-height:1.6;margin:0;">Try searching another goal.</p>
             </div>
             @endif
         </div>
