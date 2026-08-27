@@ -2335,7 +2335,6 @@ window.sortAttractions = function(dir) {
                 $wire.confirmEmergencyFund();
             }
          }"
-         @emergency-missing.window="flag()"
          style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:20px;width:100%;max-width:680px;box-shadow:0 4px 20px rgba(0,0,0,0.07);overflow:hidden;">
 
         {{-- Input area --}}

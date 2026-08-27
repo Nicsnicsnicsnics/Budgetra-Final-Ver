@@ -1724,16 +1724,11 @@ class TripPlannerWizard extends Component
 
     public function confirmEmergencyFund(): void
     {
-        // Required-but-empty. Nothing gated this before, so pressing Confirm
-        // Amount on an untouched field advanced straight to step 7 with a
-        // fund of 0. Shake the field instead of moving on, matching the Trip
-        // Details fields. Checked ahead of the conversion below so an empty
-        // field never spends a call on the exchange-rate API.
-        if ((int) $this->emergency <= 0) {
-            $this->emergencyError = '';
-            $this->dispatch('emergency-missing');
-            return;
-        }
+        // No zero-check here on purpose: a fund of 0 is a legitimate value
+        // server-side (see TripPlannerWizardTest::test_confirming_emergency_
+        // fund_skips_the_modal_for_a_domestic_destination). The empty-FIELD
+        // case the traveler sees is gated in Alpine's submit() on step 6,
+        // which shakes the field and never calls this method.
 
         if (!$this->emergencyConverted && $this->tripCurrency !== '' && $this->tripCurrency !== 'PHP' && $this->emergency > 0) {
             $rate = (new CurrencyConverterService())->rateToPhp($this->tripCurrency);
