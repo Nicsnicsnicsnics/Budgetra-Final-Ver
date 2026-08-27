@@ -19,6 +19,7 @@ class RegisterController extends Controller
             'last_name'  => 'required|string|max:100',
             'email'      => 'required|email|max:255|unique:users,email',
             'password'   => 'required|string|min:8|confirmed',
+            'country'    => 'nullable|string|max:255',
         ]);
 
         $user = User::create([
@@ -27,6 +28,7 @@ class RegisterController extends Controller
             'full_name'  => trim($validated['first_name'].' '.$validated['last_name']),
             'email'      => $validated['email'],
             'password'   => $validated['password'],
+            'country'    => $validated['country'] ?? null,
             'role'       => 'traveler',
         ]);
 

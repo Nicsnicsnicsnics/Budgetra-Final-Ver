@@ -74,4 +74,36 @@ class RegisterTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user)->get('/register')->assertRedirect(route('dashboard'));
     }
+
+    // The Country dropdown at registration used to be purely decorative —
+    // the controller never read it, so every account ended up with
+    // country = null regardless of what was picked. Confirms it's now
+    // actually persisted.
+    public function test_register_saves_the_selected_country(): void
+    {
+        $this->post('/register', [
+            'first_name'            => 'Kent',
+            'last_name'             => 'Pielago',
+            'email'                 => 'kent@example.com',
+            'password'              => 'password123',
+            'password_confirmation' => 'password123',
+            'country'               => 'Canada',
+        ]);
+
+        $this->assertDatabaseHas('users', ['email' => 'kent@example.com', 'country' => 'Canada']);
+    }
+
+    public function test_register_succeeds_without_a_country_selected(): void
+    {
+        $response = $this->post('/register', [
+            'first_name'            => 'Kent',
+            'last_name'             => 'Pielago',
+            'email'                 => 'kent@example.com',
+            'password'              => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertRedirect(route('login'));
+        $this->assertDatabaseHas('users', ['email' => 'kent@example.com', 'country' => null]);
+    }
 }
