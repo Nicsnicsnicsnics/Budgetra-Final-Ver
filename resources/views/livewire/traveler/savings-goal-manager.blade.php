@@ -89,11 +89,11 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;">
             <div>
                 <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Saved Amount</div>
-                <div style="font-size:23px;font-weight:800;color:#C8874A;">{{ currency_code() }} {{ number_format($goal->current_savings, 2) }}</div>
+                <div style="font-size:23px;font-weight:800;color:#C8874A;">{{ $this->displayAmount($goal->current_savings) }}</div>
             </div>
             <div style="text-align:right;">
                 <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Target Goal</div>
-                <div style="font-size:23px;font-weight:800;color:var(--dark);">{{ currency_code() }} {{ number_format($targetCost, 2) }}</div>
+                <div style="font-size:23px;font-weight:800;color:var(--dark);">{{ $this->displayAmount($targetCost) }}</div>
             </div>
         </div>
 
@@ -154,7 +154,10 @@
                     }"
                      style="display:flex;align-items:center;gap:10px;background:var(--bg-white);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;transition:border-color .18s,box-shadow .18s;"
                      onfocusin="this.style.borderColor='var(--primary)';this.style.boxShadow='0 0 0 4px rgba(147,75,25,0.08)'" onfocusout="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
-                    <span style="font-size:14px;font-weight:600;color:var(--muted);flex-shrink:0;">{{ currency_code() }}</span>
+                    {{-- Pesos, not $this->displayAmount() — deposits are typed
+                         and tracked in pesos with no conversion, so this must
+                         stay honest about what unit you're actually typing. --}}
+                    <span style="font-size:14px;font-weight:600;color:var(--muted);flex-shrink:0;">₱</span>
                     <input type="text" inputmode="decimal"
                            x-model="display" @input="update($event)"
                            style="flex:1;border:none;outline:none;font-size:15px;font-weight:600;color:var(--dark);background:transparent;font-family:'Hanken Grotesk',sans-serif;"

@@ -3,6 +3,8 @@ namespace App\Livewire\Traveler;
 
 use App\Models\Notification;
 use App\Models\SavingsGoal;
+use App\Services\CurrencyConverterService;
+use App\Support\PlaceCatalog;
 use Carbon\Carbon;
 use Livewire\Component;
 
@@ -51,7 +53,7 @@ class SavingsGoalManager extends Component
                 'max:' . $remaining,
             ],
         ], [
-            'depositAmount.max' => 'Amount can\'t exceed the remaining ' . currency_symbol() . number_format($remaining, 2) . ' needed to reach this goal.',
+            'depositAmount.max' => 'Amount can\'t exceed the remaining ₱' . number_format($remaining, 2) . ' needed to reach this goal.',
         ]);
 
         // No stored "completed" flag on the goal, so detect "just reached it on
@@ -67,7 +69,7 @@ class SavingsGoalManager extends Component
                 'user_id' => $this->goal->user_id,
                 'trip_id' => $this->goal->trip_id,
                 'type'    => 'savings_goal_reached',
-                'message' => "Congratulations! You've reached your savings goal \"{$this->goal->goal_name}\" — " . currency_symbol()
+                'message' => "Congratulations! You've reached your savings goal \"{$this->goal->goal_name}\" — ₱"
                     . number_format($this->goal->current_savings, 2) . ' saved!',
                 'is_read' => false,
             ]);
@@ -82,9 +84,9 @@ class SavingsGoalManager extends Component
                 'user_id' => $this->goal->user_id,
                 'trip_id' => $this->goal->trip_id,
                 'type'    => 'savings_goal_deposit',
-                'message' => 'You added ' . currency_symbol() . number_format($this->depositAmount, 2)
-                    . " to \"{$this->goal->goal_name}\" — now " . currency_symbol() . number_format($this->goal->current_savings, 2)
-                    . ' of ' . currency_symbol() . number_format($this->goal->target_amount, 2) . " saved ({$pct}%).",
+                'message' => 'You added ₱' . number_format($this->depositAmount, 2)
+                    . " to \"{$this->goal->goal_name}\" — now ₱" . number_format($this->goal->current_savings, 2)
+                    . ' of ₱' . number_format($this->goal->target_amount, 2) . " saved ({$pct}%).",
                 'is_read' => false,
             ]);
         }
@@ -92,6 +94,43 @@ class SavingsGoalManager extends Component
         $this->depositAmount = 0;
         $this->showDeposit   = false;
         $this->dispatch('goalUpdated');
+    }
+
+    // Same "Upcoming/Ongoing + destination_currency + live rate" rule as
+    // Saved Trips, so a goal card matches whatever currency its own trip's
+    // card is already showing — not the account's stale, unrelated
+    // currency_code() Settings default (mislabeled peso figures as "USD").
+    private function destinationDisplayCurrency(): ?array
+    {
+        $trip = $this->goal->trip;
+        if (!$trip || !$trip->destination_currency) return null;
+
+        $status = $trip->getRawOriginal('status');
+        if (!$status) {
+            $today  = Carbon::today();
+            $status = $trip->start_date->gt($today) ? 'upcoming' : ($trip->end_date->lt($today) ? 'past' : 'active');
+        }
+        if (!in_array($status, ['active', 'upcoming'], true)) return null;
+
+        $rate = (new CurrencyConverterService())->rateToPhp($trip->destination_currency);
+        if ($rate === null) return null;
+
+        return ['code' => $trip->destination_currency, 'rate' => $rate];
+    }
+
+    // For passive DISPLAY of already-computed peso figures (saved amount,
+    // target goal) — not for input fields. Deposits are still typed and
+    // tracked in pesos (see submitDeposit()), so the "Add Savings" input
+    // itself stays peso-labeled rather than implying a conversion that
+    // doesn't actually happen on the way in.
+    public function displayAmount(float $pesoAmount): string
+    {
+        $currency = $this->destinationDisplayCurrency();
+        if ($currency === null) {
+            return '₱' . number_format($pesoAmount, 2);
+        }
+        $symbol = PlaceCatalog::CURRENCY_SYMBOLS[$currency['code']] ?? $currency['code'];
+        return $symbol . number_format($pesoAmount / $currency['rate'], 2);
     }
 
     public function getPctProperty(): float
