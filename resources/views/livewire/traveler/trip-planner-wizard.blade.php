@@ -1069,7 +1069,7 @@ $allCities2 = array_merge(
                     <div style="font-size:12px;color:var(--muted);margin-top:3px;">{{ $flight['arr_id'] ?? '' }}@if($dayOff > 0)<span style="white-space:nowrap;"> · next day</span>@endif</div>
                 </div>
                 <div style="text-align:right;">
-                    <div style="font-size:20px;font-weight:800;color:var(--primary);line-height:1;">{{ currency_code() }} {{ number_format($flight['price'] ?? 0) }}</div>
+                    <div style="font-size:20px;font-weight:800;color:var(--primary);line-height:1;">{{ $this->tripDisplayAmount($flight['price'] ?? 0) }}</div>
                     <div style="font-size:11px;color:var(--muted);margin-top:3px;margin-bottom:10px;">{{ $flight['type'] ?? 'One-way' }}</div>
                     <button wire:click="confirmMcFlightPick({{ $idx }})"
                             style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .18s,gap .18s;"
@@ -1094,7 +1094,7 @@ $allCities2 = array_merge(
                 </div>
                 <div style="font-size:19px;font-weight:800;color:var(--dark);margin-bottom:8px;">Fly with {{ $cf['airline'] ?? 'this airline' }}?</div>
                 <div style="font-size:13px;color:var(--muted);line-height:1.6;max-width:280px;margin:0 auto;">
-                    <strong style="color:var(--dark);">{{ currency_code() }} {{ number_format($cf['price'] ?? 0) }}</strong> for this {{ $cf['type'] ?? 'flight' }}.<br>You can still change this before your trip is saved.
+                    <strong style="color:var(--dark);">{{ $this->tripDisplayAmount($cf['price'] ?? 0) }}</strong> for this {{ $cf['type'] ?? 'flight' }}.<br>You can still change this before your trip is saved.
                 </div>
             </div>
             <div style="display:flex;gap:10px;padding:20px 22px 22px;">
@@ -1190,7 +1190,7 @@ $allCities2 = array_merge(
                 </div>
                 {{-- Price + Select --}}
                 <div style="text-align:right;">
-                    <div style="font-size:20px;font-weight:800;color:var(--primary);line-height:1;">{{ currency_code() }} {{ number_format($flight['price'] ?? 0) }}</div>
+                    <div style="font-size:20px;font-weight:800;color:var(--primary);line-height:1;">{{ $this->tripDisplayAmount($flight['price'] ?? 0) }}</div>
                     <div style="font-size:11px;color:var(--muted);margin-top:3px;margin-bottom:10px;">{{ $flight['type'] ?? 'One-way' }}</div>
                     <button wire:click="confirmFlightPick({{ $idx }})"
                             style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .18s,gap .18s;"
@@ -1215,7 +1215,7 @@ $allCities2 = array_merge(
                 </div>
                 <div style="font-size:19px;font-weight:800;color:var(--dark);margin-bottom:8px;">Fly with {{ $cf['airline'] ?? 'this airline' }}?</div>
                 <div style="font-size:13px;color:var(--muted);line-height:1.6;max-width:280px;margin:0 auto;">
-                    <strong style="color:var(--dark);">{{ currency_code() }} {{ number_format($cf['price'] ?? 0) }}</strong> for this {{ $cf['type'] ?? 'flight' }}.<br>You can still change this before your trip is saved.
+                    <strong style="color:var(--dark);">{{ $this->tripDisplayAmount($cf['price'] ?? 0) }}</strong> for this {{ $cf['type'] ?? 'flight' }}.<br>You can still change this before your trip is saved.
                 </div>
             </div>
             <div style="display:flex;gap:10px;padding:20px 22px 22px;">
@@ -1673,11 +1673,11 @@ window.sortVenues = function(dir) {
                     </div>
                     @endif
                     <div style="margin-top:8px;">
-                        <span style="font-size:18px;font-weight:800;color:var(--dark);">{{ currency_code() }} {{ number_format($hotel['nightly'] ?? 0) }}</span>
+                        <span style="font-size:18px;font-weight:800;color:var(--dark);">{{ $this->tripDisplayAmount($hotel['nightly'] ?? 0) }}</span>
                         <span style="font-size:12px;color:var(--muted);margin-left:4px;">per night</span>
                     </div>
                     @if(!empty($hotel['total']) && !empty($hotel['nights']))
-                    <div style="font-size:12px;color:var(--muted);">{{ currency_code() }} {{ number_format($hotel['total']) }} total · {{ $hotel['nights'] }} night{{ $hotel['nights'] > 1 ? 's' : '' }}</div>
+                    <div style="font-size:12px;color:var(--muted);">{{ $this->tripDisplayAmount($hotel['total']) }} total · {{ $hotel['nights'] }} night{{ $hotel['nights'] > 1 ? 's' : '' }}</div>
                     @endif
                 </div>
                 <div class="acc-action">
@@ -1908,7 +1908,7 @@ window.sortVenues = function(dir) {
                 </div>
                 @endif
                 <div style="font-size:13px;color:var(--primary);font-weight:600;">
-                    {{ currency_symbol() }}{{ number_format($venue['priceMin']) }} – {{ currency_symbol() }}{{ number_format($venue['priceMax']) }}
+                    {{ $this->tripDisplayAmount($venue['priceMin']) }} – {{ $this->tripDisplayAmount($venue['priceMax']) }}
                     <span style="font-size:11px;color:var(--muted);font-weight:400;"> Average price per person</span>
                 </div>
             </div>
@@ -1982,7 +1982,7 @@ window.sortVenues = function(dir) {
                 </div>
                 @endif
                 <div style="font-size:13px;color:var(--primary);font-weight:600;">
-                    {{ currency_symbol() }}{{ number_format($venue['priceMin']) }} – {{ currency_symbol() }}{{ number_format($venue['priceMax']) }}
+                    {{ $this->tripDisplayAmount($venue['priceMin']) }} – {{ $this->tripDisplayAmount($venue['priceMax']) }}
                     <span style="font-size:11px;color:var(--muted);font-weight:400;"> Average price per person</span>
                 </div>
             </div>
@@ -2231,7 +2231,7 @@ window.sortVenues = function(dir) {
                     <span style="font-size:14px;font-weight:700;color:#16A34A;">FREE</span>
                     <span style="font-size:11px;color:var(--muted);margin-left:4px;">Entrance Fee</span>
                     @elseif($attrPriceRaw > 0)
-                    <span style="font-size:14px;font-weight:700;color:var(--dark);">{{ currency_symbol() }}{{ number_format($attrPriceRaw) }}</span>
+                    <span style="font-size:14px;font-weight:700;color:var(--dark);">{{ $this->tripDisplayAmount($attrPriceRaw) }}</span>
                     <span style="font-size:11px;color:var(--muted);margin-left:4px;">Entrance Fee</span>
                     @else
                     <span style="font-size:12px;color:var(--muted);">Entrance fee may apply</span>
@@ -2341,6 +2341,49 @@ window.sortAttractions = function(dir) {
 </div>
 @endif
 
+{{-- Currency-conversion modal — shown after Emergency Fund is confirmed,
+     only when the destination's currency differs from pesos. --}}
+@if ($showCurrencyConvertModal && $destinationCurrencyCode !== null)
+@php
+    // The traveler's real base currency (from their profile's home city)
+    // when one's set, not always pesos — pesos is just the fallback for
+    // travelers whose base currency already is PHP.
+    $fromCode = ($tripCurrency !== '' && $tripCurrency !== 'PHP') ? $tripCurrency : 'PHP';
+    $fromName = \App\Support\PlaceCatalog::CURRENCY_NAMES[$fromCode] ?? $fromCode;
+    $toName   = \App\Support\PlaceCatalog::CURRENCY_NAMES[$destinationCurrencyCode] ?? $destinationCurrencyCode;
+@endphp
+<div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);z-index:2100;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:var(--bg-white);border-radius:24px;width:100%;max-width:380px;overflow:hidden;animation:tpwModalPop .22s cubic-bezier(.34,1.56,.64,1);">
+        <div style="position:relative;background:var(--bg);padding:36px 28px 24px;text-align:center;overflow:hidden;">
+            <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;margin:0 auto 18px;">
+                <i class="fa-solid fa-money-bill-transfer" style="font-size:24px;color:#fff;"></i>
+            </div>
+            <div style="font-size:19px;font-weight:800;color:var(--dark);margin-bottom:8px;">Convert your budget?</div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.6;max-width:280px;margin:0 auto;">
+                Would you like me to convert your budget from {{ $fromName }} ({{ $fromCode }}) to {{ $toName }} ({{ $destinationCurrencyCode }})?
+            </div>
+            @if ($currencyConvertError)
+            <p style="color:var(--danger);font-size:13px;margin:12px 0 0;">{{ $currencyConvertError }}</p>
+            @endif
+        </div>
+        <div style="display:flex;gap:10px;padding:20px 22px 22px;">
+            <button wire:click="declineCurrencyConversion"
+                    style="flex:1;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s,border-color .18s;"
+                    onmouseenter="this.style.background='var(--border-light)';this.style.borderColor='var(--border)'" onmouseleave="this.style.background='transparent';this.style.borderColor='var(--border)'">
+                No, keep pesos
+            </button>
+            <button wire:click="acceptCurrencyConversion" wire:loading.attr="disabled" wire:target="acceptCurrencyConversion"
+                    style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s,transform .12s;"
+                    onmouseenter="this.style.background='var(--primary-dark)'" onmouseleave="this.style.background='var(--primary)'"
+                    onmousedown="this.style.transform='scale(.97)'" onmouseup="this.style.transform='scale(1)'">
+                <span wire:loading.remove wire:target="acceptCurrencyConversion"><i class="fa-solid fa-check" style="font-size:11px;margin-right:6px;"></i>Yes, convert</span>
+                <span wire:loading wire:target="acceptCurrencyConversion"><i class="fa-solid fa-spinner fa-spin"></i></span>
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- ═══════════════════════════════════════════════════════════════
      STEP 7 — Generate Itinerary
 ═══════════════════════════════════════════════════════════════ --}}
@@ -2378,8 +2421,26 @@ window.sortAttractions = function(dir) {
         $budMinRaw = (int) preg_replace('/[^\d]/', '', $manualBudgetMin);
     }
 
-    $budMin = $budMinRaw ? number_format($budMinRaw) : '0';
-    $budMax = $budMaxRaw ? number_format($budMaxRaw) : '0';
+    // The stored figures above are always pesos — this only changes how
+    // they're SHOWN, converting back into the currency the trip started
+    // in (tripCurrency, carried over from TARA's handoff) so the traveler
+    // sees the same numbers they actually typed, not an unlabeled peso
+    // figure that looks disconnected from the rest of the trip.
+    $budSymbol = '₱';
+    $budDivisor = 1;
+    if ($tripCurrency !== '' && $tripCurrency !== 'PHP') {
+        $liveRate = (new \App\Services\CurrencyConverterService())->rateToPhp($tripCurrency);
+        if ($liveRate !== null) {
+            $budSymbol  = \App\Support\PlaceCatalog::CURRENCY_SYMBOLS[$tripCurrency] ?? '₱';
+            $budDivisor = $liveRate;
+        }
+    }
+
+    // The emergency fund is set aside SEPARATELY from the trip budget
+    // (added on top of it), not carved out of it — so the top end of this
+    // range is the trip budget PLUS the emergency fund.
+    $budMin = $budSymbol . ($budMinRaw ? number_format($budMinRaw / $budDivisor) : '0');
+    $budMax = $budSymbol . ($budMaxRaw ? number_format(($budMaxRaw + $emergency) / $budDivisor) : '0');
 @endphp
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 120px);padding:40px 24px;">
 
@@ -2462,6 +2523,11 @@ window.sortAttractions = function(dir) {
             <div style="flex:1;min-width:0;">
                 <div style="background:var(--bg-white);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-sizing:border-box;">
                     <span style="font-size:14px;font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ $budMin }} – {{ $budMax }}</span>
+                    @if ($convertedBudget !== null && $destinationCurrencyCode !== null)
+                    <div style="font-size:12px;color:var(--primary);font-weight:600;margin-top:4px;">
+                        ≈ {{ \App\Support\PlaceCatalog::CURRENCY_SYMBOLS[$destinationCurrencyCode] ?? '' }}{{ number_format($convertedBudget) }} in {{ trim($manualTo) }}
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -2520,7 +2586,7 @@ window.sortAttractions = function(dir) {
     $budMax8      = (int) preg_replace('/[^\d]/', '', $manualBudgetMax ?: $manualBudgetMin);
     $profileMin8  = (int) ($profile8?->daily_budget ?? 0);
     $budMin8      = ($profileMin8 > 0 && $profileMin8 < $budMax8) ? $profileMin8 : (int) round($budMax8 * 0.7);
-    $budLabel8    = $budMin8 ? (currency_symbol() . number_format($budMin8) . ($budMax8 && $budMax8 !== $budMin8 ? ' – ' . currency_symbol() . number_format($budMax8) : '')) : '—';
+    $budLabel8    = $budMin8 ? ($this->tripDisplayAmount($budMin8) . ($budMax8 && $budMax8 !== $budMin8 ? ' – ' . $this->tripDisplayAmount($budMax8) : '')) : '—';
 
     // Selections as activity-card entries (icon, type, title, sub, time, cost, isFree)
     // For round-trip flights, split cost evenly: half on arrival, half on departure
@@ -2771,7 +2837,7 @@ window.sortAttractions = function(dir) {
                         <div class="itin8-budget-status on" style="margin-bottom:0;">On Budget</div>
                     @endif
                 </div>
-                <div class="itin8-cost-val">{{ currency_symbol() }}{{ number_format($totalCost8) }}</div>
+                <div class="itin8-cost-val">{{ $this->tripDisplayAmount($totalCost8) }}</div>
                 <div class="itin8-actions" style="justify-content:flex-end;margin-top:12px;">
                     <button class="itin8-btn-ghost" wire:click="regenerateItineraryOptions" wire:loading.attr="disabled" wire:target="regenerateItineraryOptions">
                         <span wire:loading.remove wire:target="regenerateItineraryOptions" style="white-space:nowrap;"><i class="fa-solid fa-rotate" style="font-size:11px;"></i> Generate Other Options</span>
@@ -2904,7 +2970,7 @@ window.sortAttractions = function(dir) {
             {{-- Header --}}
             <div style="font-size:13px;font-weight:700;color:{{ $optActive ? 'var(--primary)' : 'var(--dark)' }};margin-bottom:2px;">{{ $optLabel }}</div>
             <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">{{ $sd8 }} – {{ $ed8 }}</div>
-            <div style="font-size:26px;font-weight:800;color:var(--primary);line-height:1.1;margin-bottom:14px;">{{ currency_symbol() }}{{ number_format($optCost) }}</div>
+            <div style="font-size:26px;font-weight:800;color:var(--primary);line-height:1.1;margin-bottom:14px;">{{ $this->tripDisplayAmount($optCost) }}</div>
 
             <button type="button" style="width:100%;padding:9px 0;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:18px;font-family:'Hanken Grotesk',sans-serif;transition:background .18s;
                            {{ $optActive ? 'background:var(--primary);color:#fff;border:none;' : 'background:var(--bg-white);color:var(--primary);border:1.5px solid var(--primary);' }}">
@@ -3002,7 +3068,7 @@ window.sortAttractions = function(dir) {
                         <span class="itin8-act-cost-label">Est. Cost</span>
                         @if($actFree)<span class="itin8-act-cost-val">FREE</span>
                         @elseif($actCost !== null && $actCost !== '' && $actCost != 0)
-                            <span class="itin8-act-cost-val">{{ is_numeric($actCost) ? currency_symbol().number_format((float)$actCost) : $actCost }}</span>
+                            <span class="itin8-act-cost-val">{{ is_numeric($actCost) ? $this->tripDisplayAmount((float)$actCost) : $actCost }}</span>
                         @else<span class="itin8-act-cost-val" style="color:var(--muted);font-weight:400;">—</span>
                         @endif
                     </div>
@@ -3062,7 +3128,10 @@ window.sortAttractions = function(dir) {
             </div>
 
             <div style="margin-bottom:12px;">
-                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:5px;">Est. Cost ({{ currency_symbol() }}, optional)</label>
+                {{-- Peso, not tripDisplayAmount() — customActivityCost is added
+                     straight into the peso total with no conversion, so what
+                     you type here must actually be pesos. --}}
+                <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:5px;">Est. Cost (₱, optional)</label>
                 <input type="number" min="0" step="1" wire:model="customActivityCost" placeholder="0"
                        style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
             </div>
@@ -3297,7 +3366,7 @@ window.sortAttractions = function(dir) {
                         @foreach($s9picks as $pk9)
                         <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid var(--bg);">
                             <span>{{ $pk9['label'] }} · {{ $pk9['val'] }}</span>
-                            <span style="color:var(--muted);font-weight:600;">{{ $pk9['cost'] ? currency_symbol().number_format($pk9['cost']) : 'Free' }}</span>
+                            <span style="color:var(--muted);font-weight:600;">{{ $pk9['cost'] ? $this->tripDisplayAmount($pk9['cost']) : 'Free' }}</span>
                         </div>
                         @endforeach
                     </div>
@@ -3309,7 +3378,7 @@ window.sortAttractions = function(dir) {
                             @foreach($d9['activities'] ?? [] as $a9)
                             <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid var(--bg);">
                                 <span>{{ $a9['time'] ?? '' }} · {{ $a9['title'] ?? '' }}</span>
-                                <span style="color:var(--muted);font-weight:600;">{{ $a9['cost'] ? currency_symbol().number_format($a9['cost']) : 'Free' }}</span>
+                                <span style="color:var(--muted);font-weight:600;">{{ $a9['cost'] ? $this->tripDisplayAmount($a9['cost']) : 'Free' }}</span>
                             </div>
                             @endforeach
                         </div>
@@ -3325,7 +3394,7 @@ window.sortAttractions = function(dir) {
                         @foreach($s9picksLeg2 as $pk9)
                         <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid var(--bg);">
                             <span>{{ $pk9['label'] }} · {{ $pk9['val'] }}</span>
-                            <span style="color:var(--muted);font-weight:600;">{{ $pk9['cost'] ? currency_symbol().number_format($pk9['cost']) : 'Free' }}</span>
+                            <span style="color:var(--muted);font-weight:600;">{{ $pk9['cost'] ? $this->tripDisplayAmount($pk9['cost']) : 'Free' }}</span>
                         </div>
                         @endforeach
                     </div>
@@ -3337,7 +3406,7 @@ window.sortAttractions = function(dir) {
                             @foreach($d9['activities'] ?? [] as $a9)
                             <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dark);padding:4px 0;border-bottom:1px solid var(--bg);">
                                 <span>{{ $a9['time'] ?? '' }} · {{ $a9['title'] ?? '' }}</span>
-                                <span style="color:var(--muted);font-weight:600;">{{ $a9['cost'] ? currency_symbol().number_format($a9['cost']) : 'Free' }}</span>
+                                <span style="color:var(--muted);font-weight:600;">{{ $a9['cost'] ? $this->tripDisplayAmount($a9['cost']) : 'Free' }}</span>
                             </div>
                             @endforeach
                         </div>
@@ -3377,7 +3446,7 @@ window.sortAttractions = function(dir) {
                         </div>
                         <div style="text-align:right;">
                             <button wire:click="editFromSummary({{ $pk['editStep'] }})" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
-                            <div style="font-size:12px;font-weight:700;color:var(--dark);">{{ $pk['cost'] ? currency_symbol().number_format($pk['cost']) : 'Free' }}</div>
+                            <div style="font-size:12px;font-weight:700;color:var(--dark);">{{ $pk['cost'] ? $this->tripDisplayAmount($pk['cost']) : 'Free' }}</div>
                         </div>
                     </div>
                     @endforeach
@@ -3397,7 +3466,7 @@ window.sortAttractions = function(dir) {
                         </div>
                         <div style="text-align:right;">
                             <button wire:click="editFromSummary({{ $pk['editStep'] }})" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
-                            <div style="font-size:12px;font-weight:700;color:var(--dark);">{{ $pk['cost'] ? currency_symbol().number_format($pk['cost']) : 'Free' }}</div>
+                            <div style="font-size:12px;font-weight:700;color:var(--dark);">{{ $pk['cost'] ? $this->tripDisplayAmount($pk['cost']) : 'Free' }}</div>
                         </div>
                     </div>
                     @endforeach
@@ -3415,7 +3484,7 @@ window.sortAttractions = function(dir) {
                         </div>
                         <div style="text-align:right;">
                             <button wire:click="editFromSummary(6)" style="display:block;margin-left:auto;font-size:10px;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;padding:0 0 2px;">Edit</button>
-                            <div style="font-size:12px;font-weight:700;color:var(--dark);">{{ currency_symbol() }}{{ number_format($s9emergency) }}</div>
+                            <div style="font-size:12px;font-weight:700;color:var(--dark);">{{ $this->tripDisplayAmount($s9emergency) }}</div>
                         </div>
                     </div>
                 </div>
@@ -3437,23 +3506,23 @@ window.sortAttractions = function(dir) {
             @foreach($s9rows as [$lbl,$amt])
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:11px 0;border-bottom:1px solid #F3F0EB;">
                 <span style="color:var(--muted);">{{ $lbl }}</span>
-                <span style="font-weight:600;color:var(--dark);">{{ currency_symbol() }} {{ number_format($amt) }}</span>
+                <span style="font-weight:600;color:var(--dark);">{{ $this->tripDisplayAmount($amt) }}</span>
             </div>
             @endforeach
 
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:11px 0;">
                 <span style="color:#B91C1C;font-weight:600;">Emergency Fund</span>
-                <span style="font-weight:700;color:#B91C1C;">{{ currency_symbol() }} {{ number_format($s9emergency) }}</span>
+                <span style="font-weight:700;color:#B91C1C;">{{ $this->tripDisplayAmount($s9emergency) }}</span>
             </div>
 
             <div style="border-top:1.5px solid #E5E0D8;margin-top:6px;padding-top:16px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <span style="font-size:15px;font-weight:700;color:var(--dark);">Total Cost</span>
-                    <span style="font-size:22px;font-weight:900;color:{{ $s9over ? '#B91C1C' : 'var(--primary)' }};">{{ currency_code() }} {{ number_format($s9total) }}</span>
+                    <span style="font-size:22px;font-weight:900;color:{{ $s9over ? '#B91C1C' : 'var(--primary)' }};">{{ $this->tripDisplayAmount($s9total) }}</span>
                 </div>
                 @if($s9budget > 0)
                 <div style="margin-top:5px;font-size:12px;color:{{ $s9over ? '#B91C1C' : 'var(--muted)' }};text-align:right;">
-                    {{ $s9over ? 'Over '.currency_symbol().number_format($s9budget).' budget' : 'Within '.currency_symbol().number_format($s9budget).' budget' }}
+                    {{ $s9over ? 'Over '.$this->tripDisplayAmount($s9budget).' budget' : 'Within '.$this->tripDisplayAmount($s9budget).' budget' }}
                 </div>
                 @endif
 
@@ -3462,7 +3531,7 @@ window.sortAttractions = function(dir) {
                 <div style="margin-top:14px;padding-top:14px;border-top:1px dashed #E5E0D8;">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <span style="font-size:14px;font-weight:700;color:var(--dark);">Per Person</span>
-                        <span style="font-size:18px;font-weight:800;color:#C8874A;">{{ currency_code() }} {{ number_format($s9total / $travelers) }}</span>
+                        <span style="font-size:18px;font-weight:800;color:#C8874A;">{{ $this->tripDisplayAmount($s9total / $travelers) }}</span>
                     </div>
                     <div style="margin-top:4px;font-size:12px;color:var(--muted);text-align:right;">
                         Split between {{ $travelers }} travelers

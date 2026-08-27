@@ -9,9 +9,11 @@ use App\Models\SavingsGoal;
 use App\Models\Trip;
 use App\Models\TripBudget;
 use App\Models\User;
+use App\Services\CurrencyConverterService;
 use App\Services\SerpApiService;
 use App\Services\SerperService;
 use App\Services\TripImportService;
+use App\Support\PlaceCatalog;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -389,6 +391,12 @@ class TripPlannerWizard extends Component
     public float  $emergency      = 0;
     public string $emergencyError = '';
     public float  $budgetLimit    = 0;
+    public string $tripCurrency        = '';
+    public bool   $emergencyConverted  = false;
+    public bool    $showCurrencyConvertModal = false;
+    public ?string $destinationCurrencyCode  = null;
+    public ?float  $convertedBudget          = null;
+    public string  $currencyConvertError     = '';
     public string $editingCategory = '';
 
     // ── Cost rate tables (₱ per trip) ─────────────────────
@@ -446,6 +454,7 @@ class TripPlannerWizard extends Component
             $this->manualTo        = (string) ($handoff['to'] ?? '');
             $this->manualBudgetMin = (string) ($handoff['budget_min'] ?? '');
             $this->manualBudgetMax = (string) ($handoff['budget_max'] ?? $handoff['budget_min'] ?? '');
+            $this->tripCurrency    = (string) ($handoff['currency'] ?? '');
             $this->startDate       = (string) ($handoff['start'] ?? '');
             $this->endDate         = (string) ($handoff['end'] ?? '');
             // Reuse the draft Trip the AI Planner already autosaved (see
@@ -1643,19 +1652,106 @@ class TripPlannerWizard extends Component
         [$this->manualFrom, $this->manualTo] = [$this->manualTo, $this->manualFrom];
     }
 
+    // The emergency fund input has no currency awareness of its own — a
+    // traveler whose trip came from TARA in a foreign currency (tripCurrency,
+    // carried over via the AI handoff) types a raw number meaning THAT
+    // currency, not pesos. Convert it here, once, before it's used anywhere
+    // else in this component (subtracted from the budget, added to totals,
+    // saved to the trip) — all of which already assume pesos throughout.
+    public function updatedEmergency(): void
+    {
+        $this->emergencyConverted = false;
+    }
+
+    public function tripDisplayAmount(int|float $pesoAmount): string
+    {
+        if ($this->tripCurrency === '' || $this->tripCurrency === 'PHP') {
+            return '₱' . number_format($pesoAmount);
+        }
+
+        $rate = (new CurrencyConverterService())->rateToPhp($this->tripCurrency);
+        if ($rate === null) {
+            return '₱' . number_format($pesoAmount);
+        }
+
+        $symbol = PlaceCatalog::CURRENCY_SYMBOLS[$this->tripCurrency] ?? '₱';
+        return $symbol . number_format($pesoAmount / $rate);
+    }
+
+    // Looked up by destination NAME rather than relying on any prior modal
+    // interaction, so it gives the same answer whether it's called from the
+    // wizard's own currency-conversion modal or independently at save time
+    // in saveItinerary() — the destination's currency is a fact about the
+    // trip, not something tied to a UI choice made earlier in the flow.
+    private function destinationCurrencyFor(string $destination): ?string
+    {
+        $code = PlaceCatalog::DESTINATION_CURRENCIES[strtolower(trim($destination))] ?? null;
+        return ($code !== null && $code !== 'PHP') ? $code : null;
+    }
+
+    private function convertPesosToCurrency(?string $code, float $pesoAmount): ?float
+    {
+        if ($code === null) return null;
+
+        $rate = (new CurrencyConverterService())->rateToPhp($code);
+        return $rate !== null ? round($pesoAmount / $rate, 2) : null;
+    }
+
     public function confirmEmergencyFund(): void
     {
-        // An emergency fund >= the whole entered budget zeroes out the
-        // remaining activity budget in generateItinerary()/regenerateItinerary(),
-        // which then falls back to a floor (aiBudMin + 500) with no real
-        // relationship to what the traveler actually entered. Catch it here
-        // instead of silently producing a nonsensical AI budget later.
-        $totalBudget = (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin);
-        if ($totalBudget > 0 && (int) $this->emergency >= $totalBudget) {
-            $this->emergencyError = 'Your emergency fund can\'t be greater than or equal to your total budget of ' . currency_symbol() . number_format($totalBudget) . '.';
+        if (!$this->emergencyConverted && $this->tripCurrency !== '' && $this->tripCurrency !== 'PHP' && $this->emergency > 0) {
+            $rate = (new CurrencyConverterService())->rateToPhp($this->tripCurrency);
+            if ($rate === null) {
+                $this->emergencyError = "I couldn't fetch the live exchange rate just now — please try again in a moment.";
+                return;
+            }
+            $this->emergency = round($this->emergency * $rate, 2);
+            $this->emergencyConverted = true;
+        }
+
+        // The emergency fund is money set aside SEPARATELY from the trip
+        // budget (added on top of it), not carved out of it — so unlike
+        // the trip budget itself, there's no ceiling it needs to stay
+        // under here.
+        $this->emergencyError = '';
+
+        $destCode = $this->destinationCurrencyFor($this->manualTo);
+        if ($destCode !== null) {
+            $this->destinationCurrencyCode  = $destCode;
+            $this->showCurrencyConvertModal = true;
             return;
         }
-        $this->emergencyError = '';
+
+        $this->step = 7;
+    }
+
+    // "Yes" — the peso budget is the only figure ever used to actually plan
+    // or save the trip; this only adds a converted amount to SHOW alongside
+    // it, the same "real value stays in pesos, other currencies are just
+    // display" rule used everywhere else in this app.
+    public function acceptCurrencyConversion(): void
+    {
+        $budget = (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin);
+
+        $converted = $this->convertPesosToCurrency($this->destinationCurrencyCode, (float) $budget);
+
+        if ($converted === null) {
+            $this->currencyConvertError = "I couldn't fetch the live exchange rate just now — please try again in a moment.";
+            return;
+        }
+
+        $this->convertedBudget      = $converted;
+        $this->currencyConvertError = '';
+
+        $this->showCurrencyConvertModal = false;
+        $this->step = 7;
+    }
+
+    public function declineCurrencyConversion(): void
+    {
+        $this->convertedBudget          = null;
+        $this->currencyConvertError     = '';
+        $this->showCurrencyConvertModal = false;
         $this->step = 7;
     }
 
@@ -1826,12 +1922,10 @@ class TripPlannerWizard extends Component
         $interests     = array_merge($profile?->interests ?? [], $profile?->sub_interests ?? []);
 
         $budMin  = $profileBudget > 0 ? $profileBudget : (int) preg_replace('/[^\d]/', '', $this->manualBudgetMin);
-        $budMax  = (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin);
-        // If the emergency fund consumes the whole entered budget (or more),
-        // don't let this collapse to 0 — confirmEmergencyFund() should have
-        // already blocked that combination, but keep a sane floor here too
-        // so the AI never gets an all-zero budget disconnected from reality.
-        $budMax  = max(500, $budMax - (int) $this->emergency);
+        // The emergency fund is set aside SEPARATELY from this budget (added
+        // on top of it at the end), not carved out of it — so the full
+        // entered amount stays available for actually planning the trip.
+        $budMax  = max(500, (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin));
         if ($budMin >= $budMax) $budMin = (int) round($budMax * 0.8);
 
         // Calculate how much the traveler already spent on selections
@@ -1928,11 +2022,11 @@ class TripPlannerWizard extends Component
         $profileBudget = (int) ($profile?->daily_budget ?? 0);
         $interests     = array_merge($profile?->interests ?? [], $profile?->sub_interests ?? []);
 
-        // Min = profile preferred budget; Max = trip total entered in wizard
+        // Min = profile preferred budget; Max = trip total entered in wizard.
+        // Same as generateItinerary() — the emergency fund is separate, not
+        // subtracted from what's available to actually plan the trip with.
         $budMin = $profileBudget > 0 ? $profileBudget : (int) preg_replace('/[^\d]/', '', $this->manualBudgetMin);
-        $budMax = (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin);
-        // Same floor as generateItinerary() — see comment there.
-        $budMax = max(500, $budMax - (int) $this->emergency);
+        $budMax = max(500, (int) preg_replace('/[^\d]/', '', $this->manualBudgetMax ?: $this->manualBudgetMin));
         if ($budMin >= $budMax) $budMin = (int) round($budMax * 0.8);
         $dest   = trim($this->manualTo ?: $this->mcTo ?: 'Unknown');
 
@@ -2264,9 +2358,19 @@ class TripPlannerWizard extends Component
         $leg1DestName = trim($this->manualTo ?: $this->mcTo ?: 'Unknown');
         $leg2DestName = $isMultiCitySaved ? trim($this->mcTo) : null;
 
+        // Computed fresh here rather than reused from the wizard's own
+        // currency-conversion modal — the trip should remember its
+        // destination currency regardless of whether that modal was shown,
+        // accepted, or declined during planning (the modal only controls
+        // what got SHOWN during the flow, not what the trip permanently is).
+        $destCurrencyCode = $this->destinationCurrencyFor($leg1DestName);
+        $destBudget       = $this->convertPesosToCurrency($destCurrencyCode, $budget);
+
         $trip = Trip::create([
             'user_id'          => auth()->id(),
             'destination'      => $leg1DestName,
+            'destination_currency' => $destCurrencyCode,
+            'destination_budget'   => $destBudget,
             // Multi-city trips are named after both destinations so the
             // trip is identifiable at a glance on the Saved Trips / Savings
             // Goals cards instead of only showing leg 1's city.
