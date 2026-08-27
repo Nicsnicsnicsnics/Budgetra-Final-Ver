@@ -5,7 +5,9 @@ use App\Models\GroupMember;
 use App\Models\Notification;
 use App\Models\Trip;
 use App\Models\User;
+use App\Services\CurrencyConverterService;
 use App\Services\TripImportService;
+use App\Support\PlaceCatalog;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -228,6 +230,20 @@ class SavedTrips extends Component
         ]);
     }
 
+    // Peso amount, formatted for display — in the trip's destination
+    // currency once it's Upcoming or Ongoing and a live rate was found for
+    // it, otherwise plain pesos. Deliberately NOT currency_code()/currency_symbol()
+    // — that's a separate, unsynced account Settings field that defaults to
+    // USD for every account regardless of the traveler's real currency, so
+    // it was mislabeling genuine peso figures as "USD 141,106" and similar.
+    public function displayAmount(Trip $trip, float $pesoAmount): string
+    {
+        if ($trip->display_rate) {
+            return $trip->display_currency_code . ' ' . number_format($pesoAmount / $trip->display_rate, 0);
+        }
+        return '₱' . number_format($pesoAmount, 0);
+    }
+
     private function fetchTrips()
     {
         $uid = auth()->id();
@@ -288,6 +304,24 @@ class SavedTrips extends Component
                 $trip->setAttribute('spent_per_person', $actualSpent / $heads);
 
                 $trip->setAttribute('shared_with_me', $trip->user_id !== auth()->id());
+
+                // Once a trip is Upcoming or Ongoing, money is more useful
+                // shown in the destination's own currency than in pesos —
+                // but only when a live rate is actually reachable; a failed
+                // lookup silently falls back to the usual peso display
+                // rather than blocking the page or showing an error on a
+                // passive card. Draft and Past trips stay in pesos.
+                $trip->setAttribute('display_currency_code', null);
+                $trip->setAttribute('display_currency_symbol', null);
+                $trip->setAttribute('display_rate', null);
+                if (in_array($trip->status, ['active', 'upcoming'], true) && $trip->destination_currency) {
+                    $liveRate = (new CurrencyConverterService())->rateToPhp($trip->destination_currency);
+                    if ($liveRate !== null) {
+                        $trip->setAttribute('display_currency_code', $trip->destination_currency);
+                        $trip->setAttribute('display_currency_symbol', PlaceCatalog::CURRENCY_SYMBOLS[$trip->destination_currency] ?? $trip->destination_currency);
+                        $trip->setAttribute('display_rate', $liveRate);
+                    }
+                }
 
                 return $trip;
             })
