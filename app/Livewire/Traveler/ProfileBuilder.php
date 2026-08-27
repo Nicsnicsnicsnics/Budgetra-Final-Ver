@@ -6,6 +6,8 @@ use Livewire\Component;
 use App\Models\Notification;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Services\CurrencyConverterService;
+use App\Support\PlaceCatalog;
 
 class ProfileBuilder extends Component
 {
@@ -60,23 +62,6 @@ class ProfileBuilder extends Component
         'Relaxation'      => 'relaxation.jpg',
     ];
 
-    public const SUGGESTED_CITIES = ['Manila', 'Cebu City', 'Davao City'];
-
-    public const LOCAL_DESTINATIONS = [
-        'MNL' => 'Manila',
-        'CEB' => 'Cebu City',
-        'DVO' => 'Davao City',
-        'KLO' => 'Boracay',
-        'PPS' => 'Puerto Princesa',
-        'TAG' => 'Tagbilaran',
-        'ILO' => 'Iloilo City',
-        'BCD' => 'Bacolod City',
-        'GES' => 'General Santos',
-        'ZAM' => 'Zamboanga City',
-        'TAC' => 'Tacloban City',
-        'IAO' => 'Siargao',
-    ];
-
     public const TRAVEL_STYLES = [
         'Solo'  => ['icon' => 'fa-user', 'desc' => 'Travel at your own pace with a budget built for one.', 'image' => 'solo.jpg'],
         'Group' => ['icon' => 'fa-user-group',      'desc' => 'Divide expenses and explore together, no one overpays.', 'image' => 'group.jpg'],
@@ -110,7 +95,10 @@ class ProfileBuilder extends Component
         if ($profile) {
             $city = $profile->home_city ?? '';
             $this->homeCity = is_numeric(preg_replace('/[\s,₱]/', '', $city)) ? '' : $city;
-            $this->dailyBudget         = $profile->daily_budget ?? 0;
+            // The field must be re-editable in the same unit it was typed
+            // in — showing the peso ledger value here would make the very
+            // next save re-convert an already-converted number.
+            $this->dailyBudget         = $profile->daily_budget_local ?? $profile->daily_budget ?? 0;
             $this->dailyBudgetDisplay  = $this->dailyBudget ? number_format($this->dailyBudget) : '';
             $this->travelStyle         = $profile->travel_style  ?? '';
             $this->groupMemberEmails   = $profile->group_member_emails ?? [];
@@ -308,11 +296,27 @@ class ProfileBuilder extends Component
         $previousEmails = (array) (UserProfile::where('user_id', auth()->id())
             ->value('group_member_emails') ?? []);
 
+        $pesoBudget    = $this->dailyBudget;
+        $localCurrency = null;
+        $localBudget   = null;
+
+        $currencyCode = $this->currencyForHomeCity($this->homeCity);
+        if ($currencyCode !== null && $currencyCode !== 'PHP' && $this->dailyBudget > 0) {
+            $rate = (new CurrencyConverterService())->rateToPhp($currencyCode);
+            if ($rate !== null) {
+                $localCurrency = $currencyCode;
+                $localBudget   = $this->dailyBudget;
+                $pesoBudget    = round($this->dailyBudget * $rate, 2);
+            }
+        }
+
         UserProfile::updateOrCreate(
             ['user_id' => auth()->id()],
             [
                 'home_city'      => $this->homeCity,
-                'daily_budget'   => $this->dailyBudget,
+                'daily_budget'   => $pesoBudget,
+                'daily_budget_currency' => $localCurrency,
+                'daily_budget_local'    => $localBudget,
                 'travel_style'         => $this->travelStyle,
                 'group_member_emails'  => $this->travelStyle === 'Group' ? $this->groupMemberEmails : [],
                 'interests'      => $this->selectedInterests,
@@ -374,14 +378,49 @@ class ProfileBuilder extends Component
         $this->redirect(route($this->returnTo ?: 'dashboard'), navigate: true);
     }
 
+    private function citiesForCurrentUser(): array
+    {
+        $country = auth()->user()->country ?? null;
+        $countryCities = config('country_cities');
+
+        return ($country !== null && isset($countryCities[$country]))
+            ? $countryCities[$country]
+            : $countryCities['Philippines'];
+    }
+
+    private function suggestedCitiesForCurrentUser(): array
+    {
+        return array_slice(array_values($this->citiesForCurrentUser()), 0, 3);
+    }
+
+    private function currencyForHomeCity(string $homeCity): ?string
+    {
+        if (trim($homeCity) === '') return null;
+
+        foreach (config('country_cities') as $country => $cities) {
+            if (in_array($homeCity, $cities, true)) {
+                return PlaceCatalog::COUNTRY_CURRENCIES[$country] ?? null;
+            }
+        }
+
+        return null;
+    }
+
+    private function budgetDisplaySymbol(): string
+    {
+        $code = $this->currencyForHomeCity($this->homeCity);
+        return PlaceCatalog::CURRENCY_SYMBOLS[$code ?? 'PHP'] ?? '₱';
+    }
+
     public function render()
     {
         return view('livewire.traveler.profile-builder', [
             'interests'    => self::INTERESTS,
             'icons'        => self::ICONS,
             'images'       => self::IMAGES,
-            'suggested'    => self::SUGGESTED_CITIES,
-            'localDestinations' => self::LOCAL_DESTINATIONS,
+            'suggested'    => $this->suggestedCitiesForCurrentUser(),
+            'localDestinations' => $this->citiesForCurrentUser(),
+            'budgetSymbol' => $this->budgetDisplaySymbol(),
             'travelStyles' => self::TRAVEL_STYLES,
             'transportationOptions' => self::TRANSPORTATION_OPTIONS,
             'transportationImages'  => self::TRANSPORTATION_IMAGES,
