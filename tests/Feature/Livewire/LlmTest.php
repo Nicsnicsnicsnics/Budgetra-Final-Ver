@@ -1129,7 +1129,10 @@ class LlmTest extends TestCase
     // dropping the destination-currency mention even though the
     // destination was in the very same message. It's now appended where
     // the notice is actually shown in automateTrip(), after parseAiPrompt()
-    // has fully run and aiTo is known.
+    // has fully run and aiTo is known. The peso figure itself is no longer
+    // shown once a destination conversion is available — pesos is only
+    // ever surfaced as the fallback when there's nothing to convert into
+    // yet (see the "still missing" test below).
     public function test_currency_conversion_message_mentions_destination_currency_when_named_in_the_same_message(): void
     {
         $user = User::factory()->create();
@@ -1144,8 +1147,35 @@ class LlmTest extends TestCase
         $component->assertSet('aiTo', 'Japan');
         $component->assertSet('aiBudgetMin', 30855);
         $allText = collect($component->get('messages'))->pluck('text')->implode(' ');
+        $this->assertStringNotContainsString('₱30,855', $allText);
+        $this->assertStringContainsString('is about', $allText);
+        $this->assertStringContainsString('in Japan', $allText);
+    }
+
+    // No destination named yet — there's nothing to convert into, so the
+    // peso figure is still the only thing worth showing.
+    public function test_currency_conversion_message_falls_back_to_pesos_when_no_destination_is_known_yet(): void
+    {
+        $user = User::factory()->create();
+        Http::fake([
+            'api.twelvedata.com/*' => Http::response(['symbol' => 'USD/PHP', 'rate' => 61.71], 200),
+            'api.mistral.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => json_encode([
+                    'off_topic' => false, 'is_greeting' => false, 'is_inappropriate' => false,
+                    'origin' => null, 'destination' => null, 'travelers' => null,
+                    'budget_min' => null, 'budget_max' => null,
+                    'date_from' => null, 'date_to' => null,
+                ])]]],
+            ], 200),
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', '$500')->call('automateTrip');
+
+        $component->assertSet('aiTo', '');
+        $component->assertSet('aiBudgetMin', 30855);
+        $allText = collect($component->get('messages'))->pluck('text')->implode(' ');
         $this->assertStringContainsString('is about ₱30,855', $allText);
-        $this->assertStringContainsString('In Japan that', $allText);
     }
 
     // There is no hardcoded exchange-rate fallback — if TwelveData is
@@ -2226,6 +2256,39 @@ class LlmTest extends TestCase
         $this->assertStringContainsString('Nature', $lastMessage);
     }
 
+    // A profile saved via Profile Builder with a foreign starting point
+    // stores daily_budget already converted to pesos, plus the traveler's
+    // real original number/currency untouched (daily_budget_local/
+    // daily_budget_currency). The offer message should describe the
+    // budget using that real currency, not the pesos figure underneath.
+    public function test_mount_offers_saved_preferences_using_the_local_currency_when_available(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create([
+            'user_id' => $user->id, 'home_city' => 'Osaka',
+            'daily_budget' => 19175, 'daily_budget_currency' => 'JPY', 'daily_budget_local' => 50000,
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class);
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('¥50,000', $lastMessage);
+        $this->assertStringNotContainsString('19,175', $lastMessage);
+    }
+
+    public function test_mount_offers_saved_preferences_in_pesos_when_no_local_currency_saved(): void
+    {
+        $user = User::factory()->create();
+        UserProfile::create([
+            'user_id' => $user->id, 'home_city' => 'Manila', 'daily_budget' => 30000,
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class);
+
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('₱30,000', $lastMessage);
+    }
+
     public function test_mount_does_not_offer_when_no_profile_exists(): void
     {
         $user = User::factory()->create();
@@ -2341,6 +2404,36 @@ class LlmTest extends TestCase
 
         $component2->set('aiPrompt', 'yes')->call('automateTrip');
         $component2->assertSet('aiFrom', 'Cebu City');
+    }
+
+    // The exact bug reported live: a traveler's account had an unrelated
+    // "display currency" account setting (USD, from Settings). Accepting
+    // saved preferences correctly applied the peso-converted budget, but
+    // never updated aiCurrency to match the profile's real local currency
+    // (CAD) — so the very next message re-displayed the peso figure
+    // converted into the account's USD setting instead ("$361"), a third,
+    // unrelated number that didn't match the 500 CAD the traveler actually
+    // saved. Confirms accepting now correctly carries the local currency
+    // forward so it's echoed back consistently.
+    public function test_accepting_saved_preferences_carries_the_local_currency_into_the_confirmation_message(): void
+    {
+        $user = User::factory()->create(['currency_code' => 'USD', 'currency_symbol' => '$']);
+        UserProfile::create([
+            'user_id' => $user->id, 'home_city' => 'Vancouver',
+            'daily_budget' => 20000, 'daily_budget_currency' => 'CAD', 'daily_budget_local' => 500,
+        ]);
+        Http::fake([
+            'api.twelvedata.com/*' => Http::response(['symbol' => 'CAD/PHP', 'rate' => 40], 200),
+        ]);
+
+        $component = Livewire::actingAs($user)->test(Llm::class)
+            ->set('aiPrompt', 'yes')->call('automateTrip');
+
+        $component->assertSet('aiCurrency', 'CAD');
+        $component->assertSet('aiBudgetMin', 20000);
+        $lastMessage = collect($component->get('messages'))->last()['text'];
+        $this->assertStringContainsString('C$500', $lastMessage);
+        $this->assertStringNotContainsString('$361', $lastMessage);
     }
 
     public function test_confirmation_summary_shows_destination_currency_for_an_international_destination(): void

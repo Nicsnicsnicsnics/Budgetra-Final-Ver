@@ -223,6 +223,45 @@ final class PlaceCatalog
         'maldives' => 'MVR', 'male' => 'MVR',
     ];
 
+    // Country name (matching config/country_cities.php's keys, and the
+    // registration form's Country dropdown) => 3-letter ISO currency code.
+    public const COUNTRY_CURRENCIES = [
+        'Philippines' => 'PHP', 'Indonesia' => 'IDR', 'Thailand' => 'THB', 'Vietnam' => 'VND',
+        'Malaysia' => 'MYR', 'Singapore' => 'SGD', 'Japan' => 'JPY', 'South Korea' => 'KRW',
+        'China' => 'CNY', 'India' => 'INR', 'Australia' => 'AUD', 'New Zealand' => 'NZD',
+        'United States' => 'USD', 'Canada' => 'CAD', 'United Kingdom' => 'GBP',
+        'Germany' => 'EUR', 'France' => 'EUR', 'Italy' => 'EUR', 'Spain' => 'EUR',
+        'Netherlands' => 'EUR', 'Brazil' => 'BRL', 'Mexico' => 'MXN', 'Argentina' => 'ARS',
+        'Saudi Arabia' => 'SAR', 'United Arab Emirates' => 'AED', 'Egypt' => 'EGP',
+        'Nigeria' => 'NGN', 'South Africa' => 'ZAR', 'Kenya' => 'KES',
+    ];
+
+    // 3-letter ISO currency code => display symbol, covering every code in
+    // COUNTRY_CURRENCIES above.
+    public const CURRENCY_SYMBOLS = [
+        'PHP' => '₱', 'IDR' => 'Rp', 'THB' => '฿', 'VND' => '₫',
+        'MYR' => 'RM', 'SGD' => 'S$', 'JPY' => '¥', 'KRW' => '₩',
+        'CNY' => '¥', 'INR' => '₹', 'AUD' => 'A$', 'NZD' => 'NZ$',
+        'USD' => '$', 'CAD' => 'C$', 'GBP' => '£',
+        'EUR' => '€', 'BRL' => 'R$', 'MXN' => 'MX$', 'ARS' => 'AR$',
+        'SAR' => 'SAR ', 'AED' => 'AED ', 'EGP' => 'EGP ',
+        'NGN' => '₦', 'ZAR' => 'R', 'KES' => 'KSh ',
+    ];
+
+    // 3-letter ISO currency code => full display name, same coverage as
+    // CURRENCY_SYMBOLS above.
+    public const CURRENCY_NAMES = [
+        'PHP' => 'Philippine pesos', 'IDR' => 'Indonesian rupiah', 'THB' => 'Thai baht',
+        'VND' => 'Vietnamese dong', 'MYR' => 'Malaysian ringgit', 'SGD' => 'Singapore dollars',
+        'JPY' => 'Japanese yen', 'KRW' => 'Korean won', 'CNY' => 'Chinese yuan',
+        'INR' => 'Indian rupees', 'AUD' => 'Australian dollars', 'NZD' => 'New Zealand dollars',
+        'USD' => 'US dollars', 'CAD' => 'Canadian dollars', 'GBP' => 'British pounds',
+        'EUR' => 'euros', 'BRL' => 'Brazilian real', 'MXN' => 'Mexican pesos',
+        'ARS' => 'Argentine pesos', 'SAR' => 'Saudi riyals', 'AED' => 'UAE dirhams',
+        'EGP' => 'Egyptian pounds', 'NGN' => 'Nigerian naira', 'ZAR' => 'South African rand',
+        'KES' => 'Kenyan shillings',
+    ];
+
     // City/region name (lowercase) => synthetic trip-package data used as
     // the last-resort fallback when neither the AI free-generation nor
     // SerpAPI live-search paths produce anything usable.

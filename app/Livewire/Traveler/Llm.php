@@ -49,6 +49,10 @@ class Llm extends Component
 
     private ?string $currencyNotice = null;
 
+    private ?string $currencyNoticeLabel = null;
+
+    private ?float $currencyNoticePesoAmount = null;
+
     private ?string $unsupportedCurrencyNotice = null;
 
     private ?string $currencyRateUnavailableNotice = null;
@@ -191,7 +195,10 @@ class Llm extends Component
             $clauses[] = trim($profile->home_city) . ' as your starting point';
         }
         if ($hasBudget) {
-            $clauses[] = '₱' . number_format($profile->daily_budget) . ' as your budget';
+            $localCode = $profile->daily_budget_currency;
+            $clauses[] = ($localCode !== null && $profile->daily_budget_local > 0)
+                ? (PlaceCatalog::CURRENCY_SYMBOLS[$localCode] ?? '₱') . number_format($profile->daily_budget_local) . ' as your budget'
+                : '₱' . number_format($profile->daily_budget) . ' as your budget';
         }
         if (!empty($profile->interests)) {
             $word = count($profile->interests) === 1 ? 'a travel interest' : 'travel interests';
@@ -314,6 +321,9 @@ class Llm extends Component
                     }
                     if ($this->aiBudgetMin === 0 && $this->aiBudgetMax === 0 && (float) $profile->daily_budget > 0) {
                         $this->aiBudgetMin = $this->aiBudgetMax = (int) round($profile->daily_budget);
+                        if ($profile->daily_budget_currency !== null) {
+                            $this->aiCurrency = $profile->daily_budget_currency;
+                        }
                     }
                 }
 
@@ -604,6 +614,21 @@ class Llm extends Component
             if ($conversion !== null) {
                 $notice .= " In {$this->aiTo} that's about " . $this->formatDestinationAmount($conversion['code'], $conversion['amount']) . '.';
             }
+
+            $this->messages[] = ['role' => 'assistant', 'text' => $notice];
+            $this->dispatch('message-added');
+        }
+
+        if ($this->currencyNoticeLabel !== null) {
+            $label      = $this->currencyNoticeLabel;
+            $pesoAmount = $this->currencyNoticePesoAmount;
+            $this->currencyNoticeLabel      = null;
+            $this->currencyNoticePesoAmount = null;
+
+            $conversion = $this->destinationBudgetConversion();
+            $notice = $conversion !== null
+                ? "Got it — {$label} is about " . $this->formatDestinationAmount($conversion['code'], $conversion['amount']) . " in {$this->aiTo}, I'll plan around that."
+                : "Got it — {$label} is about ₱" . number_format((float) $pesoAmount) . ", I'll plan around that.";
 
             $this->messages[] = ['role' => 'assistant', 'text' => $notice];
             $this->dispatch('message-added');
@@ -2112,6 +2137,20 @@ PROMPT;
         'THB' => ['name' => 'Thai baht',          'symbol' => '฿',    'rate' => 1.6],
         'MYR' => ['name' => 'Malaysian ringgit',  'symbol' => 'RM',   'rate' => 12.5],
         'AED' => ['name' => 'UAE dirhams',        'symbol' => 'AED ', 'rate' => 15.3],
+        'IDR' => ['name' => 'Indonesian rupiah',  'symbol' => 'Rp',   'rate' => 0.0036],
+        'VND' => ['name' => 'Vietnamese dong',    'symbol' => '₫',    'rate' => 0.0023],
+        'CNY' => ['name' => 'Chinese yuan',       'symbol' => '¥',    'rate' => 7.8],
+        'INR' => ['name' => 'Indian rupee',       'symbol' => '₹',    'rate' => 0.67],
+        'NZD' => ['name' => 'New Zealand dollars','symbol' => 'NZ$',  'rate' => 34],
+        'CAD' => ['name' => 'Canadian dollars',   'symbol' => 'C$',   'rate' => 41],
+        'BRL' => ['name' => 'Brazilian real',     'symbol' => 'R$',   'rate' => 10],
+        'MXN' => ['name' => 'Mexican pesos',      'symbol' => 'MX$',  'rate' => 3],
+        'ARS' => ['name' => 'Argentine pesos',    'symbol' => 'AR$',  'rate' => 0.06],
+        'SAR' => ['name' => 'Saudi riyals',       'symbol' => 'SAR ', 'rate' => 15],
+        'EGP' => ['name' => 'Egyptian pounds',    'symbol' => 'EGP ', 'rate' => 1.15],
+        'NGN' => ['name' => 'Nigerian naira',     'symbol' => '₦',    'rate' => 0.036],
+        'ZAR' => ['name' => 'South African rand', 'symbol' => 'R',    'rate' => 3.1],
+        'KES' => ['name' => 'Kenyan shillings',   'symbol' => 'KSh ', 'rate' => 0.43],
     ];
 
     private const CURRENCY_ALIASES = [
@@ -2123,6 +2162,10 @@ PROMPT;
         'sgd' => 'SGD', 'aud' => 'AUD',
         'hkd' => 'HKD', 'thb' => 'THB',
         'myr' => 'MYR', 'aed' => 'AED',
+        'idr' => 'IDR', 'vnd' => 'VND', '₫' => 'VND', 'cny' => 'CNY',
+        'inr' => 'INR', '₹' => 'INR', 'nzd' => 'NZD', 'cad' => 'CAD',
+        'brl' => 'BRL', 'mxn' => 'MXN', 'ars' => 'ARS', 'sar' => 'SAR',
+        'egp' => 'EGP', 'ngn' => 'NGN', '₦' => 'NGN', 'zar' => 'ZAR', 'kes' => 'KES',
         '₱' => 'PHP', 'php' => 'PHP', 'peso' => 'PHP', 'pesos' => 'PHP',
     ];
 
@@ -2135,7 +2178,8 @@ PROMPT;
 
     private function detectAndConvertCurrency(string $text): array|false|null
     {
-        $symbolOrCode = '(?:\$|＄|€|£|￡|¥|￥|₩|￦|₱|USD|EUR|GBP|JPY|SGD|AUD|KRW|HKD|THB|MYR|AED|PHP|pesos?)';
+        $symbolOrCode = '(?:\$|＄|€|£|￡|¥|￥|₩|￦|₱|₹|₫|₦|USD|EUR|GBP|JPY|SGD|AUD|KRW|HKD|THB|MYR|AED|PHP|pesos?'
+            . '|IDR|VND|CNY|INR|NZD|CAD|BRL|MXN|ARS|SAR|EGP|NGN|ZAR|KES)';
 
         $number = '(?:\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)';
 
@@ -2179,7 +2223,7 @@ PROMPT;
             if (!isset(self::SUPPORTED_CURRENCIES[$code])) return $code;
         }
 
-        foreach (['₹' => 'INR', '₫' => 'VND', '₴' => 'UAH', 'R$' => 'BRL'] as $sym => $code) {
+        foreach (['₴' => 'UAH'] as $sym => $code) {
             if (str_contains($text, $sym)) return $code;
         }
 
@@ -2303,6 +2347,7 @@ PROMPT;
             'to'            => $this->aiTo,
             'budget_min'    => $this->aiBudgetMin,
             'budget_max'    => $this->aiBudgetMax,
+            'currency'      => $this->aiCurrency,
             'start'         => $start,
             'end'           => $end,
             'flight'        => $selectedFlight,
@@ -2528,7 +2573,8 @@ PROMPT;
                 $this->currencyRateUnavailableNotice = "I couldn't fetch the live exchange rate just now — please try entering your budget again in a moment.";
             } else {
                 $this->aiBudgetMin = $this->aiBudgetMax = min(self::MAX_BUDGET, $conversion['pesoAmount']);
-                $this->currencyNotice = "Got it — {$conversion['displayLabel']} is about ₱" . number_format($conversion['pesoAmount']) . ", I'll plan around that.";
+                $this->currencyNoticeLabel      = $conversion['displayLabel'];
+                $this->currencyNoticePesoAmount = $conversion['pesoAmount'];
             }
 
         } elseif (
